@@ -1,4 +1,34 @@
-export type TransactionType = "Expense" | "Income" | "Refund" | "Adjustment" | "Transfer" | "Investment";
+export type TransactionType =
+  | "Expense"
+  | "Income"
+  | "EMI / Loan Payment"
+  | "Borrow / Loan Taken"
+  | "Lend / Loan Given"
+  | "Debt Recovery"
+  | "Refund"
+  | "Adjustment"
+  | "Transfer"
+  | "Investment";
+
+export const DEBT_TRANSACTION_TYPES: TransactionType[] = [
+  "EMI / Loan Payment",
+  "Borrow / Loan Taken",
+  "Lend / Loan Given",
+  "Debt Recovery",
+];
+
+export const OUTFLOW_TYPES: TransactionType[] = [
+  "Expense",
+  "EMI / Loan Payment",
+  "Lend / Loan Given",
+];
+
+export const INFLOW_TYPES: TransactionType[] = [
+  "Income",
+  "Borrow / Loan Taken",
+  "Debt Recovery",
+  "Refund",
+];
 export type CategoryKind = "Expense" | "Income";
 export type AccountKind = "Bank account" | "Cash" | "Digital wallet" | "Credit card" | "Investment" | "Other";
 export type Section =
@@ -122,6 +152,7 @@ export interface Transaction {
   instrumentName?: string;
   units?: number;
   pricePerUnit?: number;
+  loanId?: string;
 }
 
 export interface RecurringItem {
@@ -194,6 +225,9 @@ export interface MoneySummary {
   expenses: number;
   net: number;
   balance: number;
+  emiPaid?: number;
+  borrowed?: number;
+  lent?: number;
 }
 
 export const STORAGE_KEY = "wealthtrack-demo-v1";
@@ -217,6 +251,10 @@ export function createInitialState(): WealthState {
     { id: "cat-freelance", name: "Freelance", kind: "Income", icon: "💻", color: "blue", monthlyLimit: 0 },
     { id: "cat-investments", name: "Investments", kind: "Income", icon: "📈", color: "teal", monthlyLimit: 0 },
     { id: "cat-other-income", name: "Other income", kind: "Income", icon: "💰", color: "violet", monthlyLimit: 0 },
+    { id: "cat-loan-emi", name: "Loan EMI & Debt", kind: "Expense", icon: "💳", color: "rose", monthlyLimit: 45000 },
+    { id: "cat-borrow", name: "Loans & Borrowings", kind: "Income", icon: "🏦", color: "amber", monthlyLimit: 0 },
+    { id: "cat-lend", name: "Money Lent / Advances", kind: "Expense", icon: "🤝", color: "violet", monthlyLimit: 0 },
+    { id: "cat-debt-recovery", name: "Debt Recovery", kind: "Income", icon: "💵", color: "emerald", monthlyLimit: 0 },
   ];
   const tx = (
     id: string, date: string, description: string, type: TransactionType, amount: number,
@@ -251,6 +289,30 @@ export function createInitialState(): WealthState {
     tx("tx-22", "2026-06-08T10:00", "Rent · June", "Expense", 22000, "cat-housing", "acc-hdfc", { merchant: "Home rent", paymentMethod: "Bank transfer", recurring: true }),
     tx("tx-23", "2026-05-19T09:00", "May salary", "Income", 82000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }),
     tx("tx-24", "2026-05-08T10:00", "Rent · May", "Expense", 22000, "cat-housing", "acc-hdfc", { merchant: "Home rent", paymentMethod: "Bank transfer", recurring: true }),
+    tx("tx-25", "2026-10-10T10:00", "Home Loan EMI · October", "EMI / Loan Payment", 30850, "cat-loan-emi", "acc-hdfc", {
+      paymentMethod: "Auto-debit",
+      merchant: "HDFC Bank Home Loan",
+      loanId: "loan-01",
+      notes: "Monthly EMI auto-debited for Tower 4 home loan",
+      recurring: true,
+    }),
+    tx("tx-26", "2026-10-05T10:00", "EV Car Loan EMI · October", "EMI / Loan Payment", 14200, "cat-loan-emi", "acc-sbi", {
+      paymentMethod: "Auto-debit",
+      merchant: "SBI Auto Loan",
+      loanId: "loan-02",
+      notes: "Monthly vehicle loan EMI",
+      recurring: true,
+    }),
+    tx("tx-27", "2026-10-01T15:00", "Advance to Rohan", "Lend / Loan Given", 10000, "cat-lend", "acc-hdfc", {
+      paymentMethod: "UPI",
+      merchant: "Rohan Verma",
+      notes: "Personal advance, promised return by Dec 2026",
+    }),
+    tx("tx-28", "2026-09-28T18:00", "Friend loan recovery", "Debt Recovery", 5000, "cat-debt-recovery", "acc-hdfc", {
+      paymentMethod: "UPI",
+      merchant: "Amit Sharma",
+      notes: "Part repayment of advance lent in August",
+    }),
   ];
   const preferences: WealthPreferences = {
     displayName: "", currency: "INR", dateFormat: "DD/MM/YYYY", language: "English", weekStart: "Monday", theme: "light",
@@ -386,14 +448,34 @@ export function safeAmount(amount: unknown): number {
 
 export function applyTransactionToAccountBalance(balance: number, transaction: Transaction, accountId: string): number {
   const amount = safeAmount(transaction.amount);
-  if (transaction.type === "Income" && transaction.accountId === accountId) return balance + amount;
-  if (transaction.type === "Expense" && transaction.accountId === accountId) return balance - amount;
-  if (transaction.type === "Refund" && transaction.accountId === accountId) return balance + amount;
-  if (transaction.type === "Adjustment" && transaction.accountId === accountId) return balance + amount;
+
+  // Inflows: Income, Refund, Borrowings received, Debt recoveries, and positive Adjustments
+  if (
+    (transaction.type === "Income" ||
+      transaction.type === "Refund" ||
+      transaction.type === "Borrow / Loan Taken" ||
+      transaction.type === "Debt Recovery" ||
+      transaction.type === "Adjustment") &&
+    transaction.accountId === accountId
+  ) {
+    return balance + amount;
+  }
+
+  // Outflows: Expenses, Loan EMI payments, Money lent out
+  if (
+    (transaction.type === "Expense" ||
+      transaction.type === "EMI / Loan Payment" ||
+      transaction.type === "Lend / Loan Given") &&
+    transaction.accountId === accountId
+  ) {
+    return balance - amount;
+  }
+
   if (transaction.type === "Transfer") {
     if (transaction.accountId === accountId) return balance - amount;
     if (transaction.destinationAccountId === accountId) return balance + amount;
   }
+
   if (transaction.type === "Investment" && transaction.accountId === accountId) {
     // Valuation entries only record current worth; no cash actually moves.
     if (transaction.investmentAction === "Valuation") return balance;
@@ -416,8 +498,13 @@ export function getMoneySummary(accounts: Account[], transactions: Transaction[]
   const expenseTotal = transactions.reduce((sum, item) => sum + (item.type === "Expense" ? safeAmount(item.amount) : 0), 0);
   const refundTotal = transactions.reduce((sum, item) => sum + (item.type === "Refund" ? safeAmount(item.amount) : 0), 0);
   const expenses = Math.max(0, expenseTotal - refundTotal);
+
+  const emiPaid = transactions.reduce((sum, item) => sum + (item.type === "EMI / Loan Payment" ? safeAmount(item.amount) : 0), 0);
+  const borrowed = transactions.reduce((sum, item) => sum + (item.type === "Borrow / Loan Taken" ? safeAmount(item.amount) : 0), 0);
+  const lent = transactions.reduce((sum, item) => sum + (item.type === "Lend / Loan Given" ? safeAmount(item.amount) : 0), 0);
+
   const balance = accounts.filter((account) => !account.archived).reduce((sum, account) => sum + getAccountBalance(account, transactions), 0);
-  return { income, expenses, net: income - expenses, balance };
+  return { income, expenses, net: income - expenses, balance, emiPaid, borrowed, lent };
 }
 
 export function getHoldingsSummary(investments: InvestmentHolding[] = []) {

@@ -62,6 +62,7 @@ import {
   getNextRecurringDate,
   makeNotification,
   processDueRecurringTransactions,
+  safeAmount,
   STORAGE_KEY,
   type Account,
   type Category,
@@ -427,16 +428,20 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   };
 
   const handleRecordLoanEmiPayment = (loan: LoanLiability) => {
-    const catBills =
+    const catLoan =
       data.categories.find(
-        (c) => c.name.toLowerCase().includes("bill") || c.name.toLowerCase().includes("housing")
+        (c) =>
+          c.id === "cat-loan-emi" ||
+          c.name.toLowerCase().includes("loan") ||
+          c.name.toLowerCase().includes("debt")
       )?.id ?? data.categories[0]?.id;
 
     beginTransaction({
-      type: "Expense",
+      type: "EMI / Loan Payment",
       amount: loan.emiAmount,
       accountId: loan.repaymentAccountId,
-      categoryId: catBills,
+      categoryId: catLoan,
+      loanId: loan.id,
       description: `${loan.name} EMI`,
       merchant: loan.lenderInstitution,
       need: "Need",
@@ -588,14 +593,34 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       instrumentName: transactionForm.instrumentName,
       units: transactionForm.units,
       pricePerUnit: transactionForm.pricePerUnit,
+      loanId: transactionForm.loanId,
     };
 
-    setData((current) => ({
-      ...current,
-      transactions: editTransaction
-        ? current.transactions.map((item) => (item.id === saved.id ? saved : item))
-        : [saved, ...current.transactions],
-    }));
+    setData((current) => {
+      let updatedLoans = current.loans;
+      if (saved.type === "EMI / Loan Payment" && saved.loanId && !editTransaction) {
+        updatedLoans = (current.loans || []).map((loan) => {
+          if (loan.id === saved.loanId) {
+            const newOutstanding = Math.max(0, safeAmount(loan.currentOutstanding) - saved.amount);
+            return {
+              ...loan,
+              currentOutstanding: newOutstanding,
+              paidEmisCount: (loan.paidEmisCount || 0) + 1,
+              updatedAt: new Date().toISOString().slice(0, 10),
+            };
+          }
+          return loan;
+        });
+      }
+
+      return {
+        ...current,
+        loans: updatedLoans,
+        transactions: editTransaction
+          ? current.transactions.map((item) => (item.id === saved.id ? saved : item))
+          : [saved, ...current.transactions],
+      };
+    });
 
     toast.success(editTransaction ? "Transaction updated" : "Transaction added", {
       description: `${saved.description} · ${money(saved.amount)}`,
@@ -1128,6 +1153,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     const typeIndex = headers.findIndex((h) => h.includes("type"));
     const needIndex = headers.findIndex((h) => h.includes("need") || h.includes("want") || h.includes("priority"));
     const accountIndex = headers.findIndex((h) => h.includes("acc"));
+    const loanIndex = headers.findIndex((h) => h.includes("loan"));
 
     // Investment columns
     const actionIndex = headers.findIndex((h) => h.includes("action") || h.includes("investmentaction"));
@@ -1153,9 +1179,19 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       );
 
       const rawType = typeIndex >= 0 ? (row[typeIndex]?.trim() as TransactionType) : "Expense";
-      const type: TransactionType = ["Expense", "Income", "Refund", "Transfer", "Investment", "Adjustment"].includes(rawType)
-        ? rawType
-        : "Expense";
+      const validTypes: TransactionType[] = [
+        "Expense",
+        "Income",
+        "EMI / Loan Payment",
+        "Borrow / Loan Taken",
+        "Lend / Loan Given",
+        "Debt Recovery",
+        "Refund",
+        "Transfer",
+        "Investment",
+        "Adjustment",
+      ];
+      const type: TransactionType = validTypes.includes(rawType) ? rawType : "Expense";
 
       const rawNeed = needIndex >= 0 ? row[needIndex]?.trim().toLowerCase() : "";
       const need: "Need" | "Want" = rawNeed === "want" ? "Want" : "Need";
@@ -1163,6 +1199,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       const accName = accountIndex >= 0 ? row[accountIndex]?.trim() : "";
       const matchedAcc = data.accounts.find(
         (item) => !item.archived && item.name.toLowerCase() === accName?.toLowerCase()
+      );
+
+      const loanName = loanIndex >= 0 ? row[loanIndex]?.trim() : "";
+      const matchedLoan = (data.loans || []).find(
+        (l) => l.name.toLowerCase() === loanName.toLowerCase() || l.id === loanName
       );
 
       const desc =
@@ -1198,6 +1239,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         instrumentName,
         units,
         pricePerUnit,
+        loanId: matchedLoan?.id,
       };
     });
 

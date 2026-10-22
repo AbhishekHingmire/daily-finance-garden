@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Activity,
   ArrowDownLeft,
@@ -8,6 +8,7 @@ import {
   Compass,
   Download,
   Flame,
+  Landmark,
   PieChart,
   ShieldCheck,
   Sparkles,
@@ -43,20 +44,26 @@ export function ReportsPage({
   onExport: () => void;
   onCategory?: (id: string) => void;
 }) {
+  const [priorityFilter, setPriorityFilter] = useState("All");
+
+  const activeRows = useMemo(() => {
+    return rows.filter((r) => priorityFilter === "All" || r.need === priorityFilter);
+  }, [rows, priorityFilter]);
+
   const totalIncome = useMemo(
     () =>
-      rows
+      activeRows
         .filter((r) => r.type === "Income")
         .reduce((sum, r) => sum + r.amount, 0),
-    [rows]
+    [activeRows]
   );
 
   const totalExpenses = useMemo(
     () =>
-      rows
+      activeRows
         .filter((r) => r.type === "Expense")
         .reduce((sum, r) => sum + r.amount, 0),
-    [rows]
+    [activeRows]
   );
 
   const netSavings = totalIncome - totalExpenses;
@@ -85,15 +92,48 @@ export function ReportsPage({
   const wantsPct = Math.round((wantsSpend / effectiveIncome) * 100);
   const savingsPct = Math.max(0, Math.round((netSavings / effectiveIncome) * 100));
 
+  // Debt & Loan Cash Flow Metrics
+  const emiPaidInPeriod = useMemo(
+    () =>
+      rows
+        .filter((r) => r.type === "EMI / Loan Payment")
+        .reduce((sum, r) => sum + r.amount, 0),
+    [rows]
+  );
+
+  const borrowedInPeriod = useMemo(
+    () =>
+      rows
+        .filter((r) => r.type === "Borrow / Loan Taken")
+        .reduce((sum, r) => sum + r.amount, 0),
+    [rows]
+  );
+
+  const lentInPeriod = useMemo(
+    () =>
+      rows
+        .filter((r) => r.type === "Lend / Loan Given")
+        .reduce((sum, r) => sum + r.amount, 0),
+    [rows]
+  );
+
+  const recoveredInPeriod = useMemo(
+    () =>
+      rows
+        .filter((r) => r.type === "Debt Recovery")
+        .reduce((sum, r) => sum + r.amount, 0),
+    [rows]
+  );
+
   // Category breakdown
   const categorySpendList = useMemo(() => {
     return data.categories
       .filter((c) => c.kind === "Expense" && !c.archived)
       .map((c) => {
-        const amount = rows
+        const amount = activeRows
           .filter((r) => r.categoryId === c.id && r.type === "Expense")
           .reduce((sum, r) => sum + r.amount, 0);
-        const count = rows.filter(
+        const count = activeRows.filter(
           (r) => r.categoryId === c.id && r.type === "Expense"
         ).length;
         const pctOfTotal = totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0;
@@ -107,12 +147,12 @@ export function ReportsPage({
       })
       .filter((c) => c.amount > 0)
       .sort((a, b) => b.amount - a.amount);
-  }, [data.categories, rows, totalExpenses]);
+  }, [data.categories, activeRows, totalExpenses]);
 
   // Top merchants / payees
   const topMerchants = useMemo(() => {
     const map = new Map<string, { amount: number; count: number }>();
-    for (const r of rows) {
+    for (const r of activeRows) {
       if (r.type === "Expense") {
         const name = r.merchant?.trim() || r.description?.trim() || "Unspecified";
         const cur = map.get(name) || { amount: 0, count: 0 };
@@ -128,17 +168,17 @@ export function ReportsPage({
       }))
       .sort((a, b) => b.amount - a.amount)
       .slice(0, 5);
-  }, [rows, totalExpenses]);
+  }, [activeRows, totalExpenses]);
 
   // Income Sources
   const incomeSources = useMemo(() => {
     return data.categories
       .filter((c) => c.kind === "Income" && !c.archived)
       .map((c) => {
-        const amount = rows
+        const amount = activeRows
           .filter((r) => r.categoryId === c.id && r.type === "Income")
           .reduce((sum, r) => sum + r.amount, 0);
-        const count = rows.filter(
+        const count = activeRows.filter(
           (r) => r.categoryId === c.id && r.type === "Income"
         ).length;
         const pct = totalIncome > 0 ? Math.round((amount / totalIncome) * 100) : 0;
@@ -146,7 +186,7 @@ export function ReportsPage({
       })
       .filter((c) => c.amount > 0)
       .sort((a, b) => b.amount - a.amount);
-  }, [data.categories, rows, totalIncome]);
+  }, [data.categories, activeRows, totalIncome]);
 
   // Investment summary
   const investmentSummary = useMemo(() => getInvestmentSummary(rows), [rows]);
@@ -194,9 +234,22 @@ export function ReportsPage({
         }
       />
 
-      {/* Date Range Filter */}
-      <div className="flex items-center justify-between">
+      {/* Date Range & Priority Filter Controls */}
+      <div className="flex flex-wrap items-center justify-between gap-3">
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-semibold text-muted-foreground">Priority:</span>
+          <select
+            className="wt-field h-8 w-36 text-xs py-0 font-semibold"
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value)}
+            aria-label="Priority Classification Filter"
+          >
+            <option value="All">All Priorities</option>
+            <option value="Need">Need (Essential)</option>
+            <option value="Want">Want (Discretionary)</option>
+          </select>
+        </div>
       </div>
 
       {/* Hero Financial Performance Card */}
@@ -562,48 +615,50 @@ export function ReportsPage({
         </div>
       </div>
 
-      {/* Income Streams & Investment Summary */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* 3-Pillar Capital Flow: Income Streams, Investments, and Debt/Loan Cash Flow */}
+      <div className="grid gap-6 lg:grid-cols-3">
         {/* Income Breakdown */}
-        <div className="rounded-2xl border border-border bg-card p-6 wt-shadow">
-          <h3 className="wt-display text-base font-bold text-foreground">
-            Income Streams Breakdown
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Sources of funds deposited during this timeframe
-          </p>
+        <div className="rounded-2xl border border-border bg-card p-6 wt-shadow flex flex-col justify-between">
+          <div>
+            <h3 className="wt-display text-base font-bold text-foreground">
+              Income Streams Breakdown
+            </h3>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Sources of funds deposited during this timeframe
+            </p>
 
-          <div className="mt-4 space-y-3">
-            {incomeSources.length === 0 ? (
-              <EmptyInline message="No income records found for this period." />
-            ) : (
-              incomeSources.map((inc) => (
-                <div
-                  key={inc.id}
-                  className="flex items-center justify-between rounded-xl border border-border/80 bg-emerald-500/5 p-3"
-                >
-                  <div className="flex items-center gap-2.5">
-                    <span className="grid size-8 place-items-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-sm">
-                      {inc.icon || "💰"}
-                    </span>
-                    <div>
-                      <p className="text-xs font-bold text-foreground">{inc.name}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {inc.count} deposit{inc.count > 1 ? "s" : ""}
+            <div className="mt-4 space-y-3">
+              {incomeSources.length === 0 ? (
+                <EmptyInline message="No income records found for this period." />
+              ) : (
+                incomeSources.map((inc) => (
+                  <div
+                    key={inc.id}
+                    className="flex items-center justify-between rounded-xl border border-border/80 bg-emerald-500/5 p-3"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className="grid size-8 place-items-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 text-sm">
+                        {inc.icon || "💰"}
+                      </span>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{inc.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {inc.count} deposit{inc.count > 1 ? "s" : ""}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                        +{money(inc.amount)}
                       </p>
+                      <span className="text-[10px] text-muted-foreground">
+                        {inc.pct}% of total income
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                      +{money(inc.amount)}
-                    </p>
-                    <span className="text-[10px] text-muted-foreground">
-                      {inc.pct}% of total income
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
           </div>
         </div>
 
@@ -647,7 +702,89 @@ export function ReportsPage({
           <div className="mt-4 rounded-xl bg-primary/10 p-3 text-xs text-primary flex items-center gap-2">
             <Compass size={16} className="shrink-0" />
             <span>
-              Investments represent long-term capital compounding and are kept separate from ordinary living expenses.
+              Investments compound long-term and are kept distinct from living expenses.
+            </span>
+          </div>
+        </div>
+
+        {/* Debt, Loan & Borrowing Cash Flow */}
+        <div className="rounded-2xl border border-border bg-card p-6 wt-shadow flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="wt-display text-base font-bold text-foreground">
+                  Debt & Loan Cash Flow
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  EMIs serviced, borrowings, and advances
+                </p>
+              </div>
+              <span className="grid size-8 place-items-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                <Landmark size={16} />
+              </span>
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="rounded-xl border border-border bg-muted/20 p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  EMIs Paid
+                </span>
+                <span className="wt-display text-base font-extrabold text-rose-600 dark:text-rose-400 mt-0.5 block tabular-nums">
+                  {money(emiPaidInPeriod)}
+                </span>
+                <span className="text-[10px] text-muted-foreground block">
+                  Debt servicing
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-border bg-muted/20 p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Borrowed
+                </span>
+                <span className="wt-display text-base font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block tabular-nums">
+                  +{money(borrowedInPeriod)}
+                </span>
+                <span className="text-[10px] text-muted-foreground block">
+                  Loans received
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-border bg-muted/20 p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Money Lent
+                </span>
+                <span className="wt-display text-base font-extrabold text-violet-600 dark:text-violet-400 mt-0.5 block tabular-nums">
+                  {money(lentInPeriod)}
+                </span>
+                <span className="text-[10px] text-muted-foreground block">
+                  Advances given
+                </span>
+              </div>
+
+              <div className="rounded-xl border border-border bg-muted/20 p-3">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Recovered
+                </span>
+                <span className="wt-display text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block tabular-nums">
+                  +{money(recoveredInPeriod)}
+                </span>
+                <span className="text-[10px] text-muted-foreground block">
+                  Lent funds returned
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-xl bg-muted/40 p-3 text-xs text-muted-foreground flex items-center justify-between">
+            <span>Net Debt Movement</span>
+            <span
+              className={`font-bold tabular-nums ${
+                borrowedInPeriod + recoveredInPeriod - emiPaidInPeriod - lentInPeriod >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400"
+              }`}
+            >
+              {money(borrowedInPeriod + recoveredInPeriod - emiPaidInPeriod - lentInPeriod)}
             </span>
           </div>
         </div>

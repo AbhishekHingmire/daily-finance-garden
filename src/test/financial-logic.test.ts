@@ -373,4 +373,95 @@ describe("Financial Engine & Calculations", () => {
     expect(summary.totalPaid).toBe(1090000);
     expect(summary.payoffPercentage).toBeCloseTo(25.06, 1);
   });
+
+  it("calculates account balances and cash flows across debt types: EMI, Borrow, Lend, and Recovery", () => {
+    const bankAccount: Account = {
+      id: "acc-bank",
+      name: "Primary Bank",
+      kind: "Bank account",
+      institution: "HDFC",
+      identifier: "1111",
+      openingBalance: 50000,
+      notes: "",
+    };
+
+    const debtTxs: Transaction[] = [
+      // Borrowing ₹20,000 increases bank balance
+      {
+        id: "d1",
+        date: "2026-10-01",
+        description: "Personal Loan Disbursed",
+        type: "Borrow / Loan Taken",
+        amount: 20000,
+        categoryId: "cat-borrow",
+        accountId: "acc-bank",
+        destinationAccountId: "",
+        paymentMethod: "Bank transfer",
+        need: "Need",
+        merchant: "Bank",
+        tags: [],
+        notes: "",
+        recurring: false,
+        customValues: {},
+      },
+      // Paying EMI ₹5,000 decreases bank balance
+      {
+        id: "d2",
+        date: "2026-10-05",
+        description: "Loan EMI Payment",
+        type: "EMI / Loan Payment",
+        amount: 5000,
+        categoryId: "cat-loan-emi",
+        accountId: "acc-bank",
+        destinationAccountId: "",
+        paymentMethod: "Auto-debit",
+        need: "Need",
+        merchant: "Bank",
+        tags: [],
+        notes: "",
+        recurring: true,
+        customValues: {},
+      },
+      // Lending ₹8,000 to a friend decreases bank balance
+      {
+        id: "d3",
+        date: "2026-10-08",
+        description: "Loan to Rahul",
+        type: "Lend / Loan Given",
+        amount: 8000,
+        categoryId: "cat-lend",
+        accountId: "acc-bank",
+        destinationAccountId: "",
+        paymentMethod: "UPI",
+        need: "Want",
+        merchant: "Rahul",
+        tags: [],
+        notes: "",
+        recurring: false,
+        customValues: {},
+      },
+      // Recovering ₹3,000 from a previous debtor increases bank balance
+      {
+        id: "d4",
+        date: "2026-10-12",
+        description: "Repayment from Amit",
+        type: "Debt Recovery",
+        amount: 3000,
+        categoryId: "cat-debt-recovery",
+        accountId: "acc-bank",
+        destinationAccountId: "",
+        paymentMethod: "UPI",
+        need: "Need",
+        merchant: "Amit",
+        tags: [],
+        notes: "",
+        recurring: false,
+        customValues: {},
+      },
+    ];
+
+    // Starting: 50,000 + 20,000 (borrow) - 5,000 (emi) - 8,000 (lend) + 3,000 (recovery) = 60,000
+    const finalBalance = getAccountBalance(bankAccount, debtTxs);
+    expect(finalBalance).toBe(60000);
+  });
 });

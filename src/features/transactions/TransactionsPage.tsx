@@ -173,6 +173,10 @@ export function TransactionsPage({
               "All types",
               "Expense",
               "Income",
+              "EMI / Loan Payment",
+              "Borrow / Loan Taken",
+              "Lend / Loan Given",
+              "Debt Recovery",
               "Refund",
               "Transfer",
               "Investment",
@@ -324,8 +328,17 @@ export function TransactionsPage({
               const positive =
                 transaction.type === "Income" ||
                 transaction.type === "Refund" ||
+                transaction.type === "Borrow / Loan Taken" ||
+                transaction.type === "Debt Recovery" ||
                 (transaction.type === "Adjustment" && transaction.amount > 0) ||
                 (transaction.type === "Investment" && !isInvestmentOutflow && transaction.investmentAction !== "Valuation");
+
+              const outflow =
+                transaction.type === "Expense" ||
+                transaction.type === "EMI / Loan Payment" ||
+                transaction.type === "Lend / Loan Given" ||
+                isInvestmentOutflow ||
+                (transaction.type === "Adjustment" && transaction.amount < 0);
 
               const category = data.categories.find((item) => item.id === transaction.categoryId);
 
@@ -348,7 +361,7 @@ export function TransactionsPage({
                         <span className="truncate text-sm font-semibold group-hover:text-primary transition-colors text-foreground">
                           {transaction.description}
                         </span>
-                        {transaction.type === "Expense" && (
+                        {transaction.type === "Expense" ? (
                           <span
                             className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
                               transaction.need === "Want"
@@ -358,7 +371,23 @@ export function TransactionsPage({
                           >
                             {transaction.need === "Want" ? "Want" : "Need"}
                           </span>
-                        )}
+                        ) : transaction.type === "EMI / Loan Payment" ? (
+                          <span className="inline-flex shrink-0 items-center rounded-full border border-rose-500/25 bg-rose-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                            EMI
+                          </span>
+                        ) : transaction.type === "Borrow / Loan Taken" ? (
+                          <span className="inline-flex shrink-0 items-center rounded-full border border-amber-500/25 bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                            Borrowed
+                          </span>
+                        ) : transaction.type === "Lend / Loan Given" ? (
+                          <span className="inline-flex shrink-0 items-center rounded-full border border-violet-500/25 bg-violet-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                            Lent
+                          </span>
+                        ) : transaction.type === "Debt Recovery" ? (
+                          <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/25 bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                            Recovery
+                          </span>
+                        ) : null}
                       </div>
                       {transaction.merchant && (
                         <span className="block truncate text-xs text-muted-foreground">
@@ -378,12 +407,12 @@ export function TransactionsPage({
                         className={`whitespace-nowrap text-sm font-bold tabular-nums ${
                           positive
                             ? "text-emerald-600 dark:text-emerald-400"
-                            : transaction.type === "Expense" || isInvestmentOutflow
+                            : outflow
                             ? "text-rose-600 dark:text-rose-400"
                             : "text-foreground"
                         }`}
                       >
-                        {positive ? "+" : transaction.type === "Expense" || isInvestmentOutflow ? "−" : ""}
+                        {positive ? "+" : outflow ? "−" : ""}
                         {money(transaction.amount)}
                       </span>
                     </div>
@@ -427,7 +456,7 @@ export function TransactionsPage({
                             <span className="truncate text-sm font-semibold text-foreground">
                               {transaction.description}
                             </span>
-                            {transaction.type === "Expense" && (
+                            {transaction.type === "Expense" ? (
                               <span
                                 className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider ${
                                   transaction.need === "Want"
@@ -437,7 +466,23 @@ export function TransactionsPage({
                               >
                                 {transaction.need === "Want" ? "Want" : "Need"}
                               </span>
-                            )}
+                            ) : transaction.type === "EMI / Loan Payment" ? (
+                              <span className="inline-flex shrink-0 items-center rounded-full border border-rose-500/25 bg-rose-500/15 px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                                EMI
+                              </span>
+                            ) : transaction.type === "Borrow / Loan Taken" ? (
+                              <span className="inline-flex shrink-0 items-center rounded-full border border-amber-500/25 bg-amber-500/15 px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                                Borrowed
+                              </span>
+                            ) : transaction.type === "Lend / Loan Given" ? (
+                              <span className="inline-flex shrink-0 items-center rounded-full border border-violet-500/25 bg-violet-500/15 px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                                Lent
+                              </span>
+                            ) : transaction.type === "Debt Recovery" ? (
+                              <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/25 bg-emerald-500/15 px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                                Recovery
+                              </span>
+                            ) : null}
                           </div>
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate mt-0.5">
                             <span>{accountLabel(data, transaction.accountId)}</span>
@@ -452,12 +497,12 @@ export function TransactionsPage({
                         className={`whitespace-nowrap text-sm font-bold tabular-nums ${
                           positive
                             ? "text-emerald-600 dark:text-emerald-400"
-                            : transaction.type === "Expense" || isInvestmentOutflow
+                            : outflow
                             ? "text-rose-600 dark:text-rose-400"
                             : "text-foreground"
                         }`}
                       >
-                        {positive ? "+" : transaction.type === "Expense" || isInvestmentOutflow ? "−" : ""}
+                        {positive ? "+" : outflow ? "−" : ""}
                         {money(transaction.amount)}
                       </span>
                       <ActionMenu

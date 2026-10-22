@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Plus, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, Landmark, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
 import { CategoryModal } from "@/features/categories/CategoryModal";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
-import type {
-  Category,
-  Transaction,
-  TransactionType,
-  WealthState,
+import {
+  DEBT_TRANSACTION_TYPES,
+  type Category,
+  type Transaction,
+  type TransactionType,
+  type WealthState,
 } from "@/lib/wealthtrack";
 
 export function TransactionModal({
@@ -32,6 +33,7 @@ export function TransactionModal({
   onAddCategory?: (category: Category) => void;
 }) {
   const type = (form.type ?? "Expense") as TransactionType;
+  const isDebtType = DEBT_TRANSACTION_TYPES.includes(type);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const currencySymbol =
     data.preferences.currency === "INR"
@@ -42,12 +44,15 @@ export function TransactionModal({
       ? "€"
       : "£";
 
+  const isInflowType =
+    type === "Income" || type === "Borrow / Loan Taken" || type === "Debt Recovery";
+
   // Available categories for current type
   const categories = useMemo(() => {
     return data.categories.filter(
-      (c) => !c.archived && (type === "Income" ? c.kind === "Income" : c.kind === "Expense")
+      (c) => !c.archived && (isInflowType ? c.kind === "Income" : c.kind === "Expense")
     );
-  }, [data.categories, type]);
+  }, [data.categories, isInflowType]);
 
   // Frequently used top categories for instant 1-click chip selection
   const quickCategories = useMemo(() => {
@@ -92,7 +97,7 @@ export function TransactionModal({
     const newCat: Category = {
       id: `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       name: catForm.name.trim(),
-      kind: catForm.kind ?? (type === "Income" ? "Income" : "Expense"),
+      kind: catForm.kind ?? (isInflowType ? "Income" : "Expense"),
       icon: catForm.icon ?? matchCategoryIcon(catForm.name.trim(), "📁"),
       color: catForm.color ?? "blue",
       monthlyLimit: Number(catForm.monthlyLimit) || 0,
@@ -113,7 +118,6 @@ export function TransactionModal({
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
-      // Don't auto-submit if target is a textarea
       if ((e.target as HTMLElement).tagName.toLowerCase() === "textarea") return;
       e.preventDefault();
       onSave(false);
@@ -127,29 +131,166 @@ export function TransactionModal({
       onClose={onClose}
     >
       <form onSubmit={(e) => { e.preventDefault(); onSave(false); }} onKeyDown={handleKeyDown} className="space-y-4">
-        {/* Simplified 3-Type Segment: Expense | Income | Transfer */}
-        <div className="flex rounded-lg bg-muted p-1">
-          {(["Expense", "Income", "Transfer"] as TransactionType[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              className={`flex-1 rounded-md py-1.5 text-xs font-bold transition-all ${
-                type === t
-                  ? "bg-background text-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-              onClick={() => {
-                set("type", t);
-                if (t === "Transfer") {
-                  set("categoryId", "");
-                  set("description", "Account Transfer");
-                }
-              }}
-            >
-              {t}
-            </button>
-          ))}
+        {/* Primary Type Selector: Expense | Income | Loan / Debt | Transfer */}
+        <div className="flex rounded-xl bg-muted p-1">
+          {[
+            { id: "Expense", label: "Expense" },
+            { id: "Income", label: "Income" },
+            { id: "Loan / Debt", label: "Loan / Debt" },
+            { id: "Transfer", label: "Transfer" },
+          ].map((tab) => {
+            const isTabActive =
+              tab.id === "Loan / Debt"
+                ? isDebtType
+                : type === tab.id;
+
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${
+                  isTabActive
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+                onClick={() => {
+                  if (tab.id === "Loan / Debt") {
+                    setForm((cur) => {
+                      const catLoan = data.categories.find((c) => c.id === "cat-loan-emi")?.id;
+                      return {
+                        ...cur,
+                        type: "EMI / Loan Payment",
+                        categoryId: catLoan || cur.categoryId,
+                        description: cur.description || "Loan EMI",
+                      };
+                    });
+                  } else if (tab.id === "Transfer") {
+                    setForm((cur) => ({
+                      ...cur,
+                      type: "Transfer",
+                      categoryId: "",
+                      description: "Account Transfer",
+                    }));
+                  } else {
+                    setForm((cur) => ({
+                      ...cur,
+                      type: tab.id as TransactionType,
+                    }));
+                  }
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
+
+        {/* Loan & Debt Sub-Category Pill Toggle */}
+        {isDebtType && (
+          <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/[0.03] p-3.5">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
+              Debt Transaction Kind
+            </span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+              {[
+                { id: "EMI / Loan Payment", label: "EMI Repayment", icon: "💳", hint: "Outflow" },
+                { id: "Borrow / Loan Taken", label: "Borrow Money", icon: "🏦", hint: "Inflow" },
+                { id: "Lend / Loan Given", label: "Lend Money", icon: "🤝", hint: "Outflow" },
+                { id: "Debt Recovery", label: "Debt Recovery", icon: "💵", hint: "Inflow" },
+              ].map((item) => {
+                const isSelected = type === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      const nextType = item.id as TransactionType;
+                      let defaultCat = "";
+                      let defaultDesc = "";
+                      if (nextType === "EMI / Loan Payment") {
+                        defaultCat = data.categories.find((c) => c.id === "cat-loan-emi")?.id || "";
+                        defaultDesc = "Loan EMI";
+                      } else if (nextType === "Borrow / Loan Taken") {
+                        defaultCat = data.categories.find((c) => c.id === "cat-borrow")?.id || "";
+                        defaultDesc = "Loan Borrowed";
+                      } else if (nextType === "Lend / Loan Given") {
+                        defaultCat = data.categories.find((c) => c.id === "cat-lend")?.id || "";
+                        defaultDesc = "Money Lent";
+                      } else if (nextType === "Debt Recovery") {
+                        defaultCat = data.categories.find((c) => c.id === "cat-debt-recovery")?.id || "";
+                        defaultDesc = "Debt Repaid";
+                      }
+                      setForm((current) => ({
+                        ...current,
+                        type: nextType,
+                        categoryId: defaultCat || current.categoryId,
+                        description: current.description || defaultDesc,
+                      }));
+                    }}
+                    className={`flex flex-col items-center justify-center p-2 rounded-xl text-xs font-bold transition-all ${
+                      isSelected
+                        ? "bg-card text-foreground shadow-xs border border-border"
+                        : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                    }`}
+                  >
+                    <span className="text-base">{item.icon}</span>
+                    <span className="mt-0.5 text-center">{item.label}</span>
+                    <span
+                      className={`text-[10px] font-semibold mt-0.5 ${
+                        item.hint === "Inflow"
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : "text-rose-600 dark:text-rose-400"
+                      }`}
+                    >
+                      {item.hint}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Optional Loan Linkage for EMI Repayment */}
+            {type === "EMI / Loan Payment" && (data.loans?.length ?? 0) > 0 && (
+              <div className="rounded-xl border border-border/80 bg-card p-3 space-y-1.5">
+                <label className="block">
+                  <div className="flex items-center gap-1.5 mb-1">
+                    <Landmark size={13} className="text-primary" />
+                    <span className="wt-label font-bold text-foreground">
+                      Link to Loan (Reduces Outstanding Balance)
+                    </span>
+                  </div>
+                  <select
+                    className="wt-field h-9 text-xs"
+                    value={form.loanId || ""}
+                    onChange={(e) => {
+                      const selectedLoan = data.loans?.find((l) => l.id === e.target.value);
+                      setForm((cur) => ({
+                        ...cur,
+                        loanId: e.target.value || undefined,
+                        amount: cur.amount || (selectedLoan ? selectedLoan.emiAmount : undefined),
+                        merchant: cur.merchant || selectedLoan?.lenderInstitution || "",
+                        description:
+                          cur.description && cur.description !== "Loan EMI"
+                            ? cur.description
+                            : selectedLoan
+                            ? `${selectedLoan.name} EMI`
+                            : "Loan EMI",
+                      }));
+                    }}
+                  >
+                    <option value="">-- None / General Debt Payment --</option>
+                    {data.loans?.map((loan) => (
+                      <option key={loan.id} value={loan.id}>
+                        {loan.name} ({loan.lenderInstitution} · Outstanding: {currencySymbol}
+                        {loan.currentOutstanding})
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 1. Large Amount Input */}
         <div>
@@ -180,7 +321,7 @@ export function TransactionModal({
           </label>
         </div>
 
-        {/* 2. Category Selection (For Expense and Income) */}
+        {/* 2. Category Selection (For Expense, Income, and Loan types) */}
         {type !== "Transfer" && (
           <div className="space-y-2">
             <span className="wt-label">Category <span className="text-destructive">*</span></span>
@@ -259,7 +400,7 @@ export function TransactionModal({
           </div>
         ) : (
           <SelectField
-            label="Paid with Account"
+            label={isInflowType ? "Deposit into Account" : "Paid with Account"}
             value={form.accountId ?? ""}
             onChange={(v) => set("accountId", v)}
             options={data.accounts
@@ -313,8 +454,8 @@ export function TransactionModal({
                       value={form.need ?? "Need"}
                       onChange={(e) => set("need", e.target.value as "Need" | "Want")}
                     >
-                      <option value="Need">Need (50% Essential — Groceries, bills, rent)</option>
-                      <option value="Want">Want (30% Discretionary — Dining, shopping)</option>
+                      <option value="Need">Need (Essential / Contractual obligation)</option>
+                      <option value="Want">Want (Discretionary spending)</option>
                     </select>
                   </label>
                 </div>
@@ -322,8 +463,14 @@ export function TransactionModal({
 
               <div className="grid gap-3 sm:grid-cols-2">
                 <InputField
-                  label="Merchant / Entity (optional)"
-                  placeholder="e.g. Swiggy, Amazon, Airtel"
+                  label={
+                    type === "Borrow / Loan Taken"
+                      ? "Lender / Source"
+                      : type === "Lend / Loan Given" || type === "Debt Recovery"
+                      ? "Borrower / Person"
+                      : "Merchant / Entity (optional)"
+                  }
+                  placeholder="e.g. HDFC Bank, Rohan Verma, Airtel"
                   value={form.merchant ?? ""}
                   onChange={(v) => set("merchant", v)}
                 />
@@ -331,7 +478,7 @@ export function TransactionModal({
                   label="Payment Method"
                   value={form.paymentMethod ?? "UPI"}
                   onChange={(v) => set("paymentMethod", v)}
-                  options={["UPI", "Card", "Cash", "Bank transfer", "Wallet", "Other"].map((m) => ({
+                  options={["UPI", "Bank transfer", "Auto-debit", "Card", "Cash", "Wallet", "Other"].map((m) => ({
                     value: m,
                     label: m,
                   }))}
@@ -377,7 +524,7 @@ export function TransactionModal({
       {isCreatingCategory && (
         <CategoryModal
           category={null}
-          kind={type === "Income" ? "Income" : "Expense"}
+          kind={isInflowType ? "Income" : "Expense"}
           onClose={() => setIsCreatingCategory(false)}
           onSave={handleQuickCreateCategory}
         />

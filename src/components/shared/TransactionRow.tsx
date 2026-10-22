@@ -28,8 +28,17 @@ export function TransactionRow({
   const isPositive =
     transaction.type === "Income" ||
     transaction.type === "Refund" ||
+    transaction.type === "Borrow / Loan Taken" ||
+    transaction.type === "Debt Recovery" ||
     (transaction.type === "Adjustment" && transaction.amount > 0) ||
     (transaction.type === "Investment" && !isInvestmentOutflow && transaction.investmentAction !== "Valuation");
+
+  const isOutflow =
+    transaction.type === "Expense" ||
+    transaction.type === "EMI / Loan Payment" ||
+    transaction.type === "Lend / Loan Given" ||
+    isInvestmentOutflow ||
+    (transaction.type === "Adjustment" && transaction.amount < 0);
 
   return (
     <button
@@ -45,7 +54,7 @@ export function TransactionRow({
               : "bg-muted text-foreground"
           }`}
         >
-          {transaction.type === "Income" ? (
+          {isPositive ? (
             <ArrowDownLeft size={16} />
           ) : transaction.type === "Transfer" ? (
             <ArrowLeftRight size={15} />
@@ -58,7 +67,7 @@ export function TransactionRow({
             <span className="truncate text-sm font-semibold text-foreground">
               {transaction.description}
             </span>
-            {transaction.type === "Expense" && (
+            {transaction.type === "Expense" ? (
               <span
                 className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
                   transaction.need === "Want"
@@ -68,7 +77,23 @@ export function TransactionRow({
               >
                 {transaction.need === "Want" ? "Want" : "Need"}
               </span>
-            )}
+            ) : transaction.type === "EMI / Loan Payment" ? (
+              <span className="inline-flex shrink-0 items-center rounded-full border border-rose-500/25 bg-rose-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                EMI
+              </span>
+            ) : transaction.type === "Borrow / Loan Taken" ? (
+              <span className="inline-flex shrink-0 items-center rounded-full border border-amber-500/25 bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                Borrowed
+              </span>
+            ) : transaction.type === "Lend / Loan Given" ? (
+              <span className="inline-flex shrink-0 items-center rounded-full border border-violet-500/25 bg-violet-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                Lent
+              </span>
+            ) : transaction.type === "Debt Recovery" ? (
+              <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/25 bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                Recovery
+              </span>
+            ) : null}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
             {transaction.merchant || category?.name || transaction.type}
@@ -85,12 +110,12 @@ export function TransactionRow({
         className={`text-right text-sm font-bold tabular-nums ${
           isPositive
             ? "text-emerald-600 dark:text-emerald-400"
-            : transaction.type === "Expense" || isInvestmentOutflow
+            : isOutflow
             ? "text-rose-600 dark:text-rose-400"
             : "text-foreground"
         }`}
       >
-        {transaction.type === "Expense" || isInvestmentOutflow ? "−" : isPositive ? "+" : ""}
+        {isOutflow ? "−" : isPositive ? "+" : ""}
         {money(transaction.amount)}
       </span>
     </button>

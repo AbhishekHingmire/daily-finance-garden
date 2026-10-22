@@ -37,6 +37,7 @@ export function TransactionDetail({
   const cat = data.categories.find((c) => c.id === transaction.categoryId);
   const acc = data.accounts.find((a) => a.id === transaction.accountId);
   const destAcc = data.accounts.find((a) => a.id === transaction.destinationAccountId);
+  const linkedLoan = data.loans?.find((l) => l.id === transaction.loanId);
   const isInvestmentOutflow =
     transaction.type === "Investment" &&
     transaction.investmentAction &&
@@ -45,6 +46,9 @@ export function TransactionDetail({
   const isInflow =
     transaction.type === "Income" ||
     transaction.type === "Refund" ||
+    transaction.type === "Borrow / Loan Taken" ||
+    transaction.type === "Debt Recovery" ||
+    (transaction.type === "Adjustment" && transaction.amount > 0) ||
     (transaction.type === "Investment" &&
       !isInvestmentOutflow &&
       transaction.investmentAction !== "Valuation");
@@ -140,11 +144,31 @@ export function TransactionDetail({
 
           {transaction.merchant && (
             <div>
-              <span className="text-muted-foreground font-medium block">Merchant / Payee</span>
+              <span className="text-muted-foreground font-medium block">
+                {transaction.type === "Borrow / Loan Taken"
+                  ? "Lender / Source"
+                  : transaction.type === "Lend / Loan Given" || transaction.type === "Debt Recovery"
+                  ? "Borrower / Person"
+                  : "Merchant / Payee"}
+              </span>
               <p className="font-bold text-foreground mt-0.5">{transaction.merchant}</p>
             </div>
           )}
         </div>
+
+        {linkedLoan && (
+          <div className="rounded-xl border border-rose-500/30 bg-rose-500/5 p-3.5 text-xs">
+            <span className="font-semibold text-rose-700 dark:text-rose-300 block mb-0.5">
+              Linked Loan Liability:
+            </span>
+            <p className="font-bold text-foreground">
+              {linkedLoan.name} ({linkedLoan.lenderInstitution})
+            </p>
+            <span className="text-muted-foreground text-[11px]">
+              Current remaining debt: {money(linkedLoan.currentOutstanding)}
+            </span>
+          </div>
+        )}
 
         {transaction.notes && (
           <div className="rounded-xl border border-border bg-muted/20 p-3.5 text-xs">

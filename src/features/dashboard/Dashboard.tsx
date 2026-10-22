@@ -65,19 +65,44 @@ export function Dashboard({
     return data.transactions.filter((t) => matchesDateRange(t.date, dateRange));
   }, [data.transactions, dateRange]);
 
-  const monthIncome = useMemo(
+  const monthInflowTransactions = useMemo(
     () =>
-      periodTransactions
-        .filter((item) => item.type === "Income")
-        .reduce((sum, item) => sum + item.amount, 0),
+      periodTransactions.filter(
+        (t) =>
+          t.type === "Income" ||
+          t.type === "Borrow / Loan Taken" ||
+          t.type === "Debt Recovery" ||
+          t.type === "Refund"
+      ),
     [periodTransactions]
   );
 
+  const monthOutflowTransactions = useMemo(
+    () =>
+      periodTransactions.filter(
+        (t) =>
+          t.type === "Expense" ||
+          t.type === "EMI / Loan Payment" ||
+          t.type === "Lend / Loan Given"
+      ),
+    [periodTransactions]
+  );
+
+  const monthIncome = useMemo(
+    () => monthInflowTransactions.reduce((sum, item) => sum + item.amount, 0),
+    [monthInflowTransactions]
+  );
+
   const monthExpenses = useMemo(
+    () => monthOutflowTransactions.reduce((sum, item) => sum + item.amount, 0),
+    [monthOutflowTransactions]
+  );
+
+  const monthEmiPaid = useMemo(
     () =>
       periodTransactions
-        .filter((item) => item.type === "Expense")
-        .reduce((sum, item) => sum + item.amount, 0),
+        .filter((t) => t.type === "EMI / Loan Payment")
+        .reduce((sum, t) => sum + t.amount, 0),
     [periodTransactions]
   );
 
@@ -362,7 +387,7 @@ export function Dashboard({
             +{money(monthIncome)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {periodTransactions.filter((t) => t.type === "Income").length} revenue deposits
+            {monthInflowTransactions.length} deposit{monthInflowTransactions.length !== 1 ? "s" : ""}
           </p>
         </div>
 
@@ -379,7 +404,8 @@ export function Dashboard({
             −{money(monthExpenses)}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {periodTransactions.filter((t) => t.type === "Expense").length} payments made
+            {monthOutflowTransactions.length} payment{monthOutflowTransactions.length !== 1 ? "s" : ""}
+            {monthEmiPaid > 0 ? ` (incl. ${money(monthEmiPaid)} in EMIs)` : ""}
           </p>
         </div>
 
