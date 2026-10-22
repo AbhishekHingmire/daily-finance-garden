@@ -66,6 +66,7 @@ import {
   processDueRecurringTransactions,
   safeAmount,
   STORAGE_KEY,
+  syncSystemNotifications,
   type Account,
   type AssetType,
   type Category,
@@ -107,6 +108,25 @@ function normalizeSection(sec?: Section | string): Section {
   if (sec === "Funds" || sec === "fund-planner" || sec === "funds") return "Fund Planner";
   if (sec === "Settings") return "Preferences";
   return sec as Section;
+}
+
+function getClearedNotificationIds(): string[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = localStorage.getItem("wt_cleared_notification_ids");
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveClearedNotificationIds(ids: string[]) {
+  if (typeof window === "undefined") return;
+  try {
+    const existing = getClearedNotificationIds();
+    const merged = Array.from(new Set([...existing, ...ids]));
+    localStorage.setItem("wt_cleared_notification_ids", JSON.stringify(merged));
+  } catch {}
 }
 
 export function WealthTrackApp({ initialSection }: { initialSection?: Section } = {}) {
@@ -266,7 +286,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           categories: upgradedCategories,
         };
         const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(baseState);
-        setData(updatedState);
+        const clearedNoticeIds = getClearedNotificationIds();
+        const syncedNotifications = syncSystemNotifications(updatedState, clearedNoticeIds);
+        setData({ ...updatedState, notifications: syncedNotifications });
         if (processedCount > 0) {
           const names = processedItems.map((p) => p.name).join(", ");
           setTimeout(() => {
@@ -623,7 +645,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         index >= 0
           ? existing.map((f, i) => (i === index ? fund : f))
           : [...existing, fund];
-      return { ...current, funds: updated };
+      const withFunds = { ...current, funds: updated };
+      const syncedNotices = syncSystemNotifications(withFunds, getClearedNotificationIds());
+      return { ...withFunds, notifications: syncedNotices };
     });
     toast.success(fund.name, {
       description: `Fund saved with target ${money(fund.targetAmount)}.`,
@@ -674,11 +698,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           if (f.targetAmount > 0 && newAmt >= f.targetAmount && f.currentAmount < f.targetAmount) {
             goalFulfilledName = f.name;
           }
-          return { ...f, currentAmount: newAmt };
+          return { ...f, currentAmount: newAmt, updatedAt: new Date().toISOString().slice(0, 10) };
         }
         return f;
       });
-      return { ...current, transactions: newTransactions, funds: updated };
+      const withFunds = { ...current, transactions: newTransactions, funds: updated };
+      const syncedNotices = syncSystemNotifications(withFunds, getClearedNotificationIds());
+      return { ...withFunds, notifications: syncedNotices };
     });
 
     if (goalFulfilledName) {
@@ -1880,36 +1906,43 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                       </Button>
                     </div>
                     {data.notifications.length ? (
-                      data.notifications.slice(0, 5).map((notice) => (
-                        <button
-                          key={notice.id}
-                          type="button"
-                          className="flex w-full gap-2.5 rounded-lg p-2.5 text-left hover:bg-muted/50 transition-colors"
-                          onClick={() => {
-                            setData((current) => ({
-                              ...current,
-                              notifications: current.notifications.map((item) =>
-                                item.id === notice.id ? { ...item, read: true } : item
-                              ),
-                            }));
-                            setNotificationOpen(false);
-                          }}
-                        >
-                          <span
-                            className={`mt-1.5 size-2 shrink-0 rounded-full ${
-                              notice.read ? "bg-muted-foreground/30" : "bg-primary"
-                            }`}
-                          />
-                          <span>
-                            <span className="block text-xs font-bold text-foreground">
-                              {notice.title}
-                            </span>
-                            <span className="block text-[11px] text-muted-foreground mt-0.5">
-                              {notice.description}
-                            </span>
-                          </span>
-                        </button>
-                      ))
+                      <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
+                        {data.notifications.slice(0, 15).map((notice) => (
+                          <button
+                            key={notice.id}
+                            type="button"
+                            className="flex w-full gap-2.5 rounded-lg p-2.5 text-left hover:bg-muted/50 transition-colors"
+                            onClick={() => {
+                              setData((current) => ({
+                                ...current,
+                                notifications: current.notifications.map((item) =>
+                                  item.id === notice.id ? { ...item, read: true } : item
+                                ),
+                              }));
+                              setNotificationOpen(false);
+                            }}
+                          >
+                            <span
+                              className={`mt-1.5 size-2 shrink-0 rounded-full ${
+                                notice.read ? "bg-muted-foreground/30" : "bg-primary"
+                              }`}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <span className="block text-xs font-bold text-foreground">
+                                {notice.title}
+                              </span>
+                              <span className="block text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                                {notice.description}
+                              </span>
+                              {notice.date && (
+                                <span className="block text-[10px] text-muted-foreground/70 mt-1 font-medium">
+                                  {notice.date}
+                                </span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
                     ) : (
                       <p className="px-2 py-6 text-center text-xs text-muted-foreground">
                         You’re all caught up.
@@ -1919,7 +1952,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                       variant="ghost"
                       size="sm"
                       className="w-full text-xs"
-                      onClick={() => setData((current) => ({ ...current, notifications: [] }))}
+                      onClick={() => {
+                        const ids = data.notifications.map((n) => n.id);
+                        saveClearedNotificationIds(ids);
+                        setData((current) => ({ ...current, notifications: [] }));
+                      }}
                     >
                       Clear Notifications
                     </Button>

@@ -52,6 +52,7 @@ export function FundsPage({
   onSkipFundMonth?: (fundId: string, monthStr: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"funds" | "simulator">("funds");
+  const [goalStatusFilter, setGoalStatusFilter] = useState<"ongoing" | "completed">("ongoing");
   const [fundModalOpen, setFundModalOpen] = useState(false);
   const [editingFund, setEditingFund] = useState<CustomFund | null>(null);
 
@@ -65,6 +66,17 @@ export function FundsPage({
 
   const funds = data.funds ?? [];
   const plans = data.plans ?? [];
+
+  // Ongoing vs Completed Funds Separation
+  const ongoingFunds = useMemo(() => {
+    return funds.filter((f) => !(f.targetAmount > 0 && f.currentAmount >= f.targetAmount));
+  }, [funds]);
+
+  const completedFunds = useMemo(() => {
+    return funds.filter((f) => f.targetAmount > 0 && f.currentAmount >= f.targetAmount);
+  }, [funds]);
+
+  const displayedFunds = goalStatusFilter === "ongoing" ? ongoingFunds : completedFunds;
 
   // Calculate real liquid balances
   const liquidBalance = useMemo(() => {
@@ -136,29 +148,49 @@ export function FundsPage({
         }
       />
 
-      {/* Navigation Tabs */}
-      <div className="flex border-b border-border/80 gap-2">
+      {/* Navigation Switch Panels */}
+      <div className="inline-flex items-center gap-1.5 p-1 rounded-xl bg-muted/60 border border-border/80 w-fit">
         <button
           type="button"
           onClick={() => setActiveTab("funds")}
-          className={`pb-3 px-3 text-xs font-bold transition-colors border-b-2 -mb-px flex items-center gap-2 ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
             activeTab === "funds"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "bg-card text-foreground shadow-xs border border-border/80 font-extrabold ring-1 ring-border/20"
+              : "text-muted-foreground hover:text-foreground hover:bg-card/50"
           }`}
         >
-          <ShieldCheck size={16} /> Emergency & Sinking Funds ({funds.length})
+          <ShieldCheck size={16} className={activeTab === "funds" ? "text-primary" : "text-muted-foreground"} />
+          <span>Emergency & Sinking Funds</span>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+              activeTab === "funds"
+                ? "bg-primary/10 text-primary"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {funds.length}
+          </span>
         </button>
         <button
           type="button"
           onClick={() => setActiveTab("simulator")}
-          className={`pb-3 px-3 text-xs font-bold transition-colors border-b-2 -mb-px flex items-center gap-2 ${
+          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
             activeTab === "simulator"
-              ? "border-primary text-primary"
-              : "border-transparent text-muted-foreground hover:text-foreground"
+              ? "bg-card text-foreground shadow-xs border border-border/80 font-extrabold ring-1 ring-border/20"
+              : "text-muted-foreground hover:text-foreground hover:bg-card/50"
           }`}
         >
-          <Compass size={16} /> Purchase & Life Goal Simulator ({plans.length})
+          <Compass size={16} className={activeTab === "simulator" ? "text-primary" : "text-muted-foreground"} />
+          <span>Purchase & Life Goal Simulator</span>
+          <span
+            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+              activeTab === "simulator"
+                ? "bg-primary/10 text-primary"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {plans.length}
+          </span>
         </button>
       </div>
 
@@ -279,190 +311,283 @@ export function FundsPage({
             </div>
           </div>
 
-          {/* Sinking Funds & Custom Savings Buckets Header */}
-          <div className="flex items-center justify-between pt-2">
+          {/* Sinking Funds & Custom Savings Buckets Header with Sub-Tabs */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
             <div>
               <h3 className="wt-display text-base font-bold text-foreground">
-                Active Sinking Funds & Savings Buckets
+                {goalStatusFilter === "ongoing"
+                  ? "Ongoing Sinking Funds & Goals"
+                  : "Completed Savings Goals & Milestones"}
               </h3>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Purpose-built savings envelopes for upcoming obligations, travel, and capital milestones.
+                {goalStatusFilter === "ongoing"
+                  ? "Active savings envelopes for upcoming obligations, travel, and capital milestones."
+                  : "Milestones you've successfully fulfilled. Funds are ready to be used or allocated."}
               </p>
+            </div>
+
+            {/* Switch Panel: Ongoing Goals vs Completed Goals */}
+            <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-muted/60 border border-border/80 shrink-0">
+              <button
+                type="button"
+                onClick={() => setGoalStatusFilter("ongoing")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  goalStatusFilter === "ongoing"
+                    ? "bg-card text-foreground shadow-2xs border border-border/80 font-extrabold ring-1 ring-border/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                }`}
+              >
+                <span>Ongoing Goals</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                    goalStatusFilter === "ongoing"
+                      ? "bg-primary/10 text-primary"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {ongoingFunds.length}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setGoalStatusFilter("completed")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                  goalStatusFilter === "completed"
+                    ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 shadow-2xs border border-emerald-500/30 font-extrabold ring-1 ring-emerald-500/30"
+                    : "text-muted-foreground hover:text-foreground hover:bg-card/50"
+                }`}
+              >
+                <CheckCircle2
+                  size={13}
+                  className={
+                    goalStatusFilter === "completed"
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-muted-foreground"
+                  }
+                />
+                <span>Completed Goals</span>
+                <span
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                    goalStatusFilter === "completed"
+                      ? "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300"
+                      : "bg-muted text-muted-foreground"
+                  }`}
+                >
+                  {completedFunds.length}
+                </span>
+              </button>
             </div>
           </div>
 
-          {/* Custom Funds Grid */}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {funds.map((fund) => {
-              const pct = fund.targetAmount > 0 ? Math.min(100, Math.round((fund.currentAmount / fund.targetAmount) * 100)) : 0;
-              const isFulfilled = fund.targetAmount > 0 && fund.currentAmount >= fund.targetAmount;
-              const isSkippedThisMonth = (fund.skippedMonths ?? []).includes("2026-10");
-              const remaining = Math.max(0, fund.targetAmount - fund.currentAmount);
+          {/* Custom Funds Grid or Empty State */}
+          {displayedFunds.length > 0 ? (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {displayedFunds.map((fund) => {
+                const pct = fund.targetAmount > 0 ? Math.min(100, Math.round((fund.currentAmount / fund.targetAmount) * 100)) : 0;
+                const isFulfilled = fund.targetAmount > 0 && fund.currentAmount >= fund.targetAmount;
+                const isSkippedThisMonth = (fund.skippedMonths ?? []).includes("2026-10");
+                const remaining = Math.max(0, fund.targetAmount - fund.currentAmount);
 
-              return (
-                <div
-                  key={fund.id}
-                  className={`flex flex-col justify-between rounded-2xl border p-5 wt-shadow transition-all ${
-                    isFulfilled
-                      ? "border-emerald-500/40 bg-linear-to-br from-card via-card to-emerald-500/5"
-                      : isSkippedThisMonth
-                      ? "border-amber-500/30 bg-card/90"
-                      : "border-border/80 bg-card hover:border-primary/40"
-                  }`}
-                >
-                  <div>
-                    {/* Card Header with Icon & Actions */}
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex items-center gap-3">
-                        <span className="grid size-10 place-items-center rounded-xl bg-muted/60 text-xl shadow-2xs">
-                          {fund.icon || "🎯"}
-                        </span>
-                        <div>
-                          <p className="font-bold text-sm text-foreground">{fund.name}</p>
-                          <span className="inline-block mt-0.5 rounded-full bg-muted px-2 py-0.2 text-[10px] font-bold text-muted-foreground">
-                            {fund.type === "Emergency" ? "Emergency Buffer" : fund.type === "PurchaseGoal" ? "Goal Fund" : "Sinking Fund"}
+                return (
+                  <div
+                    key={fund.id}
+                    className={`flex flex-col justify-between rounded-2xl border p-5 wt-shadow transition-all ${
+                      isFulfilled
+                        ? "border-emerald-500/40 bg-linear-to-br from-card via-card to-emerald-500/5 ring-1 ring-emerald-500/20"
+                        : isSkippedThisMonth
+                        ? "border-amber-500/30 bg-card/90"
+                        : "border-border/80 bg-card hover:border-primary/40"
+                    }`}
+                  >
+                    <div>
+                      {/* Card Header with Icon & Actions */}
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-3">
+                          <span className="grid size-10 place-items-center rounded-xl bg-muted/60 text-xl shadow-2xs">
+                            {fund.icon || "🎯"}
                           </span>
+                          <div>
+                            <p className="font-bold text-sm text-foreground">{fund.name}</p>
+                            <span className="inline-block mt-0.5 rounded-full bg-muted px-2 py-0.2 text-[10px] font-bold text-muted-foreground">
+                              {fund.type === "Emergency" ? "Emergency Buffer" : fund.type === "PurchaseGoal" ? "Goal Fund" : "Sinking Fund"}
+                            </span>
+                          </div>
                         </div>
-                      </div>
 
-                      <ActionMenu
-                        items={[
-                          ...(!isFulfilled
-                            ? [
-                                {
-                                  label: "Deposit / Add Money",
-                                  onClick: () => {
-                                    setDepositFund(fund);
-                                    setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
-                                    setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
+                        <ActionMenu
+                          items={[
+                            ...(!isFulfilled
+                              ? [
+                                  {
+                                    label: "Deposit / Add Money",
+                                    onClick: () => {
+                                      setDepositFund(fund);
+                                      setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
+                                      setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
+                                    },
                                   },
-                                },
-                                {
-                                  label: isSkippedThisMonth ? "Undo Skip (Oct 2026)" : "Skip Contribution (Oct 2026)",
-                                  onClick: () => onSkipFundMonth?.(fund.id, "2026-10"),
-                                },
-                              ]
-                            : []),
-                          {
-                            label: "Edit Fund Details",
-                            onClick: () => {
-                              setEditingFund(fund);
-                              setFundModalOpen(true);
+                                  {
+                                    label: isSkippedThisMonth ? "Undo Skip (Oct 2026)" : "Skip Contribution (Oct 2026)",
+                                    onClick: () => onSkipFundMonth?.(fund.id, "2026-10"),
+                                  },
+                                ]
+                              : []),
+                            {
+                              label: "Edit Fund Details",
+                              onClick: () => {
+                                setEditingFund(fund);
+                                setFundModalOpen(true);
+                              },
                             },
-                          },
-                          {
-                            label: "Delete Fund",
-                            destructive: true,
-                            onClick: () => onDeleteFund(fund.id),
-                          },
-                        ]}
-                      />
-                    </div>
-
-                    {/* Amount & Progress */}
-                    <div className="mt-4">
-                      <div className="flex items-baseline justify-between text-xs">
-                        <span className="wt-display text-lg font-extrabold text-foreground tabular-nums">
-                          {money(fund.currentAmount)}
-                        </span>
-                        <span className="text-xs font-semibold text-muted-foreground tabular-nums">
-                          Target: {money(fund.targetAmount)} ({pct}%)
-                        </span>
-                      </div>
-
-                      <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          style={{ width: `${pct}%` }}
-                          className={`h-full rounded-full transition-all duration-300 ${
-                            isFulfilled ? "bg-emerald-500" : "bg-primary"
-                          }`}
+                            {
+                              label: "Delete Fund",
+                              destructive: true,
+                              onClick: () => onDeleteFund(fund.id),
+                            },
+                          ]}
                         />
                       </div>
+
+                      {/* Amount & Progress */}
+                      <div className="mt-4">
+                        <div className="flex items-baseline justify-between text-xs">
+                          <span className="wt-display text-lg font-extrabold text-foreground tabular-nums">
+                            {money(fund.currentAmount)}
+                          </span>
+                          <span className="text-xs font-semibold text-muted-foreground tabular-nums">
+                            Target: {money(fund.targetAmount)} ({pct}%)
+                          </span>
+                        </div>
+
+                        <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            style={{ width: `${pct}%` }}
+                            className={`h-full rounded-full transition-all duration-300 ${
+                              isFulfilled ? "bg-emerald-500 shadow-xs" : "bg-primary"
+                            }`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Metadata & Plan */}
+                      <div className="mt-4 pt-3 border-t border-border/60 space-y-1.5 text-xs text-muted-foreground">
+                        {fund.monthlyContribution ? (
+                          <div className="flex items-center justify-between">
+                            <span>Monthly Contribution:</span>
+                            <span className="font-bold text-foreground tabular-nums">
+                              {money(fund.monthlyContribution)}/mo
+                            </span>
+                          </div>
+                        ) : null}
+
+                        {fund.targetDate ? (
+                          <div className="flex items-center justify-between">
+                            <span>Target Date:</span>
+                            <span className="font-bold text-foreground">
+                              {new Date(fund.targetDate).toLocaleDateString("en-IN", {
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                          </div>
+                        ) : null}
+
+                        {isSkippedThisMonth ? (
+                          <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-semibold text-xs pt-0.5">
+                            <span className="size-1.5 rounded-full bg-amber-500" /> Skipped for October 2026
+                          </div>
+                        ) : null}
+
+                        {isFulfilled ? (
+                          <div className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                            <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                            <span>🎉 Ready for this! Goal 100% Achieved</span>
+                          </div>
+                        ) : remaining > 0 ? (
+                          <div className="flex items-center justify-between">
+                            <span>Remaining:</span>
+                            <span className="font-bold text-primary tabular-nums">
+                              {money(remaining)}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
 
-                    {/* Metadata & Plan */}
-                    <div className="mt-4 pt-3 border-t border-border/60 space-y-1.5 text-xs text-muted-foreground">
-                      {fund.monthlyContribution ? (
-                        <div className="flex items-center justify-between">
-                          <span>Monthly Contribution:</span>
-                          <span className="font-bold text-foreground tabular-nums">
-                            {money(fund.monthlyContribution)}/mo
-                          </span>
+                    {/* Bottom Quick Action: Only show deposit & skip if not fulfilled */}
+                    <div className="mt-4 pt-3 border-t border-border/60">
+                      {!isFulfilled ? (
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => onSkipFundMonth?.(fund.id, "2026-10")}
+                            className={`text-xs font-semibold h-8 px-2.5 ${
+                              isSkippedThisMonth
+                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {isSkippedThisMonth ? "Undo Skip" : "Skip Month"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setDepositFund(fund);
+                              setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
+                              setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
+                            }}
+                            className="flex-1 text-xs font-semibold h-8 gap-1.5 shadow-2xs"
+                          >
+                            <Plus size={13} /> Deposit to Fund
+                          </Button>
                         </div>
-                      ) : null}
-
-                      {fund.targetDate ? (
-                        <div className="flex items-center justify-between">
-                          <span>Target Date:</span>
-                          <span className="font-bold text-foreground">
-                            {new Date(fund.targetDate).toLocaleDateString("en-IN", {
-                              month: "short",
-                              year: "numeric",
-                            })}
-                          </span>
+                      ) : (
+                        <div className="w-full text-center py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-xl">
+                          ✨ Ready for this · Goal Achieved
                         </div>
-                      ) : null}
-
-                      {isSkippedThisMonth ? (
-                        <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-semibold text-xs pt-0.5">
-                          <span className="size-1.5 rounded-full bg-amber-500" /> Skipped for October 2026
-                        </div>
-                      ) : null}
-
-                      {isFulfilled ? (
-                        <div className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                          <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
-                          <span>🎉 Ready for this! Goal 100% Achieved</span>
-                        </div>
-                      ) : remaining > 0 ? (
-                        <div className="flex items-center justify-between">
-                          <span>Remaining:</span>
-                          <span className="font-bold text-primary tabular-nums">
-                            {money(remaining)}
-                          </span>
-                        </div>
-                      ) : null}
+                      )}
                     </div>
                   </div>
-
-                  {/* Bottom Quick Action: Only show deposit & skip if not fulfilled */}
-                  <div className="mt-4 pt-3 border-t border-border/60">
-                    {!isFulfilled ? (
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => onSkipFundMonth?.(fund.id, "2026-10")}
-                          className={`text-xs font-semibold h-8 px-2.5 ${
-                            isSkippedThisMonth
-                              ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          {isSkippedThisMonth ? "Undo Skip" : "Skip Month"}
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={() => {
-                            setDepositFund(fund);
-                            setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
-                            setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
-                          }}
-                          className="flex-1 text-xs font-semibold h-8 gap-1.5 shadow-2xs"
-                        >
-                          <Plus size={13} /> Deposit to Fund
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="w-full text-center py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-xl">
-                        ✨ Ready for this · Goal Achieved
-                      </div>
-                    )}
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-card/50">
+              {goalStatusFilter === "ongoing" ? (
+                <>
+                  <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xl mb-3">
+                    🎯
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                  <p className="text-sm font-bold text-foreground">All Goals Completed!</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                    You don't have any ongoing goals right now. All your savings buckets are fully fulfilled.
+                  </p>
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setEditingFund(null);
+                      setFundModalOpen(true);
+                    }}
+                    className="mt-4 gap-1.5 text-xs font-semibold"
+                  >
+                    <Plus size={14} /> Add New Goal Fund
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="mx-auto grid size-12 place-items-center rounded-2xl bg-muted text-muted-foreground text-xl mb-3">
+                    🏆
+                  </div>
+                  <p className="text-sm font-bold text-foreground">No Completed Goals Yet</p>
+                  <p className="text-xs text-muted-foreground mt-1 max-w-sm mx-auto">
+                    When your savings in any sinking fund reach 100% of target, it will automatically move here as a completed milestone.
+                  </p>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 

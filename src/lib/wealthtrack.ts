@@ -716,6 +716,108 @@ export function makeNotification(title: string, description: string): WealthNoti
   return { id: createTransactionId(), title, description, date: new Date().toISOString().slice(0, 10), read: false };
 }
 
+export function syncSystemNotifications(
+  state: WealthState,
+  clearedIds: string[] = []
+): WealthNotification[] {
+  const currentNotifications = [...(state.notifications || [])];
+  const newNotices: WealthNotification[] = [];
+  const currency = state.preferences?.currency || "INR";
+
+  const isExcluded = (id: string) => {
+    return (
+      clearedIds.includes(id) ||
+      currentNotifications.some((n) => n.id === id) ||
+      newNotices.some((n) => n.id === id)
+    );
+  };
+
+  // 1. Completed Goals notifications
+  const funds = state.funds || [];
+  funds.forEach((fund) => {
+    if (fund.targetAmount > 0 && fund.currentAmount >= fund.targetAmount) {
+      const noticeId = `notice-goal-${fund.id}`;
+      if (!isExcluded(noticeId)) {
+        newNotices.push({
+          id: noticeId,
+          title: `🎉 Goal 100% Achieved: ${fund.name}`,
+          description: `Target of ${formatMoney(fund.targetAmount, currency)} fulfilled! Ready for this milestone.`,
+          date: fund.updatedAt || new Date().toISOString().slice(0, 10),
+          read: false,
+        });
+      }
+    }
+  });
+
+  // 2. Scheduled Salary Credit notifications
+  const salaryItem = (state.recurring || []).find(
+    (r) => r.enabled && (r.name.toLowerCase().includes("salary") || r.type === "Income")
+  );
+  if (salaryItem && salaryItem.nextDate) {
+    const salaryDateStr = salaryItem.nextDate.slice(0, 10);
+    const scheduleKey = salaryDateStr.slice(0, 7);
+    const noticeId = `notice-salary-${salaryItem.id}-${scheduleKey}`;
+    if (!isExcluded(noticeId)) {
+      const formattedDate = new Intl.DateTimeFormat("en-IN", {
+        month: "short",
+        day: "numeric",
+      }).format(new Date(salaryDateStr));
+      newNotices.push({
+        id: noticeId,
+        title: "💰 Salary Credit Scheduled",
+        description: `Monthly salary • ${formatMoney(salaryItem.amount, currency)} scheduled for ${formattedDate}.`,
+        date: salaryDateStr,
+        read: false,
+      });
+    }
+  }
+
+  // 3. Scheduled Loan EMI Deductions notifications
+  const loans = state.loans || [];
+  loans.forEach((loan) => {
+    if (loan.currentOutstanding > 0 && (loan.autoRecurringEmi || loan.emiAmount > 0)) {
+      const loanMonth = loan.startDate ? loan.startDate.slice(0, 7) : "active";
+      const noticeId = `notice-loan-emi-${loan.id}-${loanMonth}`;
+      if (!isExcluded(noticeId)) {
+        newNotices.push({
+          id: noticeId,
+          title: "🏦 Loan EMI Deduction Scheduled",
+          description: `${loan.name} • ${formatMoney(loan.emiAmount, currency)} auto-debit scheduled on monthly billing cycle.`,
+          date: new Date().toISOString().slice(0, 10),
+          read: false,
+        });
+      }
+    }
+  });
+
+  // 4. Scheduled SIP Investment notifications
+  const sips = (state.recurring || []).filter(
+    (r) => r.enabled && (r.type === "Investment" || r.instrumentType || r.name.toLowerCase().includes("sip"))
+  );
+  sips.forEach((sip) => {
+    if (sip.nextDate) {
+      const sipDateStr = sip.nextDate.slice(0, 10);
+      const scheduleKey = sipDateStr.slice(0, 7);
+      const noticeId = `notice-sip-${sip.id}-${scheduleKey}`;
+      if (!isExcluded(noticeId)) {
+        const formattedDate = new Intl.DateTimeFormat("en-IN", {
+          month: "short",
+          day: "numeric",
+        }).format(new Date(sipDateStr));
+        newNotices.push({
+          id: noticeId,
+          title: "📈 SIP Investment Scheduled",
+          description: `${sip.name} • ${formatMoney(sip.amount, currency)} scheduled for ${formattedDate}.`,
+          date: sipDateStr,
+          read: false,
+        });
+      }
+    }
+  });
+
+  return [...newNotices, ...currentNotifications];
+}
+
 export function processDueRecurringTransactions(
   state: WealthState,
   referenceDateStr = "2026-10-22"

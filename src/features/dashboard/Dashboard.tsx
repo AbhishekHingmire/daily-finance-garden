@@ -67,7 +67,29 @@ export function Dashboard({
   onCategory: (id: string) => void;
   onUpdateSalary?: (payload: any) => void;
 }) {
-  const [dismissedGoals, setDismissedGoals] = useState<string[]>([]);
+  const [dismissedGoals, setDismissedGoals] = useState<string[]>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const stored = localStorage.getItem("wt_dismissed_goal_banners");
+        return stored ? JSON.parse(stored) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
+  const handleDismissGoal = (fundId: string) => {
+    setDismissedGoals((prev) => {
+      const next = prev.includes(fundId) ? prev : [...prev, fundId];
+      if (typeof window !== "undefined") {
+        try {
+          localStorage.setItem("wt_dismissed_goal_banners", JSON.stringify(next));
+        } catch {}
+      }
+      return next;
+    });
+  };
 
   // Filter transactions according to the unified date range
   const periodTransactions = useMemo(() => {
@@ -327,8 +349,8 @@ export function Dashboard({
             </Button>
             <button
               type="button"
-              onClick={() => setDismissedGoals((prev) => [...prev, fund.id])}
-              className="grid size-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground text-xs"
+              onClick={() => handleDismissGoal(fund.id)}
+              className="grid size-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground text-xs transition-colors"
               aria-label="Dismiss alert"
             >
               <X size={14} />
