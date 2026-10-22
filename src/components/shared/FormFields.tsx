@@ -55,6 +55,8 @@ export function SelectField({
   placeholder,
   error,
   required,
+  compact = false,
+  className = "",
 }: {
   label: string;
   value: string;
@@ -63,15 +65,27 @@ export function SelectField({
   placeholder?: string;
   error?: string;
   required?: boolean;
+  compact?: boolean;
+  className?: string;
 }) {
   return (
-    <label className="block min-w-0">
-      <span className="wt-label">
+    <label className={`block min-w-0 ${className}`}>
+      <span
+        className={
+          compact
+            ? "block text-[10px] uppercase font-bold tracking-wider text-muted-foreground mb-0.5 truncate"
+            : "wt-label"
+        }
+      >
         {label}
         {required && <span className="ml-1 text-destructive">*</span>}
       </span>
       <select
-        className="wt-field"
+        className={
+          compact
+            ? "wt-field h-8 min-h-0 text-xs px-2.5 py-0 bg-background cursor-pointer"
+            : "wt-field cursor-pointer"
+        }
         value={value}
         onChange={(event) => onChange(event.target.value)}
       >

@@ -298,9 +298,9 @@ export function TransactionTable({
         </div>
       )}
 
-      {/* Balanced Table Grid Header */}
+      {/* Balanced Compact Table Grid Header */}
       <div
-        className={`hidden md:grid items-center gap-3 bg-muted/40 px-4 py-2.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/70 ${
+        className={`hidden md:grid items-center gap-3 bg-muted/30 px-4 py-1.5 text-[9.5px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80 border-b border-border/70 select-none ${
           showAccountColumn
             ? "grid-cols-[36px_minmax(0,1.2fr)_150px_130px_105px_120px_48px]"
             : "grid-cols-[36px_minmax(0,1.4fr)_160px_110px_120px_48px]"
@@ -318,7 +318,7 @@ export function TransactionTable({
         {showAccountColumn && <span>Account</span>}
         <span>Date</span>
         <span className="text-right pr-2">Amount</span>
-        <span className="text-center font-bold text-foreground">Actions</span>
+        <span className="text-center font-semibold text-muted-foreground/80">Actions</span>
       </div>
 
       {/* Table Rows */}

@@ -194,7 +194,7 @@ export function AccountActivityPartialView({
           headerActions={
             <div className="flex items-center gap-1.5">
               <select
-                className="wt-field h-9 text-xs py-0 font-semibold bg-background w-28"
+                className="wt-field h-8 text-xs py-0 font-semibold bg-background w-24 sm:w-28 cursor-pointer"
                 value={filterType}
                 onChange={(e) => setFilterType(e.target.value)}
                 aria-label="Filter by type"
@@ -210,7 +210,7 @@ export function AccountActivityPartialView({
                 <option value="Adjustment">Adjustment</option>
               </select>
               <select
-                className="wt-field h-9 text-xs py-0 font-semibold bg-background w-32"
+                className="wt-field h-8 text-xs py-0 font-semibold bg-background w-28 sm:w-32 cursor-pointer"
                 value={filterPriority}
                 onChange={(e) => setFilterPriority(e.target.value)}
                 aria-label="Priority Classification"

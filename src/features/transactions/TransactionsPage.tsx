@@ -163,25 +163,28 @@ export function TransactionsPage({
         }
       />
 
-      {/* Top Filter Bar: Date Range Filter & Dropdown Filters */}
-      <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-          <DateRangeFilter value={dateRange} onChange={setDateRange} />
+      {/* Top Filter Bar: Compact Responsive Date Range Filter & Dropdown Filters */}
+      <div className="rounded-2xl border border-border/80 bg-card p-3 sm:p-4 wt-shadow space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+          <div className="flex-1 min-w-0">
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          </div>
           {hasFilter && (
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 gap-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground"
+              className="h-7 sm:h-8 gap-1 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground shrink-0"
               onClick={clearFilters}
             >
-              <RotateCcw size={13} /> Reset Filters
+              <RotateCcw size={12} /> Reset
             </Button>
           )}
         </div>
 
-        {/* 4 Clean Dropdown Selectors */}
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
+        {/* 4 Compact Dropdown Selectors: 2 Columns on Mobile, 4 Columns on Desktop */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
           <SelectField
+            compact
             label="Type"
             value={txType}
             onChange={setTxType}
@@ -201,7 +204,8 @@ export function TransactionsPage({
           />
 
           <SelectField
-            label="Priority Classification"
+            compact
+            label="Priority"
             value={txPriority}
             onChange={setTxPriority}
             options={[
@@ -212,6 +216,7 @@ export function TransactionsPage({
           />
 
           <SelectField
+            compact
             label="Category"
             value={txCategory}
             onChange={setTxCategory}
@@ -224,6 +229,7 @@ export function TransactionsPage({
           />
 
           <SelectField
+            compact
             label="Account"
             value={txAccount}
             onChange={setTxAccount}

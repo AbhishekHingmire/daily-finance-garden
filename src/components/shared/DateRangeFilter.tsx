@@ -159,38 +159,101 @@ export function DateRangeFilter({
   const canGoNextYear = currentYear < maxYear;
 
   return (
-    <div className={`flex flex-col gap-2 ${className}`}>
-      <div className="flex flex-wrap items-center gap-2">
+    <div className={`flex flex-col gap-2 max-w-full ${className}`}>
+      <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 max-w-full">
         {/* Year Stepper Selector */}
-        <div className="inline-flex items-center rounded-xl border border-border/80 bg-card p-1 shadow-2xs">
+        <div className="inline-flex items-center rounded-xl border border-border/80 bg-card p-0.5 sm:p-1 shadow-2xs shrink-0">
           <button
             type="button"
             onClick={() => changeYear(-1)}
-            className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
+            className="flex size-6 sm:size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             title="Previous Year"
           >
-            <ChevronLeft size={14} />
+            <ChevronLeft size={13} />
           </button>
-          <span className="px-2 text-xs font-black tracking-tight text-foreground">
+          <span className="px-1.5 sm:px-2 text-xs font-black tracking-tight text-foreground">
             {currentYear}
           </span>
           <button
             type="button"
             disabled={!canGoNextYear}
             onClick={() => changeYear(1)}
-            className={`flex size-7 items-center justify-center rounded-lg transition-colors ${
+            className={`flex size-6 sm:size-7 items-center justify-center rounded-lg transition-colors ${
               canGoNextYear
                 ? "text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
                 : "opacity-30 cursor-not-allowed pointer-events-none text-muted-foreground/40"
             }`}
             title={canGoNextYear ? "Next Year" : "Future years cannot be selected"}
           >
-            <ChevronRight size={14} />
+            <ChevronRight size={13} />
           </button>
         </div>
 
-        {/* 12 Months Pills Row (Jan to Dec for that year) */}
-        <div className="inline-flex max-w-full overflow-x-auto items-center rounded-xl border border-border/80 bg-muted/60 p-1 shadow-2xs no-scrollbar">
+        {/* Mobile & Tablet Compact View (< lg): Single-Row Compact Month Dropdown */}
+        <div className="flex lg:hidden items-center gap-1.5 flex-1 min-w-0">
+          <select
+            className="wt-field h-7 sm:h-8 py-0 px-2 text-xs font-bold bg-card border border-border/80 rounded-xl cursor-pointer w-full max-w-[150px] truncate"
+            value={
+              value.preset === "year"
+                ? "year"
+                : value.preset === "custom"
+                ? "custom"
+                : String(activeMonth || 10)
+            }
+            onChange={(e) => {
+              const val = e.target.value;
+              if (val === "year") {
+                handleYearSelect();
+              } else if (val === "custom") {
+                handleCustomToggle();
+              } else {
+                handleMonthSelect(Number(val) - 1);
+              }
+            }}
+            aria-label="Select timeframe month"
+          >
+            {MONTH_NAMES.map((name, idx) => {
+              const m = idx + 1;
+              const isFuture = currentYear === maxYear && m > maxMonth;
+              return (
+                <option key={name} value={m} disabled={isFuture}>
+                  {name} {currentYear} {isFuture ? "(Future)" : ""}
+                </option>
+              );
+            })}
+            <option value="year">Full Year {currentYear}</option>
+            <option value="custom">Custom Date Range...</option>
+          </select>
+
+          {/* Quick toggle buttons for All Year and Custom on Mobile & Tablet */}
+          <div className="inline-flex items-center rounded-xl border border-border/80 bg-muted/60 p-0.5 shadow-2xs shrink-0">
+            <button
+              type="button"
+              onClick={handleYearSelect}
+              className={`rounded-lg px-2 py-1 text-[10px] font-bold transition-all cursor-pointer ${
+                value.preset === "year"
+                  ? "bg-card text-foreground shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              All {currentYear}
+            </button>
+            <button
+              type="button"
+              onClick={handleCustomToggle}
+              className={`rounded-lg px-2 py-1 text-[10px] font-bold transition-all cursor-pointer ${
+                value.preset === "custom"
+                  ? "bg-primary text-primary-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              Custom
+            </button>
+          </div>
+        </div>
+
+        {/* Desktop View (lg+): Full 12 Months Pills Row safely contained */}
+        <div className="hidden lg:inline-flex max-w-full overflow-x-auto items-center rounded-xl border border-border/80 bg-muted/60 p-1 shadow-2xs no-scrollbar shrink-0">
           {MONTH_NAMES.map((name, idx) => {
             const m = idx + 1;
             const isSelected =
@@ -219,12 +282,12 @@ export function DateRangeFilter({
           })}
         </div>
 
-        {/* Full Year & Custom Range Buttons */}
-        <div className="inline-flex items-center rounded-xl border border-border/80 bg-muted/60 p-1 shadow-2xs">
+        {/* Desktop View (lg+): Full Year & Custom Range Buttons */}
+        <div className="hidden lg:inline-flex items-center rounded-xl border border-border/80 bg-muted/60 p-1 shadow-2xs shrink-0">
           <button
             type="button"
             onClick={handleYearSelect}
-            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
+            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
               value.preset === "year"
                 ? "bg-card text-foreground shadow-xs border border-border/60"
                 : "text-muted-foreground hover:text-foreground"
@@ -235,7 +298,7 @@ export function DateRangeFilter({
           <button
             type="button"
             onClick={handleCustomToggle}
-            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all ${
+            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
               value.preset === "custom"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"
@@ -245,8 +308,8 @@ export function DateRangeFilter({
           </button>
         </div>
 
-        {/* Active Selection Badge */}
-        <span className="hidden sm:inline-flex text-[11px] font-bold text-muted-foreground ml-1">
+        {/* Active Selection Badge on Desktop */}
+        <span className="hidden xl:inline-flex text-[11px] font-bold text-muted-foreground ml-1 shrink-0">
           {rangeDescription}
         </span>
       </div>
