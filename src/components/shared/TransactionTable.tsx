@@ -223,21 +223,19 @@ export function TransactionTable({
         </div>
 
         {/* Right Controls: Sort & Custom Header Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           {headerActions}
-          <div className="flex items-center gap-1.5 text-xs">
-            <span className="text-muted-foreground font-medium hidden sm:inline">Sort:</span>
-            <select
-              className="wt-field h-9 py-0 text-xs font-semibold bg-background w-32"
-              value={sortOrder}
-              onChange={(e) => setSortOrder(e.target.value as any)}
-            >
-              <option value="newest">Newest first</option>
-              <option value="oldest">Oldest first</option>
-              <option value="highest">Highest amount</option>
-              <option value="lowest">Lowest amount</option>
-            </select>
-          </div>
+          <select
+            className="wt-field h-8 py-0 px-2.5 text-xs font-semibold bg-background rounded-xl border border-border/80 w-36 sm:w-40 cursor-pointer"
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value as any)}
+            aria-label="Sort transactions"
+          >
+            <option value="newest">Sort: Newest first</option>
+            <option value="oldest">Sort: Oldest first</option>
+            <option value="highest">Sort: Highest amount</option>
+            <option value="lowest">Sort: Lowest amount</option>
+          </select>
         </div>
       </div>
 

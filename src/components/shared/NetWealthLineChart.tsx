@@ -128,7 +128,7 @@ export function NetWealthLineChart({
     });
   }, [transactions, dateRange]);
 
-  // Coordinate geometry calculations
+  // Coordinate geometry calculations (1000 x 180 grid)
   const { pathD, areaD, coordinates, milestones, minVal, maxVal } = useMemo(() => {
     if (points.length === 0) {
       return { pathD: "", areaD: "", coordinates: [], milestones: [], minVal: 0, maxVal: 0 };
@@ -139,11 +139,11 @@ export function NetWealthLineChart({
     const maxRaw = Math.max(1000, ...values);
     const range = maxRaw - minRaw || 1;
 
-    const width = 600;
+    const width = 1000;
     const height = 180;
-    const paddingX = 25;
-    const paddingTop = 25;
-    const paddingBottom = 35;
+    const paddingX = 15;
+    const paddingTop = 14;
+    const paddingBottom = 14;
     const innerWidth = width - paddingX * 2;
     const innerHeight = height - paddingTop - paddingBottom;
 
@@ -186,31 +186,70 @@ export function NetWealthLineChart({
     };
   }, [points]);
 
+  // Y-axis tick calculations matching CashFlowVelocityChart
+  const yAxisTicks = useMemo(() => {
+    const t1 = maxVal;
+    const t2 = minVal + (maxVal - minVal) * 0.66;
+    const t3 = minVal + (maxVal - minVal) * 0.33;
+    const t4 = minVal;
+    const formatTick = (val: number) => {
+      if (Math.abs(val) >= 100000) {
+        return `₹${(val / 100000).toFixed(1)}L`;
+      }
+      if (Math.abs(val) >= 1000) {
+        return `₹${Math.round(val / 1000)}k`;
+      }
+      return `₹${Math.round(val)}`;
+    };
+    return [
+      { val: t1, label: formatTick(t1) },
+      { val: t2, label: formatTick(t2) },
+      { val: t3, label: formatTick(t3) },
+      { val: t4, label: formatTick(t4) },
+    ];
+  }, [minVal, maxVal]);
+
   const activeIndex = hoveredIndex !== null ? hoveredIndex : coordinates.length - 1;
   const activePoint = coordinates[activeIndex];
 
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (coordinates.length === 0) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const idx = Math.min(
+      coordinates.length - 1,
+      Math.max(0, Math.round(ratio * (coordinates.length - 1)))
+    );
+    setHoveredIndex(idx);
+  };
+
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow">
+    <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 pb-3.5 wt-shadow">
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/60">
+        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border/60">
           <div>
-            <h3 className="wt-display text-base font-bold text-foreground">{title}</h3>
+            <div className="flex items-center gap-2">
+              <h3 className="wt-display text-base font-bold text-foreground">{title}</h3>
+              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                Cumulative Trend
+              </span>
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
           </div>
           {activePoint && (
-            <div className="text-right">
-              <span className="text-[11px] text-muted-foreground block font-medium">
-                {activePoint.fullLabel}
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline-block text-[11px] text-muted-foreground font-medium">
+                {activePoint.fullLabel}:
               </span>
-              <div className="flex items-center gap-2 justify-end mt-0.5">
+              <div className="flex items-center gap-2 tabular-nums">
                 <span
-                  className={`wt-display text-base font-extrabold tabular-nums ${
+                  className={`wt-display text-base font-extrabold ${
                     activePoint.value >= 0
                       ? "text-emerald-600 dark:text-emerald-400"
                       : "text-rose-600 dark:text-rose-400"
                   }`}
                 >
-                  {money(activePoint.value)}
+                  {activePoint.value >= 0 ? "+" : ""}{money(activePoint.value)}
                 </span>
                 <span className="text-[10px] text-muted-foreground font-semibold">
                   (Day: {activePoint.delta >= 0 ? "+" : ""}{money(activePoint.delta)})
@@ -219,131 +258,195 @@ export function NetWealthLineChart({
             </div>
           )}
         </div>
-      </div>
 
-      {/* SVG Line & Area Visualization with responsive viewBox */}
-      <div className="relative mt-4 w-full">
-        <svg
-          viewBox="0 0 600 180"
-          className="w-full h-44 overflow-visible select-none"
-          preserveAspectRatio="none"
-        >
-          <defs>
-            <linearGradient id="wealthGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#10b981" stopOpacity="0.30" />
-              <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-            </linearGradient>
-          </defs>
-
-          {/* Grid lines */}
-          <line
-            x1="25"
-            y1="25"
-            x2="575"
-            y2="25"
-            stroke="currentColor"
-            strokeDasharray="4 4"
-            className="text-border/40"
-          />
-          <line
-            x1="25"
-            y1="85"
-            x2="575"
-            y2="85"
-            stroke="currentColor"
-            strokeDasharray="4 4"
-            className="text-border/40"
-          />
-          <line
-            x1="25"
-            y1="145"
-            x2="575"
-            y2="145"
-            stroke="currentColor"
-            className="text-border/60"
-          />
-
-          {/* Area fill */}
-          {areaD && <path d={areaD} fill="url(#wealthGradient)" />}
-
-          {/* Smooth line */}
-          {pathD && (
-            <path
-              d={pathD}
-              fill="none"
-              stroke="#10b981"
-              strokeWidth="2.75"
-              strokeLinecap="round"
-              className="drop-shadow-xs"
-            />
-          )}
-
-          {/* Vertical cursor guide for active point */}
-          {activePoint && (
-            <line
-              x1={activePoint.x}
-              y1="20"
-              x2={activePoint.x}
-              y2="145"
-              stroke="#10b981"
-              strokeDasharray="3 3"
-              strokeWidth="1.5"
-              className="opacity-70"
-            />
-          )}
-
-          {/* Data Points */}
-          {coordinates.map((pt, idx) => {
-            const isHovered = hoveredIndex === idx;
-            const isLatest = idx === coordinates.length - 1;
-
-            return (
-              <g
-                key={pt.label}
-                className="cursor-pointer"
-                onMouseEnter={() => setHoveredIndex(idx)}
-                onMouseLeave={() => setHoveredIndex(null)}
-              >
-                <circle
-                  cx={pt.x}
-                  cy={pt.y}
-                  r={isHovered ? 6.5 : isLatest ? 4.5 : 3}
-                  fill="#10b981"
-                  stroke="#ffffff"
-                  strokeWidth={isHovered ? 2.5 : 1.5}
-                  className="transition-all duration-150"
-                />
-              </g>
-            );
-          })}
-        </svg>
-
-        {/* Sharp, Crisp HTML X-Axis Milestone Labels (Replaced blurry stretched SVG text) */}
-        <div className="relative mt-2 h-5 w-full text-[11px] font-bold text-muted-foreground select-none">
-          {milestones?.map((pt, idx) => {
-            const isFirst = idx === 0;
-            const isLast = idx === milestones.length - 1;
-            const isHovered =
-              hoveredIndex !== null && coordinates[hoveredIndex]?.day === pt.day;
-            const leftPct = (pt.x / 600) * 100;
-            const transformClass = isFirst
-              ? "translate-x-0"
-              : isLast
-              ? "-translate-x-full"
-              : "-translate-x-1/2";
-
-            return (
+        {/* Real-time Hover Inspection Readout Banner */}
+        {activePoint && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2 text-xs">
+            <span className="font-bold text-foreground">
+              {activePoint.fullLabel}
+            </span>
+            <div className="flex items-center gap-3 tabular-nums text-xs">
+              <span className="font-semibold text-muted-foreground">Cumulative Net:</span>
               <span
-                key={pt.label}
-                style={{ left: `${leftPct}%` }}
-                className={`absolute top-0 transform ${transformClass} whitespace-nowrap transition-colors ${
-                  isHovered ? "text-primary font-black" : ""
+                className={`font-black ${
+                  activePoint.value >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-rose-600 dark:text-rose-400"
                 }`}
               >
-                {pt.day === 1 ? "Day 1" : pt.shortLabel || pt.label}
+                {activePoint.value >= 0 ? "+" : ""}{money(activePoint.value)}
               </span>
-            );
-          })}
+              <span className="text-muted-foreground">·</span>
+              <span className="text-muted-foreground font-semibold">
+                Daily Inflow/Outflow Delta:{" "}
+                <strong
+                  className={
+                    activePoint.delta >= 0
+                      ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
+                      : "text-rose-600 dark:text-rose-400 font-extrabold"
+                  }
+                >
+                  {activePoint.delta >= 0 ? "+" : ""}{money(activePoint.delta)}
+                </strong>
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Chart Canvas with Left Vertical Y-Axis Amounts and Smooth Area Wave */}
+      <div className="mt-3.5">
+        <div className="flex gap-2 sm:gap-3">
+          {/* Vertical Left Y-Axis Bar with Amount Numbers */}
+          <div className="flex flex-col justify-between items-end pr-2.5 h-[168px] text-[10px] font-bold text-muted-foreground tabular-nums select-none shrink-0 border-r border-border/80 min-w-[52px] sm:min-w-[64px] py-1">
+            {yAxisTicks.map((tick, i) => (
+              <span key={i} className="leading-none">
+                {tick.label}
+              </span>
+            ))}
+          </div>
+
+          {/* Continuous SVG Line & Area Container with Crosshair Mouse Move Tracking */}
+          <div
+            className="relative flex-1 h-[168px] cursor-crosshair select-none"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setHoveredIndex(null)}
+          >
+            <svg
+              viewBox="0 0 1000 180"
+              className="absolute inset-0 size-full overflow-visible"
+              preserveAspectRatio="none"
+            >
+              <defs>
+                <linearGradient id="wealthGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.45" />
+                  <stop offset="70%" stopColor="#10b981" stopOpacity="0.12" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+
+              {/* Horizontal Grid lines matching Y-Axis Ticks */}
+              <line
+                x1="0"
+                y1="14"
+                x2="1000"
+                y2="14"
+                stroke="currentColor"
+                strokeDasharray="4 4"
+                className="text-border/40"
+              />
+              <line
+                x1="0"
+                y1="64.6"
+                x2="1000"
+                y2="64.6"
+                stroke="currentColor"
+                strokeDasharray="4 4"
+                className="text-border/40"
+              />
+              <line
+                x1="0"
+                y1="115.3"
+                x2="1000"
+                y2="115.3"
+                stroke="currentColor"
+                strokeDasharray="4 4"
+                className="text-border/40"
+              />
+              <line
+                x1="0"
+                y1="166"
+                x2="1000"
+                y2="166"
+                stroke="currentColor"
+                className="text-border/80"
+                strokeWidth="1"
+              />
+
+              {/* Filled Area Gradient */}
+              {areaD && <path d={areaD} fill="url(#wealthGradient)" />}
+
+              {/* Continuous Smooth Line Stroke */}
+              {pathD && (
+                <path
+                  d={pathD}
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="2.75"
+                  strokeLinecap="round"
+                  className="drop-shadow-xs"
+                />
+              )}
+
+              {/* Vertical Guide Line on Hover */}
+              {activePoint && (
+                <line
+                  x1={activePoint.x}
+                  y1="14"
+                  x2={activePoint.x}
+                  y2="166"
+                  stroke="#10b981"
+                  strokeDasharray="3 3"
+                  strokeWidth="1.5"
+                  className="opacity-75"
+                />
+              )}
+
+              {/* Glowing Active Marker Point */}
+              {activePoint && (
+                <g>
+                  <circle
+                    cx={activePoint.x}
+                    cy={activePoint.y}
+                    r="8"
+                    fill="#10b981"
+                    fillOpacity="0.25"
+                    className="animate-ping"
+                  />
+                  <circle
+                    cx={activePoint.x}
+                    cy={activePoint.y}
+                    r="5"
+                    fill="#10b981"
+                    stroke="#ffffff"
+                    strokeWidth="2"
+                    className="shadow-sm"
+                  />
+                </g>
+              )}
+            </svg>
+          </div>
+        </div>
+
+        {/* Sharp, Crisp HTML X-Axis Milestone Labels below the chart */}
+        <div className="flex gap-2 sm:gap-3 mt-2">
+          <div className="w-[52px] sm:w-[64px] shrink-0" />
+          <div className="relative h-5 flex-1 text-[11px] font-bold text-muted-foreground select-none">
+            {milestones?.map((pt, idx) => {
+              const isFirst = idx === 0;
+              const isLast = idx === milestones.length - 1;
+              const isHovered =
+                hoveredIndex !== null && coordinates[hoveredIndex]?.day === pt.day;
+              const leftPct = (pt.x / 1000) * 100;
+              const transformClass = isFirst
+                ? "translate-x-0"
+                : isLast
+                ? "-translate-x-full"
+                : "-translate-x-1/2";
+
+              return (
+                <span
+                  key={pt.label}
+                  style={{ left: `${leftPct}%` }}
+                  className={`absolute top-0 transform ${transformClass} whitespace-nowrap transition-colors ${
+                    isHovered ? "text-primary font-black" : ""
+                  }`}
+                >
+                  {pt.day === 1 ? "Day 1" : pt.shortLabel || pt.label}
+                </span>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>

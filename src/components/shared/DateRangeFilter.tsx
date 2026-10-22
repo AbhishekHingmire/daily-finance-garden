@@ -190,9 +190,9 @@ export function DateRangeFilter({
         </div>
 
         {/* Mobile & Tablet Compact View (< lg): Single-Row Compact Month Dropdown */}
-        <div className="flex lg:hidden items-center gap-1.5 flex-1 min-w-0">
+        <div className="flex lg:hidden items-center gap-1.5 flex-1 min-w-0 max-w-full">
           <select
-            className="wt-field h-7 sm:h-8 py-0 px-2 text-xs font-bold bg-card border border-border/80 rounded-xl cursor-pointer w-full max-w-[150px] truncate"
+            className="wt-field h-7 sm:h-8 py-0 px-2 text-xs font-bold bg-card border border-border/80 rounded-xl cursor-pointer flex-1 max-w-[220px] truncate"
             value={
               value.preset === "year"
                 ? "year"
@@ -225,8 +225,8 @@ export function DateRangeFilter({
             <option value="custom">Custom Date Range...</option>
           </select>
 
-          {/* Quick toggle buttons for All Year and Custom on Mobile & Tablet */}
-          <div className="inline-flex items-center rounded-xl border border-border/80 bg-muted/60 p-0.5 shadow-2xs shrink-0">
+          {/* Quick toggle buttons for All Year and Custom on Tablet (hidden on narrow mobile to avoid horizontal clipping) */}
+          <div className="hidden sm:inline-flex items-center rounded-xl border border-border/80 bg-muted/60 p-0.5 shadow-2xs shrink-0">
             <button
               type="button"
               onClick={handleYearSelect}

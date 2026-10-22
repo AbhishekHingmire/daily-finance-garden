@@ -544,8 +544,19 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setFullName(profile.fullName);
   };
 
-  const handleUpdateSalary = (amount: number, salaryDay: number, accountId: string) => {
+  const handleUpdateSalary = (payload: {
+    name?: string;
+    amount: number;
+    salaryDay: number;
+    accountId: string;
+    categoryId?: string;
+    need?: "Need" | "Want";
+    enabled?: boolean;
+    startDate?: string;
+  }) => {
     setData((current) => {
+      const salaryDay = payload.salaryDay;
+      const amount = payload.amount;
       const preferences = { ...current.preferences, salaryDay };
       const profile = current.profile ? { ...current.profile, monthlyIncomeTarget: amount } : undefined;
 
@@ -557,23 +568,25 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       );
 
       const targetCatId =
+        payload.categoryId ||
         nextRecurring[salaryIdx]?.categoryId ||
         current.categories.find((c) => c.name.toLowerCase().includes("salary"))?.id ||
         "cat-salary";
 
       const salaryItem: RecurringItem = {
         id: salaryIdx >= 0 ? nextRecurring[salaryIdx].id : "rec-salary",
-        name: salaryIdx >= 0 ? nextRecurring[salaryIdx].name : "Monthly salary",
+        name: payload.name || (salaryIdx >= 0 ? nextRecurring[salaryIdx].name : "Monthly salary"),
         type: "Income",
         amount,
         categoryId: targetCatId,
-        accountId: accountId || current.accounts[0]?.id || "acc-hdfc",
+        accountId: payload.accountId || current.accounts[0]?.id || "acc-hdfc",
         frequency: "Monthly",
         intervalDays: 0,
-        startDate: salaryIdx >= 0 ? nextRecurring[salaryIdx].startDate : "2026-05-19",
+        startDate: payload.startDate || (salaryIdx >= 0 ? nextRecurring[salaryIdx].startDate : "2026-05-19"),
         endDate: "",
         nextDate: salaryInfo.nextDate,
-        enabled: true,
+        need: payload.need ?? "Need",
+        enabled: payload.enabled ?? true,
       };
 
       if (salaryIdx >= 0) {
@@ -590,8 +603,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       };
     });
 
-    toast.success("Salary & Payday Updated", {
-      description: `${money(amount)}/mo on the ${salaryDay}th of every month.`,
+    toast.success("Salary & Recurring Schedule Synchronized", {
+      description: `${money(payload.amount)}/mo on the ${payload.salaryDay}th of every month.`,
     });
   };
 
@@ -1152,8 +1165,27 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         }
       }
 
+      // If editing or adding the salary schedule in recurring, keep preferences.salaryDay and profile.monthlyIncomeTarget synchronized!
+      let nextPreferences = current.preferences;
+      let nextProfile = current.profile;
+      const isSalaryItem =
+        item.id === "rec-salary" ||
+        (item.type === "Income" && item.name.toLowerCase().includes("salary"));
+
+      if (isSalaryItem) {
+        const parsedDay = item.nextDate ? Number(item.nextDate.slice(8, 10)) : null;
+        if (parsedDay && parsedDay >= 1 && parsedDay <= 31) {
+          nextPreferences = { ...nextPreferences, salaryDay: parsedDay };
+        }
+        if (nextProfile) {
+          nextProfile = { ...nextProfile, monthlyIncomeTarget: item.amount };
+        }
+      }
+
       return {
         ...current,
+        preferences: nextPreferences,
+        profile: nextProfile,
         recurring: editingRecurring
           ? current.recurring.map((row) => (row.id === item.id ? item : row))
           : [...current.recurring, item],
@@ -2234,7 +2266,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] pt-1 backdrop-blur-xs lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] pt-0.5 backdrop-blur-xs lg:hidden shadow-xs">
         {["Overview", "Transactions", "Accounts", "Investments"].map((section) => {
           const item = navItems.find((nav) => nav.label === section);
           const Icon = item?.icon ?? LayoutDashboard;
@@ -2242,22 +2274,22 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             <button
               key={section}
               type="button"
-              className={`flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] ${
+              className={`flex min-h-12 py-1 flex-col items-center justify-center gap-0.5 text-[9.5px] transition-colors ${
                 active === section ? "font-bold text-primary" : "text-muted-foreground font-medium"
               }`}
               onClick={() => goSection(section as Section)}
             >
-              <Icon size={18} />
+              <Icon size={16} />
               {section === "Overview" ? "Home" : section}
             </button>
           );
         })}
         <button
           type="button"
-          className="flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] text-muted-foreground font-medium"
+          className="flex min-h-12 py-1 flex-col items-center justify-center gap-0.5 text-[9.5px] text-muted-foreground font-medium hover:text-foreground transition-colors"
           onClick={() => setMobileNav(true)}
         >
-          <Menu size={18} />
+          <Menu size={16} />
           More
         </button>
       </nav>
@@ -2266,10 +2298,10 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       <Button
         aria-label="Add transaction"
         title="Add transaction"
-        className="fixed bottom-20 right-4 z-20 size-12 rounded-full p-0 shadow-lg sm:bottom-7 sm:right-7 lg:hidden"
+        className="fixed bottom-16 right-3.5 z-20 size-11 rounded-full p-0 shadow-lg sm:bottom-7 sm:right-7 lg:hidden"
         onClick={() => beginTransaction()}
       >
-        <Plus size={22} />
+        <Plus size={20} />
       </Button>
 
       {/* Search Modal */}

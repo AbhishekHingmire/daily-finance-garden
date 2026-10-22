@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { CalendarDays, CheckCircle2, Clock, Landmark, Pencil, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Modal } from "@/components/shared/Modal";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
@@ -11,10 +12,21 @@ import {
   type WealthState,
 } from "@/lib/wealthtrack";
 
+export interface SalaryUpdatePayload {
+  name?: string;
+  amount: number;
+  salaryDay: number;
+  accountId: string;
+  categoryId?: string;
+  need?: "Need" | "Want";
+  enabled?: boolean;
+  startDate?: string;
+}
+
 interface SalaryCountdownCardProps {
   data: WealthState;
   money: (amount: number) => string;
-  onUpdateSalary?: (amount: number, salaryDay: number, accountId: string) => void;
+  onUpdateSalary?: (payload: SalaryUpdatePayload) => void;
 }
 
 function formatDisplayDate(dateStr: string) {
@@ -57,14 +69,36 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
   );
 
   // Modal form states
+  const [formName, setFormName] = useState<string>(salaryRecurring?.name ?? "Monthly salary");
   const [formAmount, setFormAmount] = useState<string>(String(currentSalaryAmount));
   const [formSalaryDay, setFormSalaryDay] = useState<number>(salaryDay);
   const [formAccountId, setFormAccountId] = useState<string>(salaryAccountId || "");
+  const [formCategoryId, setFormCategoryId] = useState<string>(
+    salaryRecurring?.categoryId ??
+      data.categories.find((c) => c.name.toLowerCase().includes("salary"))?.id ??
+      data.categories[0]?.id ??
+      ""
+  );
+  const [formNeed, setFormNeed] = useState<"Need" | "Want">(salaryRecurring?.need ?? "Need");
+  const [formEnabled, setFormEnabled] = useState<boolean>(salaryRecurring?.enabled ?? true);
+  const [formStartDate, setFormStartDate] = useState<string>(
+    salaryRecurring?.startDate ?? "2026-05-19"
+  );
 
   const handleOpenModal = () => {
+    setFormName(salaryRecurring?.name ?? "Monthly salary");
     setFormAmount(String(currentSalaryAmount));
     setFormSalaryDay(salaryDay);
     setFormAccountId(salaryAccountId || data.accounts[0]?.id || "");
+    setFormCategoryId(
+      salaryRecurring?.categoryId ??
+        data.categories.find((c) => c.name.toLowerCase().includes("salary"))?.id ??
+        data.categories[0]?.id ??
+        ""
+    );
+    setFormNeed(salaryRecurring?.need ?? "Need");
+    setFormEnabled(salaryRecurring?.enabled ?? true);
+    setFormStartDate(salaryRecurring?.startDate ?? "2026-05-19");
     setIsModalOpen(true);
   };
 
@@ -72,7 +106,16 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
     e.preventDefault();
     const parsedAmount = Math.max(1, Number(formAmount) || currentSalaryAmount);
     if (onUpdateSalary) {
-      onUpdateSalary(parsedAmount, formSalaryDay, formAccountId);
+      onUpdateSalary({
+        name: formName.trim() || "Monthly salary",
+        amount: parsedAmount,
+        salaryDay: formSalaryDay,
+        accountId: formAccountId,
+        categoryId: formCategoryId,
+        need: formNeed,
+        enabled: formEnabled,
+        startDate: formStartDate,
+      });
     }
     setIsModalOpen(false);
   };
@@ -162,48 +205,102 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
         >
           <form onSubmit={handleSave} className="space-y-4">
             <InputField
-              label="Monthly Take-Home Salary"
-              type="number"
-              min="1"
-              step="1000"
-              value={formAmount}
-              onChange={setFormAmount}
-              placeholder="e.g. 85000"
+              label="Schedule Name / Description"
+              value={formName}
+              onChange={setFormName}
+              placeholder="e.g. Monthly salary"
               required
             />
 
-            <SelectField
-              label="Salary Credit Day of Month"
-              value={String(formSalaryDay)}
-              onChange={(val) => setFormSalaryDay(Number(val) || 19)}
-              options={Array.from({ length: 31 }, (_, i) => {
-                const day = i + 1;
-                const suffix =
-                  day === 1 || day === 21 || day === 31
-                    ? "st"
-                    : day === 2 || day === 22
-                    ? "nd"
-                    : day === 3 || day === 23
-                    ? "rd"
-                    : "th";
-                return {
-                  value: String(day),
-                  label: `${day}${suffix} of every month`,
-                };
-              })}
-            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <InputField
+                label="Monthly Take-Home Salary"
+                type="number"
+                min="1"
+                step="1000"
+                value={formAmount}
+                onChange={setFormAmount}
+                placeholder="e.g. 85000"
+                required
+              />
 
-            <SelectField
-              label="Destination Bank Account"
-              value={formAccountId}
-              onChange={setFormAccountId}
-              options={data.accounts
-                .filter((a) => !a.archived && a.kind !== "Credit card")
-                .map((a) => ({
-                  value: a.id,
-                  label: `${a.name} (${a.institution || a.kind})${a.identifier ? ` · ${a.identifier}` : ""}`,
-                }))}
-            />
+              <SelectField
+                label="Salary Credit Day of Month"
+                value={String(formSalaryDay)}
+                onChange={(val) => setFormSalaryDay(Number(val) || 19)}
+                options={Array.from({ length: 31 }, (_, i) => {
+                  const day = i + 1;
+                  const suffix =
+                    day === 1 || day === 21 || day === 31
+                      ? "st"
+                      : day === 2 || day === 22
+                      ? "nd"
+                      : day === 3 || day === 23
+                      ? "rd"
+                      : "th";
+                  return {
+                    value: String(day),
+                    label: `${day}${suffix} of every month`,
+                  };
+                })}
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SelectField
+                label="Destination Bank Account"
+                value={formAccountId}
+                onChange={setFormAccountId}
+                options={data.accounts
+                  .filter((a) => !a.archived && a.kind !== "Credit card")
+                  .map((a) => ({
+                    value: a.id,
+                    label: `${a.name} (${a.institution || a.kind})${a.identifier ? ` · ${a.identifier}` : ""}`,
+                  }))}
+              />
+
+              <SelectField
+                label="Income Category"
+                value={formCategoryId}
+                onChange={setFormCategoryId}
+                options={data.categories
+                  .filter((c) => !c.archived && c.kind === "Income")
+                  .map((c) => ({
+                    value: c.id,
+                    label: `${c.icon} ${c.name}`,
+                  }))}
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <SelectField
+                label="Priority Classification"
+                value={formNeed}
+                onChange={(v) => setFormNeed(v as "Need" | "Want")}
+                options={[
+                  { value: "Need", label: "Need (Essential Inflow)" },
+                  { value: "Want", label: "Want (Discretionary)" },
+                ]}
+              />
+
+              <InputField
+                label="Schedule Start Date"
+                type="date"
+                value={formStartDate}
+                onChange={setFormStartDate}
+              />
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Checkbox
+                checked={formEnabled}
+                onCheckedChange={(checked) => setFormEnabled(Boolean(checked))}
+                id="salary-enabled-toggle"
+              />
+              <label htmlFor="salary-enabled-toggle" className="text-xs font-semibold text-foreground cursor-pointer">
+                Keep salary recurring schedule active (auto-records on payday)
+              </label>
+            </div>
 
             {/* Live Calculation Preview Banner */}
             <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-xs space-y-1">
@@ -214,7 +311,7 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
                 Next credit on <strong>{formatDisplayDate(previewInfo.nextDate)}</strong> (
                 <strong>{previewInfo.daysRemaining} days remaining</strong>) of{" "}
                 <strong>{money(Number(formAmount) || 0)}</strong> to{" "}
-                <strong>{previewAccount?.name}</strong>.
+                <strong>{previewAccount?.name}</strong>. Automatically synchronized across Dashboard and Recurring schedules.
               </p>
             </div>
 

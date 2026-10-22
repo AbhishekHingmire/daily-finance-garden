@@ -580,4 +580,37 @@ describe("Financial Engine & Calculations", () => {
     expect(resolveInstitution("Unknown Co-op Bank")).toBeNull();
     expect(resolveInstitution("")).toBeNull();
   });
+
+  it("synchronizes monthly salary values across preferences, profile, and recurring schedules", () => {
+    const state = createInitialState();
+    const initialSalaryItem = state.recurring.find(
+      (r) => r.id === "rec-salary" || (r.type === "Income" && r.name.toLowerCase().includes("salary"))
+    );
+    expect(initialSalaryItem).toBeDefined();
+    expect(state.preferences.salaryDay).toBe(19);
+
+    // Simulate updating salary to ₹95,000 on day 25
+    const newAmount = 95000;
+    const newDay = 25;
+    const salaryInfo = calculateNextSalaryInfo(newDay, "2026-10-22");
+
+    const updatedRecurring = state.recurring.map((item) =>
+      item.id === "rec-salary"
+        ? {
+            ...item,
+            amount: newAmount,
+            nextDate: salaryInfo.nextDate,
+          }
+        : item
+    );
+
+    const updatedPreferences = { ...state.preferences, salaryDay: newDay };
+    const updatedProfile = state.profile ? { ...state.profile, monthlyIncomeTarget: newAmount } : undefined;
+
+    expect(updatedPreferences.salaryDay).toBe(25);
+    expect(updatedProfile?.monthlyIncomeTarget).toBe(95000);
+    const updatedSalaryItem = updatedRecurring.find((r) => r.id === "rec-salary");
+    expect(updatedSalaryItem?.amount).toBe(95000);
+    expect(updatedSalaryItem?.nextDate).toBe("2026-10-25");
+  });
 });

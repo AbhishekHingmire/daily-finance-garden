@@ -65,9 +65,8 @@ export function Dashboard({
   onNavigate: (section: Section) => void;
   onSelectTransaction: (transaction: Transaction) => void;
   onCategory: (id: string) => void;
-  onUpdateSalary?: (amount: number, salaryDay: number, accountId: string) => void;
+  onUpdateSalary?: (payload: any) => void;
 }) {
-  const [dashboardPriority, setDashboardPriority] = useState<string>("All");
   const [dismissedGoals, setDismissedGoals] = useState<string[]>([]);
 
   // Filter transactions according to the unified date range
@@ -178,14 +177,8 @@ export function Dashboard({
   // Recent transactions
   const recentTransactions = useMemo(() => {
     return [...data.transactions]
-      .sort((a, b) => b.date.localeCompare(a.date))
-      .slice(0, 7);
+      .sort((a, b) => b.date.localeCompare(a.date));
   }, [data.transactions]);
-
-  const filteredRecent = recentTransactions.filter((tx) => {
-    if (dashboardPriority !== "All" && tx.need !== dashboardPriority) return false;
-    return true;
-  });
 
   // Upcoming auto-debits
   const upcomingRecurring = useMemo(() => {
@@ -373,63 +366,93 @@ export function Dashboard({
           </div>
 
           {/* Interactive Sub-KPI Cards */}
-          <div className="grid grid-cols-3 gap-3 sm:gap-4 border-t border-border/60 pt-5 lg:border-t-0 lg:border-l lg:pl-7 lg:pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 border-t border-border/60 pt-4 sm:pt-5 lg:border-t-0 lg:border-l lg:pl-7 lg:pt-0">
             <div
-              className="group rounded-2xl border border-border/70 bg-card/80 p-3.5 hover:border-emerald-500/40 hover:shadow-xs transition-all cursor-pointer"
+              className="group flex items-center justify-between sm:block rounded-2xl border border-border/70 bg-card/80 p-3 sm:p-3.5 hover:border-emerald-500/40 hover:shadow-xs transition-all cursor-pointer"
               onClick={() => onNavigate("Accounts")}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Liquid Cash
-                </span>
-                <span className="grid size-6 place-items-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+              <div className="flex items-center justify-between sm:w-full">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    Liquid Cash
+                  </span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block mt-0.5 sm:hidden">
+                    {liquidPct}% of portfolio
+                  </span>
+                </div>
+                <span className="grid size-6 place-items-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform hidden sm:grid">
                   <Wallet size={12} />
                 </span>
               </div>
-              <p className="mt-1.5 text-sm sm:text-base font-extrabold text-foreground tabular-nums truncate">
-                {money(liquidAssets)}
-              </p>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block mt-0.5">
+              <div className="flex items-center gap-2 sm:block sm:mt-1.5">
+                <p className="text-sm sm:text-base font-extrabold text-foreground tabular-nums truncate">
+                  {money(liquidAssets)}
+                </p>
+                <span className="grid size-6 place-items-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 sm:hidden">
+                  <Wallet size={12} />
+                </span>
+              </div>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium hidden sm:block mt-0.5">
                 {liquidPct}% of portfolio
               </span>
             </div>
 
             <div
-              className="group rounded-2xl border border-border/70 bg-card/80 p-3.5 hover:border-violet-500/40 hover:shadow-xs transition-all cursor-pointer"
+              className="group flex items-center justify-between sm:block rounded-2xl border border-border/70 bg-card/80 p-3 sm:p-3.5 hover:border-violet-500/40 hover:shadow-xs transition-all cursor-pointer"
               onClick={() => onNavigate("Investments")}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Investments
-                </span>
-                <span className="grid size-6 place-items-center rounded-md bg-violet-500/15 text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform">
+              <div className="flex items-center justify-between sm:w-full">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    Investments
+                  </span>
+                  <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium block mt-0.5 sm:hidden">
+                    {invPct}% of portfolio
+                  </span>
+                </div>
+                <span className="grid size-6 place-items-center rounded-md bg-violet-500/15 text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform hidden sm:grid">
                   <TrendingUp size={12} />
                 </span>
               </div>
-              <p className="mt-1.5 text-sm sm:text-base font-extrabold text-foreground tabular-nums truncate">
-                {money(effectiveInvestmentsVal)}
-              </p>
-              <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium block mt-0.5">
+              <div className="flex items-center gap-2 sm:block sm:mt-1.5">
+                <p className="text-sm sm:text-base font-extrabold text-foreground tabular-nums truncate">
+                  {money(effectiveInvestmentsVal)}
+                </p>
+                <span className="grid size-6 place-items-center rounded-md bg-violet-500/15 text-violet-600 dark:text-violet-400 sm:hidden">
+                  <TrendingUp size={12} />
+                </span>
+              </div>
+              <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium hidden sm:block mt-0.5">
                 {invPct}% of portfolio
               </span>
             </div>
 
             <div
-              className="group rounded-2xl border border-border/70 bg-card/80 p-3.5 hover:border-rose-500/40 hover:shadow-xs transition-all cursor-pointer"
+              className="group flex items-center justify-between sm:block rounded-2xl border border-border/70 bg-card/80 p-3 sm:p-3.5 hover:border-rose-500/40 hover:shadow-xs transition-all cursor-pointer"
               onClick={() => onNavigate("Loans")}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Liabilities & Debt
-                </span>
-                <span className="grid size-6 place-items-center rounded-md bg-rose-500/15 text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform">
+              <div className="flex items-center justify-between sm:w-full">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                    Liabilities & Debt
+                  </span>
+                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium block mt-0.5 sm:hidden">
+                    {(data.loans ?? []).length} loans · {liabilityPct}%
+                  </span>
+                </div>
+                <span className="grid size-6 place-items-center rounded-md bg-rose-500/15 text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform hidden sm:grid">
                   <Landmark size={12} />
                 </span>
               </div>
-              <p className="mt-1.5 text-sm sm:text-base font-extrabold text-foreground tabular-nums truncate">
-                {money(totalLiabilities)}
-              </p>
-              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium block mt-0.5">
+              <div className="flex items-center gap-2 sm:block sm:mt-1.5">
+                <p className="text-sm sm:text-base font-extrabold text-foreground tabular-nums truncate">
+                  {money(totalLiabilities)}
+                </p>
+                <span className="grid size-6 place-items-center rounded-md bg-rose-500/15 text-rose-600 dark:text-rose-400 sm:hidden">
+                  <Landmark size={12} />
+                </span>
+              </div>
+              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium hidden sm:block mt-0.5">
                 {(data.loans ?? []).length} loans · {liabilityPct}% of total
               </span>
             </div>
@@ -455,8 +478,8 @@ export function Dashboard({
               title={`Liabilities: ${liabilityPct}%`}
             />
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-            <div className="flex items-center gap-4">
+          <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px] sm:text-[11px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-emerald-500" /> Liquid Cash ({liquidPct}%)
               </span>
@@ -467,7 +490,7 @@ export function Dashboard({
                 <span className="size-2 rounded-full bg-rose-500" /> Liabilities ({liabilityPct}%)
               </span>
             </div>
-            <span className="font-semibold text-foreground">
+            <span className="font-semibold text-foreground pt-1 sm:pt-0">
               Net Wealth: {money(totalBalance + effectiveInvestmentsVal - totalLiabilities)}
             </span>
           </div>
@@ -807,16 +830,16 @@ export function Dashboard({
                 className="text-xs font-semibold text-primary hover:underline"
                 onClick={() => onNavigate("Recurring")}
               >
-                Manage ({upcomingRecurring.length}) →
+                Manage →
               </button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 mb-3.5">
               Automated bills and payroll schedules
             </p>
 
-            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+            <div className="space-y-2.5">
               {upcomingRecurring.length ? (
-                upcomingRecurring.map((item) => (
+                upcomingRecurring.slice(0, 3).map((item) => (
                   <div
                     key={item.id}
                     className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/15 hover:bg-muted/30 transition-colors"
@@ -872,7 +895,7 @@ export function Dashboard({
         <div className="space-y-6 flex flex-col">
           {/* Recent Financial Movements Table */}
           <div className="rounded-2xl border border-border/80 bg-card p-6 wt-shadow">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/60">
+            <div className="mb-4 flex items-center justify-between gap-3 pb-3 border-b border-border/60">
               <div>
                 <h3 className="wt-display text-base font-bold text-foreground">
                   Recent Transactions
@@ -882,31 +905,19 @@ export function Dashboard({
                 </p>
               </div>
 
-              <div className="flex items-center gap-2.5">
-                <select
-                  className="wt-field h-8 w-28 text-xs py-0"
-                  value={dashboardPriority}
-                  onChange={(e) => setDashboardPriority(e.target.value)}
-                  aria-label="Filter priority"
-                >
-                  <option value="All">All</option>
-                  <option value="Need">Need</option>
-                  <option value="Want">Want</option>
-                </select>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs font-semibold text-primary hover:bg-primary/5"
-                  onClick={() => onNavigate("Transactions")}
-                >
-                  View Ledger →
-                </Button>
-              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs font-semibold text-primary hover:bg-primary/5"
+                onClick={() => onNavigate("Transactions")}
+              >
+                View Ledger →
+              </Button>
             </div>
 
             <div className="space-y-1 divide-y divide-border/60">
-              {filteredRecent.length ? (
-                filteredRecent.map((tx) => (
+              {recentTransactions.length ? (
+                recentTransactions.slice(0, 4).map((tx) => (
                   <TransactionRow
                     key={tx.id}
                     transaction={tx}
