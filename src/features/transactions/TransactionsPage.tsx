@@ -5,7 +5,11 @@ import { DateRangeFilter, type DateRangeValue } from "@/components/shared/DateRa
 import { PageHeading } from "@/components/shared/PageHeading";
 import { SelectField } from "@/components/shared/FormFields";
 import { TransactionTable } from "@/components/shared/TransactionTable";
-import type { Transaction, WealthState } from "@/lib/wealthtrack";
+import {
+  INVESTMENT_OUTFLOW_ACTIONS,
+  type Transaction,
+  type WealthState,
+} from "@/lib/wealthtrack";
 
 export function TransactionsPage({
   data,
@@ -85,6 +89,45 @@ export function TransactionsPage({
       txAccount !== "All accounts" ||
       dateRange.preset !== "1m"
   );
+
+  // Live dynamic totals for filtered transactions
+  const { filteredNet, filteredInflow, filteredOutflow } = React.useMemo(() => {
+    let inflow = 0;
+    let outflow = 0;
+    let net = 0;
+    for (const tx of rows) {
+      const isInvestmentOutflow =
+        tx.type === "Investment" &&
+        (!tx.investmentAction ||
+          INVESTMENT_OUTFLOW_ACTIONS.includes(tx.investmentAction));
+
+      const isPositive =
+        tx.type === "Income" ||
+        tx.type === "Refund" ||
+        tx.type === "Borrow / Loan Taken" ||
+        tx.type === "Debt Recovery" ||
+        (tx.type === "Adjustment" && tx.amount > 0) ||
+        (tx.type === "Investment" &&
+          !isInvestmentOutflow &&
+          tx.investmentAction !== "Valuation");
+
+      const isNegative =
+        tx.type === "Expense" ||
+        tx.type === "EMI / Loan Payment" ||
+        tx.type === "Lend / Loan Given" ||
+        isInvestmentOutflow ||
+        (tx.type === "Adjustment" && tx.amount < 0);
+
+      if (isPositive) {
+        inflow += Math.abs(tx.amount);
+        net += Math.abs(tx.amount);
+      } else if (isNegative) {
+        outflow += Math.abs(tx.amount);
+        net -= Math.abs(tx.amount);
+      }
+    }
+    return { filteredNet: net, filteredInflow: inflow, filteredOutflow: outflow };
+  }, [rows]);
 
   return (
     <div className="space-y-6">
@@ -191,6 +234,64 @@ export function TransactionsPage({
                 .map((item) => ({ value: item.id, label: item.name })),
             ]}
           />
+        </div>
+      </div>
+
+      {/* Dynamic Filtered Transactions Financial Summary */}
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow">
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Filtered Net Total
+            </span>
+            <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+              {rows.length} {rows.length === 1 ? "record" : "records"}
+            </span>
+          </div>
+          <p
+            className={`wt-display mt-1 text-2xl sm:text-3xl font-extrabold tabular-nums ${
+              filteredNet > 0
+                ? "text-emerald-600 dark:text-emerald-400"
+                : filteredNet < 0
+                ? "text-rose-600 dark:text-rose-400"
+                : "text-foreground"
+            }`}
+          >
+            {filteredNet > 0
+              ? `+${money(filteredNet)}`
+              : filteredNet < 0
+              ? `−${money(Math.abs(filteredNet))}`
+              : money(0)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {filteredNet >= 0
+              ? "Net positive cash flow"
+              : "Net cash outflow for active selection"}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Total Inflows
+          </span>
+          <p className="wt-display mt-1 text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+            +{money(filteredInflow)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Income, borrowings, debt recoveries & refunds
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+            Total Outflows
+          </span>
+          <p className="wt-display mt-1 text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">
+            −{money(filteredOutflow)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Expenses, EMIs, loans given & investments
+          </p>
         </div>
       </div>
 

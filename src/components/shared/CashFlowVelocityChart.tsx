@@ -46,6 +46,38 @@ function isOutflow(type: string): boolean {
   );
 }
 
+// Helper to generate smooth Catmull-Rom / cubic bezier curves across SVG points
+function buildSmoothPath(
+  points: { x: number; y: number }[],
+  baseY = 166,
+  topY = 14
+): string {
+  if (points.length <= 1) {
+    return points.length === 1
+      ? `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
+      : "";
+  }
+  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+
+    const cp1x = p1.x + (p2.x - p0.x) / 5.5;
+    let cp1y = p1.y + (p2.y - p0.y) / 5.5;
+    const cp2x = p2.x - (p3.x - p1.x) / 5.5;
+    let cp2y = p2.y - (p3.y - p1.y) / 5.5;
+
+    // Clamp control points so the wave never overshoots below the baseline or above top boundary
+    cp1y = Math.min(baseY, Math.max(topY, cp1y));
+    cp2y = Math.min(baseY, Math.max(topY, cp2y));
+
+    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 export function CashFlowVelocityChart({
   transactions,
   dateRange,
@@ -229,15 +261,123 @@ export function CashFlowVelocityChart({
     return lastWithActivity ?? chartItems[chartItems.length - 1] ?? null;
   }, [chartItems, hoveredKey]);
 
+  // Compute SVG coordinates and smooth paths across 1000x180 canvas
+  const {
+    inflowAreaPath,
+    inflowLinePath,
+    outflowAreaPath,
+    outflowLinePath,
+    activeX,
+    activeInflowY,
+    activeOutflowY,
+  } = useMemo(() => {
+    const N = chartItems.length;
+    if (N === 0) {
+      return {
+        inflowAreaPath: "",
+        inflowLinePath: "",
+        outflowAreaPath: "",
+        outflowLinePath: "",
+        activeX: 500,
+        activeInflowY: 166,
+        activeOutflowY: 166,
+      };
+    }
+
+    const inflowPts = chartItems.map((item, idx) => ({
+      x: N > 1 ? (idx / (N - 1)) * 1000 : 500,
+      y: 166 - (item.income / ceilMax) * 152,
+    }));
+
+    const outflowPts = chartItems.map((item, idx) => ({
+      x: N > 1 ? (idx / (N - 1)) * 1000 : 500,
+      y: 166 - (item.expense / ceilMax) * 152,
+    }));
+
+    const iLine = buildSmoothPath(inflowPts, 166, 14);
+    const oLine = buildSmoothPath(outflowPts, 166, 14);
+
+    const firstX = inflowPts[0].x.toFixed(1);
+    const lastX = inflowPts[inflowPts.length - 1].x.toFixed(1);
+
+    const iArea = iLine ? `${iLine} L ${lastX} 166 L ${firstX} 166 Z` : "";
+    const oArea = oLine ? `${oLine} L ${lastX} 166 L ${firstX} 166 Z` : "";
+
+    const activeIdx = activeItem
+      ? chartItems.findIndex((it) => it.key === activeItem.key)
+      : -1;
+    const curX =
+      activeIdx >= 0
+        ? N > 1
+          ? (activeIdx / (N - 1)) * 1000
+          : 500
+        : 500;
+    const curInY = activeItem ? 166 - (activeItem.income / ceilMax) * 152 : 166;
+    const curOutY = activeItem ? 166 - (activeItem.expense / ceilMax) * 152 : 166;
+
+    return {
+      inflowAreaPath: iArea,
+      inflowLinePath: iLine,
+      outflowAreaPath: oArea,
+      outflowLinePath: oLine,
+      activeX: curX,
+      activeInflowY: curInY,
+      activeOutflowY: curOutY,
+    };
+  }, [chartItems, ceilMax, activeItem]);
+
   const defaultSubtitle = isMonthlyFilter
     ? `Day-by-day cash velocity for ${FULL_MONTH_NAMES[targetMonth - 1]} ${targetYear}`
     : dateRange.preset === "year"
     ? `Monthly cash inflows vs outflows for ${targetYear}`
-    : "Comparison of total money inflows vs outflows over time";
+    : "Continuous cash inflow and outflow area wave";
+
+  // Compute clean X-axis milestone markers based on current view
+  const xAxisMilestones = useMemo(() => {
+    if (!isMonthlyFilter) {
+      return chartItems.map((item, i) => ({
+        key: item.key,
+        label: item.shortLabel,
+        isCurrent: item.isToday,
+        ratio: chartItems.length > 1 ? (i / (chartItems.length - 1)) * 100 : 50,
+      }));
+    }
+
+    const n = chartItems.length;
+    if (n <= 1) return [];
+
+    // Milestone day numbers to display along the horizontal axis
+    const days = [1, 5, 10, 15, 20, 25, n].filter(
+      (d, idx, arr) => d <= n && arr.indexOf(d) === idx
+    );
+
+    return days.map((d) => ({
+      key: `day-${d}`,
+      label: d === 1 ? "Day 1" : d === n ? `Day ${d}` : String(d),
+      isCurrent:
+        d ===
+        (today.getFullYear() === targetYear && today.getMonth() + 1 === targetMonth
+          ? today.getDate()
+          : -1),
+      ratio: ((d - 1) / Math.max(1, n - 1)) * 100,
+    }));
+  }, [isMonthlyFilter, chartItems, today, targetYear, targetMonth]);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const idx = Math.min(
+      chartItems.length - 1,
+      Math.max(0, Math.round(ratio * (chartItems.length - 1)))
+    );
+    if (chartItems[idx]) {
+      setHoveredKey(chartItems[idx].key);
+    }
+  };
 
   return (
     <div
-      className={`rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow ${className}`}
+      className={`rounded-2xl border border-border/80 bg-card p-4 sm:p-5 pb-3.5 wt-shadow ${className}`}
     >
       <div>
         {/* Header with Title and Optional All Reports Link */}
@@ -249,11 +389,11 @@ export function CashFlowVelocityChart({
               </h3>
               {isMonthlyFilter ? (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                  Day-by-Day View
+                  Day-by-Day Flow
                 </span>
               ) : (
                 <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                  Monthly View
+                  Monthly Flow
                 </span>
               )}
             </div>
@@ -285,7 +425,7 @@ export function CashFlowVelocityChart({
         </div>
 
         {/* Real-time Hover Inspection Readout Banner */}
-        <div className="mt-3.5 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2 text-xs">
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2 text-xs">
           <div className="flex items-center gap-2 font-bold text-foreground">
             <span>{activeItem?.fullDateLabel ?? "Timeline Inspection"}</span>
             {activeItem?.isToday && (
@@ -317,126 +457,225 @@ export function CashFlowVelocityChart({
         </div>
       </div>
 
-      {/* Chart Canvas with Left Vertical Y-Axis, Guidelines, and Bottom X-Axis */}
-      <div className="mt-5 pt-3">
+      {/* Chart Canvas with Left Vertical Y-Axis, Guidelines, and Continuous SVG Area Wave */}
+      <div className="mt-3.5">
         <div className="flex gap-2 sm:gap-3">
           {/* Vertical Left Y-Axis Bar with Amount Numbers */}
-          <div className="flex flex-col justify-between items-end pr-2 h-44 text-[10px] font-bold text-muted-foreground tabular-nums select-none shrink-0 border-r border-border/80 min-w-[50px] sm:min-w-[62px]">
+          <div className="flex flex-col justify-between items-end pr-2.5 h-[168px] text-[10px] font-bold text-muted-foreground tabular-nums select-none shrink-0 border-r border-border/80 min-w-[52px] sm:min-w-[64px] py-1">
             {yAxisTicks.map((tick, i) => (
-              <span
-                key={i}
-                className="leading-none transform -translate-y-1/2 first:translate-y-0 last:translate-y-0"
-              >
+              <span key={i} className="leading-none">
                 {tick.label}
               </span>
             ))}
           </div>
 
-          {/* Bar Chart Area with Horizontal Guideline Grid and Bars */}
-          <div className="relative flex-1 h-44 flex flex-col justify-end">
-            {/* Horizontal Guideline Grid */}
-            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
-              <div className="border-b border-dashed border-border/40 w-full" />
-              <div className="border-b border-dashed border-border/40 w-full" />
-              <div className="border-b border-dashed border-border/40 w-full" />
-              <div className="border-b border-border/80 w-full" />
-            </div>
+          {/* Continuous SVG Area Wave Chart Container */}
+          <div
+            className="relative flex-1 h-[168px] cursor-crosshair select-none"
+            onMouseMove={handleMouseMove}
+            onMouseLeave={() => setHoveredKey(null)}
+          >
+            {/* SVG Wave Canvas */}
+            <svg
+              viewBox="0 0 1000 180"
+              preserveAspectRatio="none"
+              className="absolute inset-0 size-full overflow-visible"
+            >
+              <defs>
+                {/* Emerald Inflow Gradient */}
+                <linearGradient id="cf-inflow-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.48" />
+                  <stop offset="70%" stopColor="#10b981" stopOpacity="0.12" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.01" />
+                </linearGradient>
 
-            {/* Bars Container */}
-            <div className="relative z-10 flex h-full items-end justify-between gap-0.5 sm:gap-1">
-              {chartItems.map((item) => {
-                const isHovered = hoveredKey === item.key;
-                const incHeight =
-                  item.income > 0
-                    ? Math.max(6, Math.round((item.income / ceilMax) * 160))
-                    : 0;
-                const expHeight =
-                  item.expense > 0
-                    ? Math.max(6, Math.round((item.expense / ceilMax) * 160))
-                    : 0;
+                {/* Rose Outflow Gradient */}
+                <linearGradient id="cf-outflow-grad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.42" />
+                  <stop offset="70%" stopColor="#f43f5e" stopOpacity="0.10" />
+                  <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.01" />
+                </linearGradient>
+              </defs>
 
-                const hasActivity = item.income > 0 || item.expense > 0;
+              {/* Horizontal Guidelines matching Y-Axis Ticks */}
+              <line
+                x1="0"
+                y1="14"
+                x2="1000"
+                y2="14"
+                stroke="currentColor"
+                strokeDasharray="4 4"
+                className="text-border/40"
+              />
+              <line
+                x1="0"
+                y1="64.6"
+                x2="1000"
+                y2="64.6"
+                stroke="currentColor"
+                strokeDasharray="4 4"
+                className="text-border/40"
+              />
+              <line
+                x1="0"
+                y1="115.3"
+                x2="1000"
+                y2="115.3"
+                stroke="currentColor"
+                strokeDasharray="4 4"
+                className="text-border/40"
+              />
+              <line
+                x1="0"
+                y1="166"
+                x2="1000"
+                y2="166"
+                stroke="currentColor"
+                className="text-border/80"
+                strokeWidth="1"
+              />
+
+              {/* Filled Continuous Area Waves */}
+              {inflowAreaPath && (
+                <path d={inflowAreaPath} fill="url(#cf-inflow-grad)" />
+              )}
+              {outflowAreaPath && (
+                <path d={outflowAreaPath} fill="url(#cf-outflow-grad)" />
+              )}
+
+              {/* Glowing Boundary Contour Strokes */}
+              {inflowLinePath && (
+                <path
+                  d={inflowLinePath}
+                  fill="none"
+                  stroke="#10b981"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+              {outflowLinePath && (
+                <path
+                  d={outflowLinePath}
+                  fill="none"
+                  stroke="#f43f5e"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              )}
+
+              {/* Activity Dots on Days with Movement */}
+              {chartItems.map((item, idx) => {
+                const x =
+                  chartItems.length > 1
+                    ? (idx / (chartItems.length - 1)) * 1000
+                    : 500;
+                const hasInflow = item.income > 0;
+                const hasOutflow = item.expense > 0;
+                if (!hasInflow && !hasOutflow) return null;
+
+                const isCur = activeItem?.key === item.key;
 
                 return (
-                  <div
-                    key={item.key}
-                    onMouseEnter={() => setHoveredKey(item.key)}
-                    onMouseLeave={() => setHoveredKey(null)}
-                    className={`group relative flex flex-1 flex-col items-center justify-end h-full transition-all cursor-pointer rounded-t-sm py-0.5 ${
-                      isHovered
-                        ? "bg-muted/80 ring-1 ring-primary/40"
-                        : item.isToday
-                        ? "bg-primary/5"
-                        : "hover:bg-muted/40"
-                    }`}
-                  >
-                    {/* Bars Container */}
-                    <div className="flex w-full items-end justify-center gap-0.5 h-full px-0.5 pb-0.5">
-                      {/* Inflow Bar */}
-                      {incHeight > 0 ? (
-                        <div
-                          style={{ height: `${incHeight}px` }}
-                          className={`w-full max-w-[10px] rounded-t-sm bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-2xs transition-all duration-150 ${
-                            isHovered ? "brightness-110 scale-y-105" : ""
-                          }`}
-                          title={`${item.label} Inflow: ${money(item.income)}`}
-                        />
-                      ) : null}
-
-                      {/* Outflow Bar */}
-                      {expHeight > 0 ? (
-                        <div
-                          style={{ height: `${expHeight}px` }}
-                          className={`w-full max-w-[10px] rounded-t-sm bg-gradient-to-t from-rose-600 to-rose-400 shadow-2xs transition-all duration-150 ${
-                            isHovered ? "brightness-110 scale-y-105" : ""
-                          }`}
-                          title={`${item.label} Outflow: ${money(item.expense)}`}
-                        />
-                      ) : null}
-
-                      {/* Resting Baseline Dot when no transaction */}
-                      {!hasActivity && (
-                        <div
-                          className={`size-1 rounded-full mb-1 transition-colors ${
-                            item.isToday
-                              ? "bg-primary"
-                              : item.isFuture
-                              ? "bg-border/40"
-                              : "bg-muted-foreground/30"
-                          }`}
-                        />
-                      )}
-                    </div>
-                  </div>
+                  <g key={item.key}>
+                    {hasInflow && (
+                      <circle
+                        cx={x}
+                        cy={166 - (item.income / ceilMax) * 152}
+                        r={isCur ? 4.5 : 2.5}
+                        fill="#10b981"
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
+                      />
+                    )}
+                    {hasOutflow && (
+                      <circle
+                        cx={x}
+                        cy={166 - (item.expense / ceilMax) * 152}
+                        r={isCur ? 4.5 : 2.5}
+                        fill="#f43f5e"
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
+                      />
+                    )}
+                  </g>
                 );
               })}
-            </div>
+
+              {/* Active / Hovered Vertical Guide Line and Nodes */}
+              {activeItem && (
+                <g>
+                  <line
+                    x1={activeX}
+                    y1={14}
+                    x2={activeX}
+                    y2={166}
+                    stroke="currentColor"
+                    strokeDasharray="3 3"
+                    className="text-muted-foreground/60"
+                    strokeWidth="1.5"
+                  />
+                  {activeItem.income > 0 && (
+                    <circle
+                      cx={activeX}
+                      cy={activeInflowY}
+                      r="6"
+                      fill="#10b981"
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                  )}
+                  {activeItem.expense > 0 && (
+                    <circle
+                      cx={activeX}
+                      cy={activeOutflowY}
+                      r="6"
+                      fill="#f43f5e"
+                      stroke="#ffffff"
+                      strokeWidth="2"
+                    />
+                  )}
+                  {activeItem.income === 0 && activeItem.expense === 0 && (
+                    <circle
+                      cx={activeX}
+                      cy={166}
+                      r="4"
+                      fill="currentColor"
+                      className="text-muted-foreground"
+                    />
+                  )}
+                </g>
+              )}
+            </svg>
           </div>
         </div>
 
-        {/* X-Axis Milestone Labels (Aligned with Chart Area) */}
-        <div className="flex gap-2 sm:gap-3 mt-2">
-          <div className="min-w-[50px] sm:min-w-[62px] shrink-0" />
-          <div className="flex-1 flex items-center justify-between text-[10px] font-bold text-muted-foreground px-1">
-            {isMonthlyFilter ? (
-              <>
-                <span>Day 1</span>
-                <span>5</span>
-                <span>10</span>
-                <span>15</span>
-                <span>20</span>
-                <span>Day {chartItems.length}</span>
-              </>
-            ) : (
-              chartItems.map((item) => (
+        {/* X-Axis Milestone Labels with Exact Proportional Alignment */}
+        <div className="flex gap-2 sm:gap-3 mt-1.5">
+          <div className="min-w-[52px] sm:min-w-[64px] shrink-0" />
+          <div className="relative flex-1 h-5 text-[10px] font-bold text-muted-foreground select-none">
+            {xAxisMilestones.map((ms, idx) => {
+              const isFirst = idx === 0;
+              const isLast = idx === xAxisMilestones.length - 1;
+              const transformClass = isFirst
+                ? "translate-x-0"
+                : isLast
+                ? "-translate-x-full"
+                : "-translate-x-1/2";
+
+              return (
                 <span
-                  key={item.key}
-                  className={item.isToday ? "text-primary font-black" : ""}
+                  key={ms.key}
+                  style={{ left: `${ms.ratio}%` }}
+                  className={`absolute top-0 transform ${transformClass} whitespace-nowrap ${
+                    ms.isCurrent ? "text-primary font-black" : ""
+                  }`}
                 >
-                  {item.shortLabel}
+                  {ms.label}
                 </span>
-              ))
-            )}
+              );
+            })}
           </div>
         </div>
       </div>

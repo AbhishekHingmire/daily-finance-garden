@@ -44,13 +44,13 @@ export function SettingsPage({
   const tabs = ["General", "Profile", "Tags", "Custom fields", "Data & Privacy"];
 
   return (
-    <>
+    <div className="space-y-6">
       <PageHeading
         title="Settings"
         description="Customize your WealthTrack experience, regional formats, metadata tags, and local data."
       />
 
-      <div className="mb-6 flex flex-wrap gap-2 border-b border-border pb-3">
+      <div className="flex flex-wrap gap-2 border-b border-border pb-3">
         {tabs.map((tab) => (
           <Button
             key={tab}
@@ -246,6 +246,6 @@ export function SettingsPage({
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

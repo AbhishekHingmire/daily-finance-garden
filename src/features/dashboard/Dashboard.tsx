@@ -275,7 +275,7 @@ export function Dashboard({
   return (
     <div className="space-y-6">
       <PageHeading
-        title="Overview"
+        title="Dashboard"
         description="Real-time portfolio net worth, cash flow velocity, and recent activity."
         actions={
           <div className="flex items-center gap-2">

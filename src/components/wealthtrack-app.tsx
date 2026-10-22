@@ -1738,13 +1738,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               >
                 <Menu size={19} />
               </Button>
-              <div className="hidden min-w-0 sm:block">
-                <p className="text-[11px] text-muted-foreground uppercase font-semibold tracking-wider">
-                  WealthTrack Workspace
-                </p>
-                <p className="wt-display truncate text-sm font-extrabold text-foreground">
+              <div className="hidden min-w-0 sm:flex items-center gap-1.5 text-xs text-muted-foreground select-none">
+                <span className="font-semibold text-muted-foreground/80">WealthTrack</span>
+                <span className="text-muted-foreground/40 font-bold">/</span>
+                <span className="font-bold text-foreground">
                   {active === "Overview" ? "Dashboard" : active}
-                </p>
+                </span>
               </div>
             </div>
 

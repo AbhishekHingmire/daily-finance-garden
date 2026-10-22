@@ -88,6 +88,45 @@ export function TransactionTable({
     });
   }, [searchedTransactions, sortOrder]);
 
+  // Dynamic Net, Inflow, and Outflow Totals for the currently displayed transactions
+  const { totalNet, totalInflow, totalOutflow } = useMemo(() => {
+    let inflow = 0;
+    let outflow = 0;
+    let net = 0;
+    for (const tx of sortedTransactions) {
+      const isInvestmentOutflow =
+        tx.type === "Investment" &&
+        (!tx.investmentAction ||
+          INVESTMENT_OUTFLOW_ACTIONS.includes(tx.investmentAction));
+
+      const isPositive =
+        tx.type === "Income" ||
+        tx.type === "Refund" ||
+        tx.type === "Borrow / Loan Taken" ||
+        tx.type === "Debt Recovery" ||
+        (tx.type === "Adjustment" && tx.amount > 0) ||
+        (tx.type === "Investment" &&
+          !isInvestmentOutflow &&
+          tx.investmentAction !== "Valuation");
+
+      const isNegative =
+        tx.type === "Expense" ||
+        tx.type === "EMI / Loan Payment" ||
+        tx.type === "Lend / Loan Given" ||
+        isInvestmentOutflow ||
+        (tx.type === "Adjustment" && tx.amount < 0);
+
+      if (isPositive) {
+        inflow += Math.abs(tx.amount);
+        net += Math.abs(tx.amount);
+      } else if (isNegative) {
+        outflow += Math.abs(tx.amount);
+        net -= Math.abs(tx.amount);
+      }
+    }
+    return { totalNet: net, totalInflow: inflow, totalOutflow: outflow };
+  }, [sortedTransactions]);
+
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -131,9 +170,30 @@ export function TransactionTable({
             )}
           </div>
 
-          <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
-            {sortedTransactions.length} transaction{sortedTransactions.length !== 1 ? "s" : ""}
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+              {sortedTransactions.length} transaction{sortedTransactions.length !== 1 ? "s" : ""}
+            </span>
+            <span className="text-muted-foreground/40 hidden sm:inline">·</span>
+            <div
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums border ${
+                totalNet > 0
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                  : totalNet < 0
+                  ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20"
+                  : "bg-muted text-muted-foreground border-border"
+              }`}
+            >
+              <span className="text-[10px] uppercase font-semibold text-muted-foreground">Total:</span>
+              <span>
+                {totalNet > 0
+                  ? `+${money(totalNet)}`
+                  : totalNet < 0
+                  ? `−${money(Math.abs(totalNet))}`
+                  : money(0)}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Right Controls: Sort & Custom Header Actions */}
