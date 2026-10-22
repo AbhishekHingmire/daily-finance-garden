@@ -180,9 +180,8 @@ export function ReportsPage({
   return (
     <div className="space-y-6">
       <PageHeading
-        eyebrow="FINANCIAL INTELLIGENCE"
-        title="Reports & Analytics"
-        description="Comprehensive insights into your cash flow velocity, spending discipline, and wealth accumulation."
+        title="Reports"
+        description="Cash flow velocity, category allocation, and wealth accumulation."
         actions={
           <Button
             size="sm"
@@ -190,80 +189,62 @@ export function ReportsPage({
             onClick={onExport}
             className="h-9 gap-1.5 text-xs font-semibold shadow-2xs"
           >
-            <Download size={14} /> Export Report CSV
+            <Download size={14} /> Export CSV
           </Button>
         }
       />
 
-      {/* Date Range Filter (Unified Simplicity: 1M, 6M, 12M, Custom) */}
-      <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-border bg-card p-4 wt-shadow">
-        <div>
-          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
-            Timeframe Period
-          </span>
-          <p className="text-xs text-muted-foreground mt-0.5">
-            Filter all charts, metrics, and breakdowns below
-          </p>
-        </div>
+      {/* Date Range Filter */}
+      <div className="flex items-center justify-between">
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
       </div>
 
-      {/* Groww-style Hero Financial Performance Card */}
-      <div className="grid gap-4 rounded-2xl border border-border bg-card p-6 wt-shadow sm:grid-cols-3">
+      {/* Hero Financial Performance Card */}
+      <div className="grid gap-4 rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow sm:grid-cols-3">
         {/* Surplus / Net Accumulation */}
         <div className="flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Net Operating Surplus
+              <span className="text-xs font-medium text-muted-foreground">
+                Net Surplus
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300">
-                <Sparkles size={12} />
-                {savingsRate}% Saved
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+                <Sparkles size={11} /> {savingsRate}% Saved
               </span>
             </div>
-            <p className="wt-display mt-2 text-3xl font-extrabold text-foreground tabular-nums">
+            <p className="wt-display mt-1 text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums">
               {money(netSavings)}
             </p>
           </div>
-          <p className="mt-3 text-xs text-muted-foreground">
-            Net capital accumulated during this selected timeframe
-          </p>
         </div>
 
         {/* Total Inflow */}
-        <div className="border-t border-border pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+        <div className="border-t border-border/60 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Total Inflows
+            <span className="text-xs font-medium text-muted-foreground">
+              Inflows
             </span>
-            <span className="grid size-6 place-items-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+            <span className="grid size-6 place-items-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
               <ArrowDownLeft size={13} />
             </span>
           </div>
-          <p className="wt-display mt-2 text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+          <p className="wt-display mt-1 text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
             +{money(totalIncome)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {rows.filter((r) => r.type === "Income").length} salary & revenue deposits
           </p>
         </div>
 
         {/* Total Outflow */}
-        <div className="border-t border-border pt-4 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
+        <div className="border-t border-border/60 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Total Outflows
+            <span className="text-xs font-medium text-muted-foreground">
+              Outflows
             </span>
-            <span className="grid size-6 place-items-center rounded-full bg-rose-500/15 text-rose-600 dark:text-rose-400">
+            <span className="grid size-6 place-items-center rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
               <ArrowUpRight size={13} />
             </span>
           </div>
-          <p className="wt-display mt-2 text-2xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">
+          <p className="wt-display mt-1 text-xl sm:text-2xl font-bold text-rose-600 dark:text-rose-400 tabular-nums">
             −{money(totalExpenses)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {rows.filter((r) => r.type === "Expense").length} expenditure transactions
           </p>
         </div>
       </div>

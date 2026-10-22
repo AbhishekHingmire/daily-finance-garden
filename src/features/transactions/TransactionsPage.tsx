@@ -116,7 +116,6 @@ export function TransactionsPage({
   return (
     <>
       <PageHeading
-        eyebrow="TRANSACTION HISTORY"
         title="Transactions"
         description="Every financial movement, categorized and accounted for."
         actions={

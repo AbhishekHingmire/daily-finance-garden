@@ -102,9 +102,8 @@ export function AccountsPage({
   return (
     <>
       <PageHeading
-        eyebrow="YOUR ACCOUNTS & ASSETS"
-        title="Accounts & Balances"
-        description="Monitor bank accounts, digital wallets, cash reserves, and liabilities with seamless reconciliation."
+        title="Accounts"
+        description="Bank accounts, digital wallets, cash reserves, and liabilities."
         actions={
           <div className="flex items-center gap-2">
             <Button
