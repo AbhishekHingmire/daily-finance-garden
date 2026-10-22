@@ -3,6 +3,8 @@ import { ChevronDown, ChevronUp, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
+import { CategoryModal } from "@/features/categories/CategoryModal";
+import { matchCategoryIcon } from "@/lib/icon-matcher";
 import type {
   Category,
   Transaction,
@@ -18,6 +20,7 @@ export function TransactionModal({
   edit,
   onClose,
   onSave,
+  onAddCategory,
 }: {
   data: WealthState;
   form: Partial<Transaction>;
@@ -26,8 +29,10 @@ export function TransactionModal({
   edit: boolean;
   onClose: () => void;
   onSave: (keepOpen?: boolean) => void;
+  onAddCategory?: (category: Category) => void;
 }) {
   const type = (form.type ?? "Expense") as TransactionType;
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const currencySymbol =
     data.preferences.currency === "INR"
       ? "₹"
@@ -80,6 +85,30 @@ export function TransactionModal({
         need: current.need ?? (isWant ? "Want" : "Need"),
       };
     });
+  };
+
+  const handleQuickCreateCategory = (catForm: Partial<Category>) => {
+    if (!catForm.name?.trim()) return;
+    const newCat: Category = {
+      id: `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      name: catForm.name.trim(),
+      kind: catForm.kind ?? (type === "Income" ? "Income" : "Expense"),
+      icon: catForm.icon ?? matchCategoryIcon(catForm.name.trim(), "📁"),
+      color: catForm.color ?? "blue",
+      monthlyLimit: Number(catForm.monthlyLimit) || 0,
+      defaultNeed: catForm.defaultNeed ?? "Need",
+    };
+    onAddCategory?.(newCat);
+    handleSelectCategory(newCat.id);
+    setIsCreatingCategory(false);
+  };
+
+  const handleDropdownSelectCategory = (val: string) => {
+    if (val === "__new_category__") {
+      setIsCreatingCategory(true);
+    } else {
+      handleSelectCategory(val);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -157,7 +186,7 @@ export function TransactionModal({
             <span className="wt-label">Category <span className="text-destructive">*</span></span>
 
             {/* Quick-Pick Category Chips */}
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 items-center">
               {quickCategories.map((c) => {
                 const isSelected = form.categoryId === c.id;
                 return (
@@ -176,6 +205,15 @@ export function TransactionModal({
                   </button>
                 );
               })}
+              <button
+                type="button"
+                onClick={() => setIsCreatingCategory(true)}
+                className="inline-flex items-center gap-1 rounded-lg border border-dashed border-primary/60 bg-primary/5 px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/10 transition-colors"
+                title="Create a new category"
+              >
+                <Plus size={13} />
+                <span>+ Create</span>
+              </button>
             </div>
 
             {/* Complete Category Dropdown */}
@@ -183,8 +221,11 @@ export function TransactionModal({
               <SelectField
                 label=""
                 value={form.categoryId ?? ""}
-                onChange={handleSelectCategory}
-                options={categories.map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` }))}
+                onChange={handleDropdownSelectCategory}
+                options={[
+                  ...categories.map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` })),
+                  { value: "__new_category__", label: "＋ Create new category…" },
+                ]}
                 placeholder="Or select other category…"
                 error={errors.categoryId}
               />
@@ -332,6 +373,15 @@ export function TransactionModal({
           </div>
         </div>
       </form>
+
+      {isCreatingCategory && (
+        <CategoryModal
+          category={null}
+          kind={type === "Income" ? "Income" : "Expense"}
+          onClose={() => setIsCreatingCategory(false)}
+          onSave={handleQuickCreateCategory}
+        />
+      )}
     </Modal>
   );
 }

@@ -18,6 +18,7 @@ describe("App routing", () => {
     "/transactions",
     "/accounts",
     "/investments",
+    "/loans",
     "/categories",
     "/reports",
     "/recurring",

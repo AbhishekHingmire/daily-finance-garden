@@ -1,21 +1,27 @@
 import { useState } from "react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
-import type { RecurringItem, WealthState } from "@/lib/wealthtrack";
+import { CategoryModal } from "@/features/categories/CategoryModal";
+import { matchCategoryIcon } from "@/lib/icon-matcher";
+import type { Category, RecurringItem, WealthState } from "@/lib/wealthtrack";
 
 export function RecurringModal({
   item,
   data,
   onClose,
   onSave,
+  onAddCategory,
 }: {
   item: RecurringItem | null;
   data: WealthState;
   onClose: () => void;
   onSave: (form: Partial<RecurringItem>) => void;
+  onAddCategory?: (category: Category) => void;
 }) {
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [form, setForm] = useState<Partial<RecurringItem>>(() =>
     item
       ? { ...item }
@@ -34,6 +40,30 @@ export function RecurringModal({
           enabled: true,
         }
   );
+
+  const handleQuickCreateCategory = (catForm: Partial<Category>) => {
+    if (!catForm.name?.trim()) return;
+    const newCat: Category = {
+      id: `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      name: catForm.name.trim(),
+      kind: catForm.kind ?? (form.type ?? "Expense"),
+      icon: catForm.icon ?? matchCategoryIcon(catForm.name.trim(), "📁"),
+      color: catForm.color ?? "blue",
+      monthlyLimit: Number(catForm.monthlyLimit) || 0,
+      defaultNeed: catForm.defaultNeed ?? "Need",
+    };
+    onAddCategory?.(newCat);
+    setForm((f) => ({ ...f, categoryId: newCat.id }));
+    setIsCreatingCategory(false);
+  };
+
+  const handleCategoryChange = (val: string) => {
+    if (val === "__new_category__") {
+      setIsCreatingCategory(true);
+    } else {
+      setForm((f) => ({ ...f, categoryId: val }));
+    }
+  };
 
   return (
     <Modal
@@ -80,14 +110,29 @@ export function RecurringModal({
           />
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
-          <SelectField
-            label="Category"
-            value={form.categoryId ?? ""}
-            onChange={(categoryId) => setForm((f) => ({ ...f, categoryId }))}
-            options={data.categories
-              .filter((c) => !c.archived && c.kind === (form.type ?? "Expense"))
-              .map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` }))}
-          />
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="wt-label mb-0">Category</span>
+              <button
+                type="button"
+                onClick={() => setIsCreatingCategory(true)}
+                className="text-[11px] font-bold text-primary hover:underline inline-flex items-center gap-1"
+              >
+                <Plus size={12} /> New
+              </button>
+            </div>
+            <SelectField
+              label=""
+              value={form.categoryId ?? ""}
+              onChange={handleCategoryChange}
+              options={[
+                ...data.categories
+                  .filter((c) => !c.archived && c.kind === (form.type ?? "Expense"))
+                  .map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` })),
+                { value: "__new_category__", label: "＋ Create new category…" },
+              ]}
+            />
+          </div>
           <SelectField
             label="Account"
             value={form.accountId ?? ""}
@@ -136,6 +181,15 @@ export function RecurringModal({
           <Button onClick={() => onSave(form)}>{item ? "Save Changes" : "Add Schedule"}</Button>
         </div>
       </div>
+
+      {isCreatingCategory && (
+        <CategoryModal
+          category={null}
+          kind={form.type ?? "Expense"}
+          onClose={() => setIsCreatingCategory(false)}
+          onSave={handleQuickCreateCategory}
+        />
+      )}
     </Modal>
   );
 }

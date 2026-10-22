@@ -6,6 +6,7 @@ import {
   ArrowUpRight,
   CalendarDays,
   CreditCard,
+  Landmark,
   Plus,
   Sparkles,
   TrendingUp,
@@ -113,10 +114,16 @@ export function Dashboard({
     .filter((a) => a.kind === "Credit card")
     .reduce((sum, a) => sum + Math.abs(getAccountBalance(a, data.transactions)), 0);
 
-  const totalAssetsSum = Math.max(1, liquidAssets + effectiveInvestmentsVal + creditLiabilities);
+  const loansOutstanding = useMemo(() => {
+    return (data.loans ?? []).reduce((sum, l) => sum + (l.currentOutstanding || 0), 0);
+  }, [data.loans]);
+
+  const totalLiabilities = creditLiabilities + loansOutstanding;
+
+  const totalAssetsSum = Math.max(1, liquidAssets + effectiveInvestmentsVal + totalLiabilities);
   const liquidPct = Math.round((liquidAssets / totalAssetsSum) * 100);
   const invPct = Math.round((effectiveInvestmentsVal / totalAssetsSum) * 100);
-  const creditPct = Math.round((creditLiabilities / totalAssetsSum) * 100);
+  const liabilityPct = Math.round((totalLiabilities / totalAssetsSum) * 100);
 
   // 6-Month Cash Flow Trend Data
   const monthlyTrends = useMemo(() => {
@@ -276,22 +283,22 @@ export function Dashboard({
             </div>
 
             <div
-              className="group rounded-2xl border border-border/70 bg-card/80 p-3.5 hover:border-amber-500/40 hover:shadow-xs transition-all cursor-pointer"
-              onClick={() => onNavigate("Accounts")}
+              className="group rounded-2xl border border-border/70 bg-card/80 p-3.5 hover:border-rose-500/40 hover:shadow-xs transition-all cursor-pointer"
+              onClick={() => onNavigate("Loans")}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Liabilities
+                  Liabilities & Debt
                 </span>
-                <span className="grid size-6 place-items-center rounded-md bg-amber-500/15 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
-                  <CreditCard size={12} />
+                <span className="grid size-6 place-items-center rounded-md bg-rose-500/15 text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform">
+                  <Landmark size={12} />
                 </span>
               </div>
               <p className="mt-1.5 text-sm sm:text-base font-extrabold text-foreground tabular-nums truncate">
-                {money(creditLiabilities)}
+                {money(totalLiabilities)}
               </p>
-              <span className="text-[10px] text-amber-600 dark:text-amber-400 font-medium block mt-0.5">
-                Credit dues
+              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium block mt-0.5">
+                {(data.loans ?? []).length} loans · {liabilityPct}% of total
               </span>
             </div>
           </div>
@@ -311,9 +318,9 @@ export function Dashboard({
               title={`Investments: ${invPct}%`}
             />
             <div
-              style={{ width: `${creditPct}%` }}
-              className="h-full bg-amber-500 transition-all"
-              title={`Liabilities: ${creditPct}%`}
+              style={{ width: `${liabilityPct}%` }}
+              className="h-full bg-rose-500 transition-all"
+              title={`Liabilities: ${liabilityPct}%`}
             />
           </div>
           <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
@@ -324,14 +331,12 @@ export function Dashboard({
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-violet-500" /> Investments ({invPct}%)
               </span>
-              {creditPct > 0 && (
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="size-2 rounded-full bg-amber-500" /> Liabilities ({creditPct}%)
-                </span>
-              )}
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-rose-500" /> Liabilities ({liabilityPct}%)
+              </span>
             </div>
             <span className="font-semibold text-foreground">
-              {activeAccounts.length} Accounts Connected
+              Net Wealth: {money(totalBalance + effectiveInvestmentsVal - totalLiabilities)}
             </span>
           </div>
         </div>

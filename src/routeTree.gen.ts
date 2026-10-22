@@ -14,6 +14,7 @@ import { Route as SplatRouteImport } from './routes/$'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as InvestmentsRouteImport } from './routes/investments'
+import { Route as LoansRouteImport } from './routes/loans'
 import { Route as OverviewRouteImport } from './routes/overview'
 import { Route as PreferencesRouteImport } from './routes/preferences'
 import { Route as ProfileRouteImport } from './routes/profile'
@@ -45,6 +46,11 @@ const CategoriesRoute = CategoriesRouteImport.update({
 const InvestmentsRoute = InvestmentsRouteImport.update({
   id: '/investments',
   path: '/investments',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoansRoute = LoansRouteImport.update({
+  id: '/loans',
+  path: '/loans',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OverviewRoute = OverviewRouteImport.update({
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
   '/investments': typeof InvestmentsRoute
+  '/loans': typeof LoansRoute
   '/overview': typeof OverviewRoute
   '/preferences': typeof PreferencesRoute
   '/profile': typeof ProfileRoute
@@ -103,6 +110,7 @@ export interface FileRoutesByTo {
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
   '/investments': typeof InvestmentsRoute
+  '/loans': typeof LoansRoute
   '/overview': typeof OverviewRoute
   '/preferences': typeof PreferencesRoute
   '/profile': typeof ProfileRoute
@@ -118,6 +126,7 @@ export interface FileRoutesById {
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
   '/investments': typeof InvestmentsRoute
+  '/loans': typeof LoansRoute
   '/overview': typeof OverviewRoute
   '/preferences': typeof PreferencesRoute
   '/profile': typeof ProfileRoute
@@ -134,6 +143,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/categories'
     | '/investments'
+    | '/loans'
     | '/overview'
     | '/preferences'
     | '/profile'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/categories'
     | '/investments'
+    | '/loans'
     | '/overview'
     | '/preferences'
     | '/profile'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/categories'
     | '/investments'
+    | '/loans'
     | '/overview'
     | '/preferences'
     | '/profile'
@@ -177,6 +189,7 @@ export interface RootRouteChildren {
   AccountsRoute: typeof AccountsRoute
   CategoriesRoute: typeof CategoriesRoute
   InvestmentsRoute: typeof InvestmentsRoute
+  LoansRoute: typeof LoansRoute
   OverviewRoute: typeof OverviewRoute
   PreferencesRoute: typeof PreferencesRoute
   ProfileRoute: typeof ProfileRoute
@@ -221,6 +234,13 @@ declare module '@tanstack/react-router' {
       path: '/investments'
       fullPath: '/investments'
       preLoaderRoute: typeof InvestmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/loans': {
+      id: '/loans'
+      path: '/loans'
+      fullPath: '/loans'
+      preLoaderRoute: typeof LoansRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/overview': {
@@ -281,6 +301,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsRoute: AccountsRoute,
   CategoriesRoute: CategoriesRoute,
   InvestmentsRoute: InvestmentsRoute,
+  LoansRoute: LoansRoute,
   OverviewRoute: OverviewRoute,
   PreferencesRoute: PreferencesRoute,
   ProfileRoute: ProfileRoute,

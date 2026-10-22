@@ -3,6 +3,7 @@ import {
   createInitialState,
   getAccountBalance,
   getHoldingsSummary,
+  getLoansSummary,
   getNextRecurringDate,
   processDueRecurringTransactions,
   safeAmount,
@@ -313,6 +314,14 @@ describe("Financial Engine & Calculations", () => {
     expect(matchesDateRange("2025-11-15", { preset: "12m" }, ref)).toBe(true);
     expect(matchesDateRange("2025-10-31", { preset: "12m" }, ref)).toBe(false);
 
+    // Month-by-month year selection (e.g. October 2026)
+    expect(matchesDateRange("2026-10-18", { preset: "month", year: 2026, month: 10 }, ref)).toBe(true);
+    expect(matchesDateRange("2026-09-28", { preset: "month", year: 2026, month: 10 }, ref)).toBe(false);
+
+    // Full year selection (All 2026)
+    expect(matchesDateRange("2026-05-19", { preset: "year", year: 2026 }, ref)).toBe(true);
+    expect(matchesDateRange("2025-12-31", { preset: "year", year: 2026 }, ref)).toBe(false);
+
     // Custom range
     expect(
       matchesDateRange("2026-07-15", {
@@ -350,5 +359,18 @@ describe("Financial Engine & Calculations", () => {
     expect(state.profile?.monthlyIncomeTarget).toBe(100000);
     expect(state.profile?.emergencyFundTarget).toBe(150000);
     expect(state.profile?.riskProfile).toBe("Balanced");
+  });
+
+  it("calculates loan liabilities summary with total debt, outstanding, and repayment %", () => {
+    const state = createInitialState();
+    expect(state.loans).toBeDefined();
+    expect(state.loans?.length).toBeGreaterThan(0);
+
+    const summary = getLoansSummary(state.loans);
+    expect(summary.totalPrincipal).toBe(4350000);
+    expect(summary.totalOutstanding).toBe(3260000);
+    expect(summary.totalMonthlyEmi).toBe(45050);
+    expect(summary.totalPaid).toBe(1090000);
+    expect(summary.payoffPercentage).toBeCloseTo(25.06, 1);
   });
 });

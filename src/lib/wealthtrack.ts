@@ -6,6 +6,7 @@ export type Section =
   | "Transactions"
   | "Accounts"
   | "Investments"
+  | "Loans"
   | "Categories"
   | "Reports"
   | "Recurring"
@@ -49,6 +50,33 @@ export interface UserProfile {
   savingsRateTarget: number;
   riskProfile: "Conservative" | "Balanced" | "Aggressive";
   bio?: string;
+}
+
+export type LoanType =
+  | "Home Loan"
+  | "Personal Loan"
+  | "Car / Auto Loan"
+  | "Education Loan"
+  | "Credit Line"
+  | "Other";
+
+export interface LoanLiability {
+  id: string;
+  name: string;
+  loanType: LoanType;
+  lenderInstitution: string;
+  principalAmount: number;
+  currentOutstanding: number;
+  interestRate: number;
+  emiAmount: number;
+  repaymentAccountId: string;
+  startDate: string;
+  endDate?: string;
+  tenureMonths: number;
+  paidEmisCount: number;
+  autoRecurringEmi: boolean;
+  notes?: string;
+  updatedAt: string;
 }
 
 export interface Account {
@@ -155,6 +183,7 @@ export interface WealthState {
   transactions: Transaction[];
   recurring: RecurringItem[];
   investments?: InvestmentHolding[];
+  loans?: LoanLiability[];
   notifications: WealthNotification[];
   tags: string[];
   customFields: CustomField[];
@@ -309,6 +338,44 @@ export function createInitialState(): WealthState {
         updatedAt: "2026-10-01",
       },
     ],
+    loans: [
+      {
+        id: "loan-01",
+        name: "Home Loan · Tower 4",
+        loanType: "Home Loan",
+        lenderInstitution: "HDFC Bank",
+        principalAmount: 3500000,
+        currentOutstanding: 2840000,
+        interestRate: 8.4,
+        emiAmount: 30850,
+        repaymentAccountId: "acc-hdfc",
+        startDate: "2024-05-10",
+        endDate: "2039-05-10",
+        tenureMonths: 180,
+        paidEmisCount: 29,
+        autoRecurringEmi: true,
+        notes: "Auto-debited from HDFC Everyday Account on 10th of every month.",
+        updatedAt: "2026-10-22",
+      },
+      {
+        id: "loan-02",
+        name: "EV Car Loan",
+        loanType: "Car / Auto Loan",
+        lenderInstitution: "State Bank of India",
+        principalAmount: 850000,
+        currentOutstanding: 420000,
+        interestRate: 8.75,
+        emiAmount: 14200,
+        repaymentAccountId: "acc-sbi",
+        startDate: "2024-08-05",
+        endDate: "2029-08-05",
+        tenureMonths: 60,
+        paidEmisCount: 26,
+        autoRecurringEmi: true,
+        notes: "Auto-debited from SBI Savings Account on 5th of every month.",
+        updatedAt: "2026-10-22",
+      },
+    ],
   };
 }
 
@@ -363,6 +430,21 @@ export function getHoldingsSummary(investments: InvestmentHolding[] = []) {
     currentValue,
     totalReturns,
     returnPercentage,
+  };
+}
+
+export function getLoansSummary(loans: LoanLiability[] = []) {
+  const totalPrincipal = loans.reduce((sum, item) => sum + safeAmount(item.principalAmount), 0);
+  const totalOutstanding = loans.reduce((sum, item) => sum + safeAmount(item.currentOutstanding), 0);
+  const totalMonthlyEmi = loans.reduce((sum, item) => sum + safeAmount(item.emiAmount), 0);
+  const totalPaid = Math.max(0, totalPrincipal - totalOutstanding);
+  const payoffPercentage = totalPrincipal > 0 ? (totalPaid / totalPrincipal) * 100 : 0;
+  return {
+    totalPrincipal,
+    totalOutstanding,
+    totalMonthlyEmi,
+    totalPaid,
+    payoffPercentage,
   };
 }
 

@@ -55,61 +55,73 @@ export function RecurringPage({
   return (
     <div className="space-y-6">
       <PageHeading
+        eyebrow="AUTOMATED RECURRING FLOWS"
         title="Recurring"
-        description="Scheduled bills, subscriptions, and recurring income."
+        description="Scheduled bills, loan EMIs, subscriptions, and recurring income schedules."
         actions={
-          <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 text-xs font-semibold shadow-xs">
-            <Plus size={15} /> Add Schedule
+          <Button size="sm" onClick={onAdd} className="h-10 gap-2 px-4 text-xs font-semibold shadow-xs">
+            <Plus size={16} /> Add Schedule
           </Button>
         }
       />
 
-      {/* Minimal Top Strip: Quick Metrics & Filter */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-border/60 pb-4">
-        <div className="flex flex-wrap items-center gap-6">
-          <div>
-            <span className="text-[11px] font-medium text-muted-foreground block">
-              Monthly Outflow
-            </span>
-            <span className="text-base font-bold text-foreground tabular-nums">
-              −{money(totalMonthlyOutflow)}
-            </span>
-          </div>
-
-          <div className="h-7 w-px bg-border/60 hidden sm:block" />
-
-          <div>
-            <span className="text-[11px] font-medium text-muted-foreground block">
-              Monthly Inflow
-            </span>
-            <span className="text-base font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-              +{money(totalMonthlyInflow)}
-            </span>
-          </div>
-
-          <div className="h-7 w-px bg-border/60 hidden sm:block" />
-
-          <div>
-            <span className="text-[11px] font-medium text-muted-foreground block">
-              Active Schedules
-            </span>
-            <span className="text-base font-bold text-foreground tabular-nums">
-              {activeSchedules.length} of {data.recurring.length}
-            </span>
-          </div>
+      {/* Standardized Summary Metric Cards */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <div className="rounded-xl border border-border/80 bg-card p-4 wt-shadow">
+          <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Monthly Outflows
+          </span>
+          <span className="mt-1 block text-2xl font-black text-destructive tabular-nums">
+            −{money(totalMonthlyOutflow)}
+          </span>
+          <span className="mt-1 block text-[11px] font-medium text-muted-foreground">
+            Bills, subscriptions & EMIs
+          </span>
         </div>
+
+        <div className="rounded-xl border border-border/80 bg-card p-4 wt-shadow">
+          <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Monthly Inflows
+          </span>
+          <span className="mt-1 block text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+            +{money(totalMonthlyInflow)}
+          </span>
+          <span className="mt-1 block text-[11px] font-medium text-muted-foreground">
+            Salary & guaranteed inflows
+          </span>
+        </div>
+
+        <div className="rounded-xl border border-border/80 bg-card p-4 wt-shadow">
+          <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+            Active Schedules
+          </span>
+          <span className="mt-1 block text-2xl font-black text-foreground tabular-nums">
+            {activeSchedules.length} of {data.recurring.length}
+          </span>
+          <span className="mt-1 block text-[11px] font-medium text-emerald-600 dark:text-emerald-400 font-semibold">
+            Net: +{money(Math.max(0, totalMonthlyInflow - totalMonthlyOutflow))}
+          </span>
+        </div>
+      </div>
+
+      {/* Filter Toolbar */}
+      <div className="flex items-center justify-between gap-4 border-b border-border/60 pb-3">
+        <span className="text-xs font-bold text-muted-foreground">
+          Showing {filtered.length} schedule{filtered.length === 1 ? "" : "s"}
+        </span>
 
         {/* Priority Filter */}
         <div className="flex items-center gap-2">
+          <span className="text-[11px] font-semibold text-muted-foreground">Priority:</span>
           <select
-            className="wt-field h-8 text-xs py-0 w-32"
+            className="wt-field h-8 text-xs py-0 w-36 font-semibold"
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
             aria-label="Filter by priority"
           >
             <option value="All">All Priorities</option>
-            <option value="Need">Need</option>
-            <option value="Want">Want</option>
+            <option value="Need">Need (Essential)</option>
+            <option value="Want">Want (Discretionary)</option>
           </select>
         </div>
       </div>

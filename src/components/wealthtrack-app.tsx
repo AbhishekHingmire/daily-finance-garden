@@ -7,6 +7,7 @@ import {
   CalendarDays,
   ChevronDown,
   CircleHelp,
+  Landmark,
   LayoutDashboard,
   LogOut,
   Menu,
@@ -39,6 +40,8 @@ import { AccountModal } from "@/features/accounts/AccountModal";
 import { TransferModal } from "@/features/accounts/TransferModal";
 import { InvestmentsPage } from "@/features/investments/InvestmentsPage";
 import { InvestmentHoldingModal } from "@/features/investments/InvestmentHoldingModal";
+import { LoansPage } from "@/features/loans/LoansPage";
+import { LoanModal } from "@/features/loans/LoanModal";
 import { ProfilePage } from "@/features/profile/ProfilePage";
 import { PreferencesPage } from "@/features/preferences/PreferencesPage";
 import { CategoriesPage } from "@/features/categories/CategoriesPage";
@@ -55,6 +58,7 @@ import {
   formatMoney,
   getAccountBalance,
   getHoldingsSummary,
+  getLoansSummary,
   getNextRecurringDate,
   makeNotification,
   processDueRecurringTransactions,
@@ -66,6 +70,7 @@ import {
   type InvestmentAction,
   type InvestmentHolding,
   type InvestmentInstrument,
+  type LoanLiability,
   type RecurringItem,
   type Section,
   type Transaction,
@@ -80,9 +85,10 @@ const navItems: { label: Section; path: string; icon: typeof LayoutDashboard }[]
   { label: "Transactions", path: "/transactions", icon: ArrowLeftRight },
   { label: "Accounts", path: "/accounts", icon: Wallet },
   { label: "Investments", path: "/investments", icon: TrendingUp },
+  { label: "Loans", path: "/loans", icon: Landmark },
+  { label: "Recurring", path: "/recurring", icon: CalendarDays },
   { label: "Categories", path: "/categories", icon: Tag },
   { label: "Reports", path: "/reports", icon: Activity },
-  { label: "Recurring", path: "/recurring", icon: CalendarDays },
 ];
 
 function getInitials(email: string) {
@@ -101,6 +107,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       if (path === "transactions") return "Transactions";
       if (path === "accounts") return "Accounts";
       if (path === "investments") return "Investments";
+      if (path === "loans") return "Loans";
       if (path === "categories") return "Categories";
       if (path === "reports") return "Reports";
       if (path === "recurring") return "Recurring";
@@ -181,6 +188,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const [preferencesTab, setPreferencesTab] = useState("General & Regional");
   const [editingHolding, setEditingHolding] = useState<InvestmentHolding | null>(null);
   const [holdingModalOpen, setHoldingModalOpen] = useState(false);
+  const [editingLoan, setEditingLoan] = useState<LoanLiability | null>(null);
+  const [loanModalOpen, setLoanModalOpen] = useState(false);
   const [fieldForm, setFieldForm] = useState<Partial<CustomField>>({
     type: "Text",
     options: [],
@@ -337,6 +346,101 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     }));
     toast.success("Holding removed", {
       description: `${holding.name} was removed from your investments.`,
+    });
+  };
+
+  const handleAddLoan = () => {
+    setEditingLoan(null);
+    setLoanModalOpen(true);
+  };
+
+  const handleEditLoan = (loan: LoanLiability) => {
+    setEditingLoan(loan);
+    setLoanModalOpen(true);
+  };
+
+  const handleSaveLoan = (loan: LoanLiability) => {
+    setData((current) => {
+      const loans = current.loans ?? [];
+      const idx = loans.findIndex((l) => l.id === loan.id);
+      let nextLoans: LoanLiability[];
+      if (idx >= 0) {
+        nextLoans = [...loans];
+        nextLoans[idx] = loan;
+      } else {
+        nextLoans = [loan, ...loans];
+      }
+
+      // 100% Correlation: If autoRecurringEmi is enabled, ensure a matching Recurring Item exists!
+      let nextRecurring = [...current.recurring];
+      const recurringEmiId = `rec-loan-${loan.id}`;
+      const existingRecIdx = nextRecurring.findIndex((r) => r.id === recurringEmiId);
+
+      if (loan.autoRecurringEmi) {
+        const catBills = current.categories.find(
+          (c) => c.name.toLowerCase().includes("bill") || c.name.toLowerCase().includes("housing")
+        )?.id ?? current.categories[0]?.id;
+
+        const recurringEmiItem: RecurringItem = {
+          id: recurringEmiId,
+          name: `${loan.name} (EMI)`,
+          type: "Expense",
+          amount: loan.emiAmount,
+          categoryId: catBills,
+          accountId: loan.repaymentAccountId,
+          frequency: "Monthly",
+          intervalDays: 30,
+          startDate: loan.startDate,
+          endDate: loan.endDate ?? "",
+          nextDate: "2026-11-05",
+          need: "Need",
+          enabled: true,
+        };
+
+        if (existingRecIdx >= 0) {
+          nextRecurring[existingRecIdx] = recurringEmiItem;
+        } else {
+          nextRecurring = [recurringEmiItem, ...nextRecurring];
+        }
+      } else if (existingRecIdx >= 0) {
+        nextRecurring = nextRecurring.filter((r) => r.id !== recurringEmiId);
+      }
+
+      return { ...current, loans: nextLoans, recurring: nextRecurring };
+    });
+
+    setLoanModalOpen(false);
+    toast.success(editingLoan ? "Loan details updated" : "Loan & EMI schedule added", {
+      description: `${loan.name} · EMI ${money(loan.emiAmount)}/mo`,
+    });
+  };
+
+  const handleDeleteLoan = (loan: LoanLiability) => {
+    setData((current) => ({
+      ...current,
+      loans: (current.loans ?? []).filter((l) => l.id !== loan.id),
+      recurring: current.recurring.filter((r) => r.id !== `rec-loan-${loan.id}`),
+    }));
+    toast.success("Loan removed", {
+      description: `${loan.name} was removed from your records.`,
+    });
+  };
+
+  const handleRecordLoanEmiPayment = (loan: LoanLiability) => {
+    const catBills =
+      data.categories.find(
+        (c) => c.name.toLowerCase().includes("bill") || c.name.toLowerCase().includes("housing")
+      )?.id ?? data.categories[0]?.id;
+
+    beginTransaction({
+      type: "Expense",
+      amount: loan.emiAmount,
+      accountId: loan.repaymentAccountId,
+      categoryId: catBills,
+      description: `${loan.name} EMI`,
+      merchant: loan.lenderInstitution,
+      need: "Need",
+      notes: `Monthly EMI repayment for ${loan.name}`,
     });
   };
 
@@ -1618,6 +1722,17 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
+            {active === "Loans" && (
+              <LoansPage
+                data={data}
+                money={money}
+                onAddLoan={handleAddLoan}
+                onEditLoan={handleEditLoan}
+                onDeleteLoan={handleDeleteLoan}
+                onRecordEmiPayment={handleRecordLoanEmiPayment}
+              />
+            )}
+
             {active === "Categories" && (
               <CategoriesPage
                 data={data}
@@ -1840,6 +1955,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           edit={Boolean(editTransaction)}
           onClose={() => setModal(null)}
           onSave={saveTransaction}
+          onAddCategory={saveCategory}
         />
       )}
 
@@ -1867,6 +1983,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           data={data}
           onClose={() => setModal(null)}
           onSave={addRecurring}
+          onAddCategory={saveCategory}
         />
       )}
 
@@ -1971,6 +2088,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           existing={editingHolding}
           onClose={() => setHoldingModalOpen(false)}
           onSave={handleSaveHolding}
+        />
+      )}
+
+      {loanModalOpen && (
+        <LoanModal
+          data={data}
+          existing={editingLoan}
+          onClose={() => setLoanModalOpen(false)}
+          onSave={handleSaveLoan}
         />
       )}
 
