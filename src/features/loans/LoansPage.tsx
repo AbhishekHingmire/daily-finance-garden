@@ -74,19 +74,19 @@ export function LoansPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <PageHeading
-          eyebrow="LIABILITIES & DEBT FREEDOM"
-          title="Loans & Debt"
-          description="Manage borrowings, mortgages, debt payoff progress, and linked auto-recurring bank EMIs."
-        />
-        <Button
-          onClick={onAddLoan}
-          className="h-10 gap-2 px-4 text-xs font-semibold shadow-xs self-start sm:self-auto"
-        >
-          <Plus size={16} /> Add Loan / Debt
-        </Button>
-      </div>
+      <PageHeading
+        eyebrow="LIABILITIES & DEBT FREEDOM"
+        title="Loans & Debt"
+        description="Manage borrowings, mortgages, debt payoff progress, and linked auto-recurring bank EMIs."
+        actions={
+          <Button
+            onClick={onAddLoan}
+            className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-xs"
+          >
+            <Plus size={15} /> Add Loan / Debt
+          </Button>
+        }
+      />
 
       {/* Top Liabilities Hero Card */}
       <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-rose-500/5 p-6 wt-shadow">

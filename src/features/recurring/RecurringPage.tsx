@@ -59,46 +59,46 @@ export function RecurringPage({
         title="Recurring"
         description="Scheduled bills, loan EMIs, subscriptions, and recurring income schedules."
         actions={
-          <Button size="sm" onClick={onAdd} className="h-10 gap-2 px-4 text-xs font-semibold shadow-xs">
-            <Plus size={16} /> Add Schedule
+          <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-xs">
+            <Plus size={15} /> Add Schedule
           </Button>
         }
       />
 
       {/* Standardized Summary Metric Cards */}
       <div className="grid gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-border/80 bg-card p-4 wt-shadow">
-          <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow">
+          <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Monthly Outflows
           </span>
-          <span className="mt-1 block text-2xl font-black text-destructive tabular-nums">
+          <span className="wt-display mt-2 block text-2xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">
             −{money(totalMonthlyOutflow)}
           </span>
-          <span className="mt-1 block text-[11px] font-medium text-muted-foreground">
+          <span className="mt-1 block text-xs text-muted-foreground">
             Bills, subscriptions & EMIs
           </span>
         </div>
 
-        <div className="rounded-xl border border-border/80 bg-card p-4 wt-shadow">
-          <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow">
+          <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Monthly Inflows
           </span>
-          <span className="mt-1 block text-2xl font-black text-emerald-600 dark:text-emerald-400 tabular-nums">
+          <span className="wt-display mt-2 block text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
             +{money(totalMonthlyInflow)}
           </span>
-          <span className="mt-1 block text-[11px] font-medium text-muted-foreground">
+          <span className="mt-1 block text-xs text-muted-foreground">
             Salary & guaranteed inflows
           </span>
         </div>
 
-        <div className="rounded-xl border border-border/80 bg-card p-4 wt-shadow">
-          <span className="block text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+        <div className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow">
+          <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Active Schedules
           </span>
-          <span className="mt-1 block text-2xl font-black text-foreground tabular-nums">
+          <span className="wt-display mt-2 block text-2xl font-extrabold text-foreground tabular-nums">
             {activeSchedules.length} of {data.recurring.length}
           </span>
-          <span className="mt-1 block text-[11px] font-medium text-emerald-600 dark:text-emerald-400 font-semibold">
+          <span className="mt-1 block text-xs font-semibold text-emerald-600 dark:text-emerald-400">
             Net: +{money(Math.max(0, totalMonthlyInflow - totalMonthlyOutflow))}
           </span>
         </div>

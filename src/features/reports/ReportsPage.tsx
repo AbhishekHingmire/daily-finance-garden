@@ -1,23 +1,21 @@
 import { useMemo, useState } from "react";
 import {
-  Activity,
   ArrowDownLeft,
   ArrowUpRight,
   Award,
-  CheckCircle2,
   Compass,
   Download,
-  Flame,
   Landmark,
-  PieChart,
-  ShieldCheck,
+  PieChart as PieChartIcon,
   Sparkles,
   TrendingUp,
-  Wallet,
-  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter, type DateRangeValue } from "@/components/shared/DateRangeFilter";
+import { CashFlowVelocityChart } from "@/components/shared/CashFlowVelocityChart";
+import { CategoryPieChart } from "@/components/shared/CategoryPieChart";
+import { CirclePercentageGauge } from "@/components/shared/CirclePercentageGauge";
+import { NetWealthLineChart } from "@/components/shared/NetWealthLineChart";
 import { EmptyInline } from "@/components/shared/EmptyInline";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
@@ -53,7 +51,13 @@ export function ReportsPage({
   const totalIncome = useMemo(
     () =>
       activeRows
-        .filter((r) => r.type === "Income")
+        .filter(
+          (r) =>
+            r.type === "Income" ||
+            r.type === "Borrow / Loan Taken" ||
+            r.type === "Debt Recovery" ||
+            r.type === "Refund"
+        )
         .reduce((sum, r) => sum + r.amount, 0),
     [activeRows]
   );
@@ -61,7 +65,12 @@ export function ReportsPage({
   const totalExpenses = useMemo(
     () =>
       activeRows
-        .filter((r) => r.type === "Expense")
+        .filter(
+          (r) =>
+            r.type === "Expense" ||
+            r.type === "EMI / Loan Payment" ||
+            r.type === "Lend / Loan Given"
+        )
         .reduce((sum, r) => sum + r.amount, 0),
     [activeRows]
   );
@@ -143,6 +152,7 @@ export function ReportsPage({
           amount,
           count,
           pctOfTotal,
+          pct: pctOfTotal,
         };
       })
       .filter((c) => c.amount > 0)
@@ -191,32 +201,6 @@ export function ReportsPage({
   // Investment summary
   const investmentSummary = useMemo(() => getInvestmentSummary(rows), [rows]);
 
-  // 6-Month Cash Flow Trend Data
-  const monthlyTrends = useMemo(() => {
-    const months = [
-      { key: "2026-05", label: "May" },
-      { key: "2026-06", label: "Jun" },
-      { key: "2026-07", label: "Jul" },
-      { key: "2026-08", label: "Aug" },
-      { key: "2026-09", label: "Sep" },
-      { key: "2026-10", label: "Oct" },
-    ];
-    return months.map((m) => {
-      const inc = data.transactions
-        .filter((t) => t.date.slice(0, 7) === m.key && t.type === "Income")
-        .reduce((sum, t) => sum + t.amount, 0);
-      const exp = data.transactions
-        .filter((t) => t.date.slice(0, 7) === m.key && t.type === "Expense")
-        .reduce((sum, t) => sum + t.amount, 0);
-      return { ...m, income: inc, expense: exp };
-    });
-  }, [data.transactions]);
-
-  const maxTrendValue = Math.max(
-    1,
-    ...monthlyTrends.map((m) => Math.max(m.income, m.expense))
-  );
-
   return (
     <div className="space-y-6">
       <PageHeading
@@ -252,21 +236,24 @@ export function ReportsPage({
         </div>
       </div>
 
-      {/* Hero Financial Performance Card */}
+      {/* Hero Financial Performance Metric Cards */}
       <div className="grid gap-4 rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow sm:grid-cols-3">
-        {/* Surplus / Net Accumulation */}
+        {/* Net Surplus */}
         <div className="flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-muted-foreground">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Net Surplus
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 dark:text-emerald-300">
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
                 <Sparkles size={11} /> {savingsRate}% Saved
               </span>
             </div>
-            <p className="wt-display mt-1 text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums">
+            <p className="wt-display mt-2 text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums">
               {money(netSavings)}
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {netSavings >= 0 ? "Surplus capital retained" : "Net spending deficit"}
             </p>
           </div>
         </div>
@@ -274,131 +261,137 @@ export function ReportsPage({
         {/* Total Inflow */}
         <div className="border-t border-border/60 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">
-              Inflows
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Period Inflows
             </span>
-            <span className="grid size-6 place-items-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <ArrowDownLeft size={13} />
+            <span className="grid size-7 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+              <ArrowDownLeft size={15} />
             </span>
           </div>
-          <p className="wt-display mt-1 text-xl sm:text-2xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+          <p className="wt-display mt-2 text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
             +{money(totalIncome)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            All salary, dividends, and cash inflows
           </p>
         </div>
 
         {/* Total Outflow */}
         <div className="border-t border-border/60 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-muted-foreground">
-              Outflows
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Period Outflows
             </span>
-            <span className="grid size-6 place-items-center rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400">
-              <ArrowUpRight size={13} />
+            <span className="grid size-7 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+              <ArrowUpRight size={15} />
             </span>
           </div>
-          <p className="wt-display mt-1 text-xl sm:text-2xl font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+          <p className="wt-display mt-2 text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">
             −{money(totalExpenses)}
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            All expenses, EMIs, and capital outflows
           </p>
         </div>
       </div>
 
-      {/* 50 / 30 / 20 Rule Diagnostic Engine */}
-      <div className="rounded-2xl border border-border bg-card p-6 wt-shadow">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {/* Reused Cash Flow Velocity Chart (Weekly if Monthly filter, Monthly if Year/All filter) */}
+      <CashFlowVelocityChart
+        transactions={data.transactions}
+        dateRange={dateRange}
+        money={money}
+        title="Cash Flow Velocity Breakdown"
+      />
+
+      {/* 50 / 30 / 20 Budget Rule Diagnostic with Circular Percentage Gauges */}
+      <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-border/60">
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="wt-display text-lg font-bold text-foreground">
-                50 / 30 / 20 Budget Rule Diagnostic
+              <h2 className="wt-display text-base font-bold text-foreground">
+                50 / 30 / 20 Budget Diagnostic & Allocations
               </h2>
-              <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                Healthy Balance
+              <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                Fintech Benchmark
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Standard financial benchmark: 50% Essential Needs · 30% Lifestyle Wants · 20% Financial Freedom
+              Standard benchmark: 50% Essential Needs · 30% Lifestyle Wants · 20% Financial Freedom
             </p>
           </div>
-          <div className="text-right">
+          <div className="text-left sm:text-right">
             <span className="text-xs text-muted-foreground">Period Income Baseline</span>
-            <p className="text-sm font-extrabold text-foreground tabular-nums">
+            <p className="wt-display text-sm font-extrabold text-foreground tabular-nums">
               {money(totalIncome)}
             </p>
           </div>
         </div>
 
-        {/* Multi-segmented Progress Bar */}
-        <div className="mt-5 h-3.5 w-full overflow-hidden rounded-full bg-muted flex shadow-inner">
-          <div
-            style={{ width: `${Math.min(100, needsPct)}%` }}
-            className="h-full bg-blue-500 transition-all duration-300"
-            title={`Needs: ${needsPct}%`}
+        {/* 3 Circular Percentage Gauge Charts */}
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <CirclePercentageGauge
+            label="Needs & Essentials"
+            percentage={needsPct}
+            target="Target: Under 50%"
+            amountFormatted={money(needsSpend)}
+            statusText={needsPct <= 50 ? "✓ Optimal" : "⚠ Exceeding"}
+            statusVariant={needsPct <= 50 ? "success" : "warning"}
+            strokeColor="#3b82f6"
+            subLabel="Rent, bills, groceries & healthcare"
           />
-          <div
-            style={{ width: `${Math.min(100, wantsPct)}%` }}
-            className="h-full bg-amber-500 transition-all duration-300"
-            title={`Wants: ${wantsPct}%`}
+
+          <CirclePercentageGauge
+            label="Lifestyle Wants"
+            percentage={wantsPct}
+            target="Target: Under 30%"
+            amountFormatted={money(wantsSpend)}
+            statusText={wantsPct <= 30 ? "✓ Disciplined" : "⚠ High"}
+            statusVariant={wantsPct <= 30 ? "success" : "danger"}
+            strokeColor="#f59e0b"
+            subLabel="Dining, entertainment & shopping"
           />
-          <div
-            style={{ width: `${Math.min(100, savingsPct)}%` }}
-            className="h-full bg-emerald-500 transition-all duration-300"
-            title={`Savings & Investments: ${savingsPct}%`}
+
+          <CirclePercentageGauge
+            label="Savings & Wealth"
+            percentage={savingsPct}
+            target="Target: Over 20%"
+            amountFormatted={money(netSavings)}
+            statusText={savingsPct >= 20 ? "★ Compounding" : "Needs Boost"}
+            statusVariant={savingsPct >= 20 ? "success" : "info"}
+            strokeColor="#10b981"
+            subLabel="Investments, emergency fund & surplus"
           />
         </div>
 
-        {/* 3 Target Diagnostic Cards */}
-        <div className="mt-5 grid gap-3 sm:grid-cols-3">
-          <div className="rounded-xl border border-border bg-muted/25 p-3.5">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                <span className="size-2 rounded-full bg-blue-500" />
-                Needs & Essentials
-              </span>
-              <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
-                {needsPct}%
-              </span>
-            </div>
-            <p className="mt-1.5 text-lg font-extrabold text-foreground tabular-nums">
-              {money(needsSpend)}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Target: Under 50% ({needsPct <= 50 ? "✓ On Track" : "⚠ Exceeding"})
-            </p>
+        {/* Multi-segmented Progress Bar */}
+        <div className="mt-5">
+          <div className="h-3 w-full overflow-hidden rounded-full bg-muted flex shadow-inner">
+            <div
+              style={{ width: `${Math.min(100, needsPct)}%` }}
+              className="h-full bg-blue-500 transition-all duration-300"
+              title={`Needs: ${needsPct}%`}
+            />
+            <div
+              style={{ width: `${Math.min(100, wantsPct)}%` }}
+              className="h-full bg-amber-500 transition-all duration-300"
+              title={`Wants: ${wantsPct}%`}
+            />
+            <div
+              style={{ width: `${Math.min(100, savingsPct)}%` }}
+              className="h-full bg-emerald-500 transition-all duration-300"
+              title={`Savings: ${savingsPct}%`}
+            />
           </div>
-
-          <div className="rounded-xl border border-border bg-muted/25 p-3.5">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                <span className="size-2 rounded-full bg-amber-500" />
-                Lifestyle Wants
-              </span>
-              <span className="text-xs font-bold text-amber-600 dark:text-amber-400">
-                {wantsPct}%
-              </span>
-            </div>
-            <p className="mt-1.5 text-lg font-extrabold text-foreground tabular-nums">
-              {money(wantsSpend)}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Target: Under 30% ({wantsPct <= 30 ? "✓ Disciplined" : "⚠ High"})
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-border bg-muted/25 p-3.5">
-            <div className="flex items-center justify-between">
-              <span className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-                <span className="size-2 rounded-full bg-emerald-500" />
-                Savings & Wealth
-              </span>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
-                {savingsPct}%
-              </span>
-            </div>
-            <p className="mt-1.5 text-lg font-extrabold text-foreground tabular-nums">
-              {money(netSavings)}
-            </p>
-            <p className="text-[11px] text-muted-foreground mt-0.5">
-              Target: Over 20% ({savingsPct >= 20 ? "★ Outstanding" : "Needs Boost"})
-            </p>
+          <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-blue-500" /> Needs ({needsPct}%)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-amber-500" /> Wants ({wantsPct}%)
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-emerald-500" /> Savings ({savingsPct}%)
+            </span>
           </div>
         </div>
 
@@ -406,74 +399,60 @@ export function ReportsPage({
         <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-200 border border-emerald-500/20">
           <Award size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
           <span>
-            <strong>Advisor Insight:</strong> Exceptional financial discipline! Your lifestyle expenses are just {wantsPct}%, enabling a {savingsPct}% savings rate that significantly accelerates wealth compounding.
+            <strong>Advisor Insight:</strong> Disciplined capital stewardship. Your lifestyle expenses are {wantsPct}%, enabling a {savingsPct}% savings rate that compounds portfolio wealth.
           </span>
         </div>
       </div>
 
-      {/* Two-Column Analytics: Cash Flow Trends & Top Merchants */}
+      {/* Two Column Visual Analytics: Donut / Pie Chart & Top Payees */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Monthly Trend Visual SVG Bars */}
-        <div className="rounded-2xl border border-border bg-card p-6 wt-shadow flex flex-col justify-between">
+        {/* Interactive Category Pie / Donut Chart */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between">
-              <h3 className="wt-display text-base font-bold text-foreground">
-                Cash Flow Velocity (6 Months)
-              </h3>
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <span className="size-2.5 rounded-full bg-emerald-500" /> Income
-                </span>
-                <span className="flex items-center gap-1.5 text-muted-foreground">
-                  <span className="size-2.5 rounded-full bg-rose-500" /> Expense
-                </span>
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
+              <div>
+                <h3 className="wt-display text-base font-bold text-foreground">
+                  Expense Allocation Donut
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Visual distribution across major expense categories
+                </p>
               </div>
+              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                Donut Chart
+              </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Comparison of total inflows vs outflows over time
-            </p>
           </div>
 
-          <div className="mt-6 flex h-48 items-end justify-between gap-3 pt-6 border-b border-border pb-2">
-            {monthlyTrends.map((m) => {
-              const incHeight = Math.max(8, Math.round((m.income / maxTrendValue) * 160));
-              const expHeight = Math.max(8, Math.round((m.expense / maxTrendValue) * 160));
-
-              return (
-                <div key={m.key} className="flex flex-1 flex-col items-center gap-1.5 h-full justify-end">
-                  <div className="flex w-full items-end justify-center gap-1.5 h-[160px]">
-                    <div
-                      style={{ height: `${incHeight}px` }}
-                      className="w-3.5 rounded-t-md bg-emerald-500 hover:bg-emerald-600 transition-all cursor-pointer"
-                      title={`${m.label} Income: ${money(m.income)}`}
-                    />
-                    <div
-                      style={{ height: `${expHeight}px` }}
-                      className="w-3.5 rounded-t-md bg-rose-500 hover:bg-rose-600 transition-all cursor-pointer"
-                      title={`${m.label} Expense: ${money(m.expense)}`}
-                    />
-                  </div>
-                  <span className="text-[11px] font-semibold text-muted-foreground">
-                    {m.label}
-                  </span>
-                </div>
-              );
-            })}
+          <div className="mt-5">
+            <CategoryPieChart
+              categories={categorySpendList}
+              totalAmount={totalExpenses}
+              money={money}
+              onCategoryClick={onCategory}
+            />
           </div>
         </div>
 
         {/* Top Expense Payees & Merchants */}
-        <div className="rounded-2xl border border-border bg-card p-6 wt-shadow flex flex-col justify-between">
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between">
           <div>
-            <h3 className="wt-display text-base font-bold text-foreground">
-              Top Expense Payees & Merchants
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Entities where your expenditure concentrated most heavily
-            </p>
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
+              <div>
+                <h3 className="wt-display text-base font-bold text-foreground">
+                  Top Expense Payees & Merchants
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Entities where your expenditure concentrated most heavily
+                </p>
+              </div>
+              <span className="text-xs font-semibold text-muted-foreground">
+                {topMerchants.length} recorded
+              </span>
+            </div>
           </div>
 
-          <div className="mt-4 space-y-3">
+          <div className="mt-4 space-y-2.5">
             {topMerchants.length === 0 ? (
               <EmptyInline message="No expenses recorded in this period." />
             ) : (
@@ -508,48 +487,28 @@ export function ReportsPage({
         </div>
       </div>
 
+      {/* Cumulative Net Wealth & Cash Flow Trend Line Chart */}
+      <NetWealthLineChart
+        transactions={data.transactions}
+        dateRange={dateRange}
+        money={money}
+      />
+
       {/* Expense Allocation by Category (2-in-a-Row Responsive Grid) */}
-      <div className="rounded-2xl border border-border/80 bg-card p-6 wt-shadow">
+      <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b border-border/60">
           <div>
             <h3 className="wt-display text-base font-bold text-foreground">
-              Expense Allocation by Category
+              Ranked Category Expenditure Bars
             </h3>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Ranked breakdown of expenditure across your budgeted categories
+              Detailed breakdown of expenditure across your budgeted categories
             </p>
           </div>
           <span className="text-xs font-semibold text-muted-foreground">
             {categorySpendList.length} categories active
           </span>
         </div>
-
-        {/* Proportional Multi-Color Allocation Bar */}
-        {categorySpendList.length > 0 && (
-          <div className="mt-4">
-            <div className="h-3 w-full overflow-hidden rounded-full bg-muted flex shadow-inner">
-              {categorySpendList.map((cat, idx) => {
-                const colors = [
-                  "bg-blue-500",
-                  "bg-emerald-500",
-                  "bg-violet-500",
-                  "bg-amber-500",
-                  "bg-rose-500",
-                  "bg-cyan-500",
-                  "bg-fuchsia-500",
-                ];
-                return (
-                  <div
-                    key={cat.id}
-                    style={{ width: `${Math.max(2, cat.pctOfTotal)}%` }}
-                    className={`h-full ${colors[idx % colors.length]} transition-all`}
-                    title={`${cat.name}: ${cat.pctOfTotal}% (${money(cat.amount)})`}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* 2 in a Row Grid */}
         <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -618,16 +577,23 @@ export function ReportsPage({
       {/* 3-Pillar Capital Flow: Income Streams, Investments, and Debt/Loan Cash Flow */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Income Breakdown */}
-        <div className="rounded-2xl border border-border bg-card p-6 wt-shadow flex flex-col justify-between">
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between">
           <div>
-            <h3 className="wt-display text-base font-bold text-foreground">
-              Income Streams Breakdown
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Sources of funds deposited during this timeframe
-            </p>
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
+              <div>
+                <h3 className="wt-display text-base font-bold text-foreground">
+                  Income Streams
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Sources of funds deposited
+                </p>
+              </div>
+              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                Inflows
+              </span>
+            </div>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-2.5">
               {incomeSources.length === 0 ? (
                 <EmptyInline message="No income records found for this period." />
               ) : (
@@ -663,37 +629,44 @@ export function ReportsPage({
         </div>
 
         {/* Investment & Wealth Deployment */}
-        <div className="rounded-2xl border border-border bg-card p-6 wt-shadow flex flex-col justify-between">
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between">
           <div>
-            <h3 className="wt-display text-base font-bold text-foreground">
-              Investment Deployment
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Capital allocated into wealth-building instruments
-            </p>
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
+              <div>
+                <h3 className="wt-display text-base font-bold text-foreground">
+                  Investment Deployment
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Wealth-building allocations
+                </p>
+              </div>
+              <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-bold text-violet-700 dark:text-violet-300">
+                Assets
+              </span>
+            </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               <div className="rounded-xl border border-border bg-muted/20 p-3.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
                   Capital Deployed
                 </span>
-                <span className="wt-display text-lg font-extrabold text-foreground mt-1 block tabular-nums">
+                <span className="wt-display text-base sm:text-lg font-extrabold text-foreground mt-1 block tabular-nums">
                   {money(investmentSummary.contributions)}
                 </span>
-                <span className="text-[11px] text-muted-foreground mt-0.5 block">
-                  Mutual funds, stocks & SIPs
+                <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                  Mutual funds & SIPs
                 </span>
               </div>
 
               <div className="rounded-xl border border-border bg-muted/20 p-3.5">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
-                  Returns & Dividends
+                  Returns & Divs
                 </span>
-                <span className="wt-display text-lg font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 block tabular-nums">
+                <span className="wt-display text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 block tabular-nums">
                   +{money(investmentSummary.returns)}
                 </span>
-                <span className="text-[11px] text-muted-foreground mt-0.5 block">
-                  Cash inflows from assets
+                <span className="text-[10px] text-muted-foreground mt-0.5 block">
+                  Asset payouts
                 </span>
               </div>
             </div>
@@ -708,28 +681,28 @@ export function ReportsPage({
         </div>
 
         {/* Debt, Loan & Borrowing Cash Flow */}
-        <div className="rounded-2xl border border-border bg-card p-6 wt-shadow flex flex-col justify-between">
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div>
                 <h3 className="wt-display text-base font-bold text-foreground">
-                  Debt & Loan Cash Flow
+                  Debt & Loan Servicing
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  EMIs serviced, borrowings, and advances
+                  EMIs serviced & loan advances
                 </p>
               </div>
-              <span className="grid size-8 place-items-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                <Landmark size={16} />
+              <span className="grid size-7 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                <Landmark size={14} />
               </span>
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-4 grid grid-cols-2 gap-2.5">
               <div className="rounded-xl border border-border bg-muted/20 p-3">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                   EMIs Paid
                 </span>
-                <span className="wt-display text-base font-extrabold text-rose-600 dark:text-rose-400 mt-0.5 block tabular-nums">
+                <span className="wt-display text-sm sm:text-base font-extrabold text-rose-600 dark:text-rose-400 mt-0.5 block tabular-nums">
                   {money(emiPaidInPeriod)}
                 </span>
                 <span className="text-[10px] text-muted-foreground block">
@@ -741,7 +714,7 @@ export function ReportsPage({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                   Borrowed
                 </span>
-                <span className="wt-display text-base font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block tabular-nums">
+                <span className="wt-display text-sm sm:text-base font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block tabular-nums">
                   +{money(borrowedInPeriod)}
                 </span>
                 <span className="text-[10px] text-muted-foreground block">
@@ -753,7 +726,7 @@ export function ReportsPage({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                   Money Lent
                 </span>
-                <span className="wt-display text-base font-extrabold text-violet-600 dark:text-violet-400 mt-0.5 block tabular-nums">
+                <span className="wt-display text-sm sm:text-base font-extrabold text-violet-600 dark:text-violet-400 mt-0.5 block tabular-nums">
                   {money(lentInPeriod)}
                 </span>
                 <span className="text-[10px] text-muted-foreground block">
@@ -765,11 +738,11 @@ export function ReportsPage({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                   Recovered
                 </span>
-                <span className="wt-display text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block tabular-nums">
+                <span className="wt-display text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block tabular-nums">
                   +{money(recoveredInPeriod)}
                 </span>
                 <span className="text-[10px] text-muted-foreground block">
-                  Lent funds returned
+                  Returned
                 </span>
               </div>
             </div>

@@ -113,6 +113,13 @@ button, input, select, textarea { font: inherit; }
 @utility text-success { color: oklch(0.62 0.18 154); }
 @utility text-danger { color: oklch(0.62 0.22 26); }
 @utility wt-display { font-family: "Manrope", sans-serif; }
+@utility wt-h1 { font-family: "Manrope", sans-serif; font-size: 1.5rem; line-height: 2rem; font-weight: 800; color: var(--foreground); }
+@utility wt-h2 { font-family: "Manrope", sans-serif; font-size: 1rem; line-height: 1.5rem; font-weight: 700; color: var(--foreground); }
+@utility wt-h3 { font-family: "Manrope", sans-serif; font-size: 0.875rem; line-height: 1.25rem; font-weight: 700; color: var(--foreground); }
+@utility wt-sub { font-size: 0.75rem; line-height: 1rem; color: var(--muted-foreground); margin-top: 0.125rem; }
+@utility wt-metric-hero { font-family: "Manrope", sans-serif; font-size: 1.875rem; line-height: 2.25rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+@utility wt-metric-card { font-family: "Manrope", sans-serif; font-size: 1.5rem; line-height: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+@utility wt-metric-sm { font-family: "Manrope", sans-serif; font-size: 0.9375rem; line-height: 1.375rem; font-weight: 800; font-variant-numeric: tabular-nums; }
 @utility wt-field {
   width: 100%;
   min-height: 2.625rem;

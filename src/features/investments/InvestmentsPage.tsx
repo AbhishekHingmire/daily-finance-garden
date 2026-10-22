@@ -96,19 +96,19 @@ export function InvestmentsPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <PageHeading
-          eyebrow="PORTFOLIO & CAPITAL WEALTH"
-          title="Investments"
-          description="Track your portfolio holdings, asset allocation, invested amount, and real-time earned returns."
-        />
-        <Button
-          onClick={onAddHolding}
-          className="h-10 gap-2 px-4 text-xs font-semibold shadow-xs self-start sm:self-auto"
-        >
-          <Plus size={16} /> Add Investment
-        </Button>
-      </div>
+      <PageHeading
+        eyebrow="PORTFOLIO & CAPITAL WEALTH"
+        title="Investments"
+        description="Track your portfolio holdings, asset allocation, invested amount, and real-time earned returns."
+        actions={
+          <Button
+            onClick={onAddHolding}
+            className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-xs"
+          >
+            <Plus size={15} /> Add Investment
+          </Button>
+        }
+      />
 
       {/* Top Portfolio Hero Card (Groww Aesthetic) */}
       <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-primary/5 p-6 wt-shadow">
