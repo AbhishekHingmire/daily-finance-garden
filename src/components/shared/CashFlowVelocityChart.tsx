@@ -196,6 +196,27 @@ export function CashFlowVelocityChart({
     return highest;
   }, [chartItems]);
 
+  // Clean ceiling for Y-axis scale and tick marks
+  const ceilMax = useMemo(() => {
+    if (maxValue <= 1000) return 1000;
+    if (maxValue <= 5000) return 5000;
+    if (maxValue <= 10000) return 10000;
+    if (maxValue <= 20000) return 20000;
+    if (maxValue <= 50000) return 50000;
+    if (maxValue <= 100000) return 100000;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(maxValue)));
+    return Math.ceil(maxValue / magnitude) * magnitude;
+  }, [maxValue]);
+
+  const yAxisTicks = useMemo(() => {
+    return [
+      { value: ceilMax, label: money(ceilMax) },
+      { value: Math.round(ceilMax * 0.66), label: money(Math.round(ceilMax * 0.66)) },
+      { value: Math.round(ceilMax * 0.33), label: money(Math.round(ceilMax * 0.33)) },
+      { value: 0, label: money(0) },
+    ];
+  }, [ceilMax, money]);
+
   // Active item for inspection readout
   const activeItem = useMemo(() => {
     if (hoveredKey) {
@@ -296,99 +317,127 @@ export function CashFlowVelocityChart({
         </div>
       </div>
 
-      {/* Visual Bar Chart (Evenly Spanned Day-Wise or Month-Wise Grid) */}
-      <div className="mt-5 pt-3 border-b border-border/80 pb-2">
-        <div className="flex h-44 items-end justify-between gap-0.5 sm:gap-1">
-          {chartItems.map((item) => {
-            const isHovered = hoveredKey === item.key;
-            const incHeight =
-              item.income > 0
-                ? Math.max(8, Math.round((item.income / maxValue) * 140))
-                : 0;
-            const expHeight =
-              item.expense > 0
-                ? Math.max(8, Math.round((item.expense / maxValue) * 140))
-                : 0;
-
-            const hasActivity = item.income > 0 || item.expense > 0;
-
-            return (
-              <div
-                key={item.key}
-                onMouseEnter={() => setHoveredKey(item.key)}
-                onMouseLeave={() => setHoveredKey(null)}
-                className={`group relative flex flex-1 flex-col items-center justify-end h-full transition-all cursor-pointer rounded-t-sm py-1 ${
-                  isHovered
-                    ? "bg-muted/80 ring-1 ring-primary/40"
-                    : item.isToday
-                    ? "bg-primary/5"
-                    : "hover:bg-muted/40"
-                }`}
+      {/* Chart Canvas with Left Vertical Y-Axis, Guidelines, and Bottom X-Axis */}
+      <div className="mt-5 pt-3">
+        <div className="flex gap-2 sm:gap-3">
+          {/* Vertical Left Y-Axis Bar with Amount Numbers */}
+          <div className="flex flex-col justify-between items-end pr-2 h-44 text-[10px] font-bold text-muted-foreground tabular-nums select-none shrink-0 border-r border-border/80 min-w-[50px] sm:min-w-[62px]">
+            {yAxisTicks.map((tick, i) => (
+              <span
+                key={i}
+                className="leading-none transform -translate-y-1/2 first:translate-y-0 last:translate-y-0"
               >
-                {/* Bars Container */}
-                <div className="flex w-full items-end justify-center gap-0.5 h-[140px] px-0.5">
-                  {/* Inflow Bar */}
-                  {incHeight > 0 ? (
-                    <div
-                      style={{ height: `${incHeight}px` }}
-                      className={`w-full max-w-[10px] rounded-t-sm bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-2xs transition-all duration-150 ${
-                        isHovered ? "brightness-110 scale-y-105" : ""
-                      }`}
-                      title={`${item.label} Inflow: ${money(item.income)}`}
-                    />
-                  ) : null}
+                {tick.label}
+              </span>
+            ))}
+          </div>
 
-                  {/* Outflow Bar */}
-                  {expHeight > 0 ? (
-                    <div
-                      style={{ height: `${expHeight}px` }}
-                      className={`w-full max-w-[10px] rounded-t-sm bg-gradient-to-t from-rose-600 to-rose-400 shadow-2xs transition-all duration-150 ${
-                        isHovered ? "brightness-110 scale-y-105" : ""
-                      }`}
-                      title={`${item.label} Outflow: ${money(item.expense)}`}
-                    />
-                  ) : null}
+          {/* Bar Chart Area with Horizontal Guideline Grid and Bars */}
+          <div className="relative flex-1 h-44 flex flex-col justify-end">
+            {/* Horizontal Guideline Grid */}
+            <div className="absolute inset-0 flex flex-col justify-between pointer-events-none">
+              <div className="border-b border-dashed border-border/40 w-full" />
+              <div className="border-b border-dashed border-border/40 w-full" />
+              <div className="border-b border-dashed border-border/40 w-full" />
+              <div className="border-b border-border/80 w-full" />
+            </div>
 
-                  {/* Resting Baseline Dot when no transaction */}
-                  {!hasActivity && (
-                    <div
-                      className={`size-1 rounded-full mb-1 transition-colors ${
-                        item.isToday
-                          ? "bg-primary"
-                          : item.isFuture
-                          ? "bg-border/40"
-                          : "bg-muted-foreground/30"
-                      }`}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
+            {/* Bars Container */}
+            <div className="relative z-10 flex h-full items-end justify-between gap-0.5 sm:gap-1">
+              {chartItems.map((item) => {
+                const isHovered = hoveredKey === item.key;
+                const incHeight =
+                  item.income > 0
+                    ? Math.max(6, Math.round((item.income / ceilMax) * 160))
+                    : 0;
+                const expHeight =
+                  item.expense > 0
+                    ? Math.max(6, Math.round((item.expense / ceilMax) * 160))
+                    : 0;
+
+                const hasActivity = item.income > 0 || item.expense > 0;
+
+                return (
+                  <div
+                    key={item.key}
+                    onMouseEnter={() => setHoveredKey(item.key)}
+                    onMouseLeave={() => setHoveredKey(null)}
+                    className={`group relative flex flex-1 flex-col items-center justify-end h-full transition-all cursor-pointer rounded-t-sm py-0.5 ${
+                      isHovered
+                        ? "bg-muted/80 ring-1 ring-primary/40"
+                        : item.isToday
+                        ? "bg-primary/5"
+                        : "hover:bg-muted/40"
+                    }`}
+                  >
+                    {/* Bars Container */}
+                    <div className="flex w-full items-end justify-center gap-0.5 h-full px-0.5 pb-0.5">
+                      {/* Inflow Bar */}
+                      {incHeight > 0 ? (
+                        <div
+                          style={{ height: `${incHeight}px` }}
+                          className={`w-full max-w-[10px] rounded-t-sm bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-2xs transition-all duration-150 ${
+                            isHovered ? "brightness-110 scale-y-105" : ""
+                          }`}
+                          title={`${item.label} Inflow: ${money(item.income)}`}
+                        />
+                      ) : null}
+
+                      {/* Outflow Bar */}
+                      {expHeight > 0 ? (
+                        <div
+                          style={{ height: `${expHeight}px` }}
+                          className={`w-full max-w-[10px] rounded-t-sm bg-gradient-to-t from-rose-600 to-rose-400 shadow-2xs transition-all duration-150 ${
+                            isHovered ? "brightness-110 scale-y-105" : ""
+                          }`}
+                          title={`${item.label} Outflow: ${money(item.expense)}`}
+                        />
+                      ) : null}
+
+                      {/* Resting Baseline Dot when no transaction */}
+                      {!hasActivity && (
+                        <div
+                          className={`size-1 rounded-full mb-1 transition-colors ${
+                            item.isToday
+                              ? "bg-primary"
+                              : item.isFuture
+                              ? "bg-border/40"
+                              : "bg-muted-foreground/30"
+                          }`}
+                        />
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
 
-        {/* X-Axis Milestone Labels (Clean, uncluttered, non-overlapping) */}
-        <div className="mt-2.5 flex items-center justify-between text-[10px] font-bold text-muted-foreground px-1">
-          {isMonthlyFilter ? (
-            <>
-              <span>Day 1</span>
-              <span>5</span>
-              <span>10</span>
-              <span>15</span>
-              <span>20</span>
-              <span>25</span>
-              <span>Day {chartItems.length}</span>
-            </>
-          ) : (
-            chartItems.map((item) => (
-              <span
-                key={item.key}
-                className={item.isToday ? "text-primary font-black" : ""}
-              >
-                {item.shortLabel}
-              </span>
-            ))
-          )}
+        {/* X-Axis Milestone Labels (Aligned with Chart Area) */}
+        <div className="flex gap-2 sm:gap-3 mt-2">
+          <div className="min-w-[50px] sm:min-w-[62px] shrink-0" />
+          <div className="flex-1 flex items-center justify-between text-[10px] font-bold text-muted-foreground px-1">
+            {isMonthlyFilter ? (
+              <>
+                <span>Day 1</span>
+                <span>5</span>
+                <span>10</span>
+                <span>15</span>
+                <span>20</span>
+                <span>Day {chartItems.length}</span>
+              </>
+            ) : (
+              chartItems.map((item) => (
+                <span
+                  key={item.key}
+                  className={item.isToday ? "text-primary font-black" : ""}
+                >
+                  {item.shortLabel}
+                </span>
+              ))
+            )}
+          </div>
         </div>
       </div>
     </div>

@@ -100,7 +100,7 @@ export function AccountsPage({
     : null;
 
   return (
-    <>
+    <div className="space-y-6">
       <PageHeading
         title="Accounts"
         description="Bank accounts, digital wallets, cash reserves, and liabilities."
@@ -122,7 +122,7 @@ export function AccountsPage({
       />
 
       {/* Net Worth & Assets/Liabilities Overview Card */}
-      <div className="mb-6 grid gap-4 rounded-xl border border-border bg-card p-5 wt-shadow sm:grid-cols-3">
+      <div className="grid gap-4 rounded-xl border border-border bg-card p-5 wt-shadow sm:grid-cols-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
             Total Liquid Net Worth
@@ -291,6 +291,6 @@ export function AccountsPage({
           }}
         />
       )}
-    </>
+    </div>
   );
 }

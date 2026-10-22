@@ -1748,36 +1748,30 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="relative hidden xl:block">
+            <div className="flex items-center gap-2.5">
+              <div className="relative hidden sm:block">
                 <button
                   type="button"
-                  className="flex h-9 w-[220px] items-center gap-2 rounded-lg border border-input bg-card px-3 text-left text-xs text-muted-foreground hover:bg-muted/50 transition-colors"
+                  className="flex h-9 w-60 items-center justify-between rounded-xl border border-border/80 bg-muted/40 hover:bg-muted/70 px-3 text-left text-xs text-muted-foreground transition-all shadow-2xs group"
                   onClick={() => setSearchOpen(true)}
                 >
-                  <Search size={14} />
-                  Search workspace…
-                  <span className="ml-auto rounded border border-border px-1.5 py-0.2 text-[10px]">
-                    ⌘ K
-                  </span>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Search size={14} className="shrink-0 text-muted-foreground group-hover:text-foreground" />
+                    <span className="truncate">Search workspace...</span>
+                  </div>
+                  <kbd className="ml-2 shrink-0 rounded-md border border-border/80 bg-card px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-2xs">
+                    ⌘K
+                  </kbd>
                 </button>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                className="xl:hidden"
+                className="sm:hidden size-9"
                 aria-label="Search"
                 onClick={() => setSearchOpen(true)}
               >
                 <Search size={17} />
-              </Button>
-
-              <Button
-                size="sm"
-                className="h-9 gap-1.5 text-xs font-semibold shadow-xs"
-                onClick={() => beginTransaction()}
-              >
-                <Plus size={15} /> Add Transaction
               </Button>
 
               {/* Notifications Dropdown */}
@@ -1952,8 +1946,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   setTxCategory(id);
                   goSection("Transactions");
                 }}
-                onQuickDepositFund={handleQuickDepositFund}
-                onSkipFundMonth={handleSkipFundMonth}
               />
             )}
 
@@ -2046,6 +2038,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 onSavePlan={handleSavePlan}
                 onDeletePlan={handleDeletePlan}
                 onQuickDepositFund={handleQuickDepositFund}
+                onSkipFundMonth={handleSkipFundMonth}
               />
             )}
 

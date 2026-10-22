@@ -12,18 +12,18 @@ export function PageHeading({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
+    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
       <div>
         {eyebrow && (
-          <p className="mb-1 text-xs font-bold uppercase tracking-[0.13em] text-primary">
+          <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.14em] text-primary">
             {eyebrow}
           </p>
         )}
-        <h1 className="wt-display text-2xl font-extrabold sm:text-3xl text-foreground">
+        <h1 className="wt-display text-2xl font-extrabold sm:text-3xl tracking-tight text-foreground">
           {title}
         </h1>
         {description && (
-          <p className="mt-1.5 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          <p className="mt-1 max-w-2xl text-xs sm:text-sm text-muted-foreground leading-normal">
             {description}
           </p>
         )}

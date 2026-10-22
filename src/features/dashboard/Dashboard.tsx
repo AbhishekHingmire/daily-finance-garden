@@ -53,8 +53,6 @@ export function Dashboard({
   onNavigate,
   onSelectTransaction,
   onCategory,
-  onQuickDepositFund,
-  onSkipFundMonth,
 }: {
   data: WealthState;
   money: (amount: number) => string;
@@ -65,16 +63,9 @@ export function Dashboard({
   onNavigate: (section: Section) => void;
   onSelectTransaction: (transaction: Transaction) => void;
   onCategory: (id: string) => void;
-  onQuickDepositFund?: (fundId: string, amount: number, sourceAccountId?: string) => void;
-  onSkipFundMonth?: (fundId: string, monthStr: string) => void;
 }) {
   const [dashboardPriority, setDashboardPriority] = useState<string>("All");
   const [dismissedGoals, setDismissedGoals] = useState<string[]>([]);
-
-  // Quick Deposit Dialog state for Sinking Funds
-  const [depositFund, setDepositFund] = useState<CustomFund | null>(null);
-  const [depositAmount, setDepositAmount] = useState("");
-  const [depositSourceAccountId, setDepositSourceAccountId] = useState(data.accounts[0]?.id || "");
 
   // Filter transactions according to the unified date range
   const periodTransactions = useMemo(() => {
@@ -197,8 +188,7 @@ export function Dashboard({
   const upcomingRecurring = useMemo(() => {
     return data.recurring
       .filter((item) => item.enabled)
-      .sort((a, b) => a.nextDate.localeCompare(b.nextDate))
-      .slice(0, 4);
+      .sort((a, b) => a.nextDate.localeCompare(b.nextDate));
   }, [data.recurring]);
 
   const totalMonthlyRecurringCommitments = useMemo(() => {
@@ -206,6 +196,60 @@ export function Dashboard({
       .filter((item) => item.enabled && item.type === "Expense")
       .reduce((sum, item) => sum + item.amount, 0);
   }, [data.recurring]);
+
+  // 50/30/20 Need vs Want breakdown
+  const needTotal = useMemo(() => {
+    return monthOutflowTransactions
+      .filter((t) => t.need === "Need")
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [monthOutflowTransactions]);
+
+  const wantTotal = useMemo(() => {
+    return monthOutflowTransactions
+      .filter((t) => t.need === "Want")
+      .reduce((sum, t) => sum + t.amount, 0);
+  }, [monthOutflowTransactions]);
+
+  const needPct = monthExpenses > 0 ? Math.round((needTotal / monthExpenses) * 100) : 0;
+  const wantPct = monthExpenses > 0 ? Math.round((wantTotal / monthExpenses) * 100) : 0;
+
+  // Runway in months
+  const runwayMonths = useMemo(() => {
+    const monthlyBurn = Math.max(1000, monthExpenses);
+    return Math.round((liquidAssets / monthlyBurn) * 10) / 10;
+  }, [liquidAssets, monthExpenses]);
+
+  // Primary Outflow Entity / Top Merchant
+  const topMerchant = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const t of monthOutflowTransactions) {
+      const name = t.merchant?.trim() || t.description?.trim() || "General Outflow";
+      map.set(name, (map.get(name) || 0) + t.amount);
+    }
+    let bestName = "";
+    let bestAmt = 0;
+    for (const [name, amt] of map.entries()) {
+      if (amt > bestAmt) {
+        bestAmt = amt;
+        bestName = name;
+      }
+    }
+    if (bestAmt === 0) return null;
+    return {
+      name: bestName,
+      amount: bestAmt,
+      pct: monthExpenses > 0 ? Math.round((bestAmt / monthExpenses) * 100) : 0,
+    };
+  }, [monthOutflowTransactions, monthExpenses]);
+
+  // Projected Month-End Cash Surplus
+  const projectedSurplus = useMemo(() => {
+    const pendingInflow = data.recurring
+      .filter((r) => r.enabled && r.type === "Income")
+      .reduce((sum, r) => sum + r.amount, 0);
+    const pendingOutflow = totalMonthlyRecurringCommitments;
+    return netCashFlow + (pendingInflow - pendingOutflow);
+  }, [netCashFlow, data.recurring, totalMonthlyRecurringCommitments]);
 
   // Fulfilled goals celebration banner
   const fulfilledFunds = useMemo(() => {
@@ -661,69 +705,48 @@ export function Dashboard({
                   return (
                     <div
                       key={fund.id}
-                      className={`p-3.5 rounded-xl border transition-colors ${
+                      onClick={() => onNavigate("Fund Planner")}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer group ${
                         isFulfilled
-                          ? "border-emerald-500/30 bg-emerald-500/5"
+                          ? "border-emerald-500/30 bg-emerald-500/5 hover:border-emerald-500/50"
                           : isSkippedThisMonth
-                          ? "border-border/60 bg-muted/20 opacity-80"
-                          : "border-border/60 bg-muted/15 hover:bg-muted/30"
+                          ? "border-border/60 bg-muted/20 opacity-80 hover:opacity-100"
+                          : "border-border/60 bg-muted/15 hover:bg-muted/30 hover:border-primary/40"
                       }`}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-2.5">
-                          <span className="grid size-8 place-items-center rounded-lg bg-card text-base shadow-2xs">
+                          <span className="grid size-8 place-items-center rounded-lg bg-card text-base shadow-2xs group-hover:scale-105 transition-transform">
                             {fund.icon || "🎯"}
                           </span>
                           <div>
-                            <p className="text-xs font-bold text-foreground">{fund.name}</p>
+                            <p className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">
+                              {fund.name}
+                            </p>
                             <p className="text-[11px] text-muted-foreground">
                               {money(fund.currentAmount)} / {money(fund.targetAmount)} ({pct}%)
                             </p>
                           </div>
                         </div>
 
-                        {/* Status / Quick Action */}
-                        <div>
+                        {/* Status Label (Clean - actions managed in Fund Planner) */}
+                        <div className="text-right">
                           {isFulfilled ? (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
                               <CheckCircle2 size={11} /> Ready for this!
                             </span>
                           ) : isSkippedThisMonth ? (
-                            <div className="flex items-center gap-1.5">
-                              <span className="text-[10px] font-medium text-muted-foreground">
-                                Skipped Oct
-                              </span>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => onSkipFundMonth?.(fund.id, "2026-10")}
-                                className="h-6 px-1.5 text-[10px] font-semibold text-primary"
-                              >
-                                Undo
-                              </Button>
-                            </div>
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                              Skipped Oct
+                            </span>
+                          ) : fund.monthlyContribution ? (
+                            <span className="text-[11px] font-bold text-foreground tabular-nums">
+                              {money(fund.monthlyContribution)}/mo
+                            </span>
                           ) : (
-                            <div className="flex items-center gap-1.5">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                onClick={() => onSkipFundMonth?.(fund.id, "2026-10")}
-                                className="h-6 px-2 text-[10px] font-medium text-muted-foreground hover:text-foreground"
-                              >
-                                Skip month
-                              </Button>
-                              <Button
-                                size="sm"
-                                onClick={() => {
-                                  setDepositFund(fund);
-                                  setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
-                                  setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
-                                }}
-                                className="h-6 px-2.5 text-[10px] font-bold shadow-2xs"
-                              >
-                                {fund.monthlyContribution ? `Deposit ${money(fund.monthlyContribution)}` : "Deposit"}
-                              </Button>
-                            </div>
+                            <span className="text-[10px] font-medium text-muted-foreground">
+                              Target Goal
+                            </span>
                           )}
                         </div>
                       </div>
@@ -758,7 +781,7 @@ export function Dashboard({
             </div>
           </div>
 
-          {/* Upcoming Automated Recurring Schedules */}
+          {/* Upcoming Automated Recurring Schedules: shows all possible in allocated height */}
           <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div className="flex items-center gap-2">
@@ -774,14 +797,14 @@ export function Dashboard({
                 className="text-xs font-semibold text-primary hover:underline"
                 onClick={() => onNavigate("Recurring")}
               >
-                Manage →
+                Manage ({upcomingRecurring.length}) →
               </button>
             </div>
             <p className="text-xs text-muted-foreground mt-2 mb-3.5">
               Automated bills and payroll schedules
             </p>
 
-            <div className="space-y-2.5">
+            <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
               {upcomingRecurring.length ? (
                 upcomingRecurring.map((item) => (
                   <div
@@ -835,176 +858,160 @@ export function Dashboard({
           </div>
         </div>
 
-        {/* Recent Financial Movements Table */}
-        <div className="rounded-2xl border border-border/80 bg-card p-6 wt-shadow">
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/60">
-            <div>
-              <h3 className="wt-display text-base font-bold text-foreground">
-                Recent Transactions
-              </h3>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Latest financial movements across all accounts
-              </p>
+        {/* Right Column: Recent Ledger Table + Informative Radar below it */}
+        <div className="space-y-6 flex flex-col">
+          {/* Recent Financial Movements Table */}
+          <div className="rounded-2xl border border-border/80 bg-card p-6 wt-shadow">
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-border/60">
+              <div>
+                <h3 className="wt-display text-base font-bold text-foreground">
+                  Recent Transactions
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Latest financial movements across all accounts
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2.5">
+                <select
+                  className="wt-field h-8 w-28 text-xs py-0"
+                  value={dashboardPriority}
+                  onChange={(e) => setDashboardPriority(e.target.value)}
+                  aria-label="Filter priority"
+                >
+                  <option value="All">All</option>
+                  <option value="Need">Need</option>
+                  <option value="Want">Want</option>
+                </select>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs font-semibold text-primary hover:bg-primary/5"
+                  onClick={() => onNavigate("Transactions")}
+                >
+                  View Ledger →
+                </Button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2.5">
-              <select
-                className="wt-field h-8 w-28 text-xs py-0"
-                value={dashboardPriority}
-                onChange={(e) => setDashboardPriority(e.target.value)}
-                aria-label="Filter priority"
-              >
-                <option value="All">All</option>
-                <option value="Need">Need</option>
-                <option value="Want">Want</option>
-              </select>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs font-semibold text-primary hover:bg-primary/5"
-                onClick={() => onNavigate("Transactions")}
-              >
-                View Ledger →
-              </Button>
+            <div className="space-y-1 divide-y divide-border/60">
+              {filteredRecent.length ? (
+                filteredRecent.map((tx) => (
+                  <TransactionRow
+                    key={tx.id}
+                    transaction={tx}
+                    category={data.categories.find((c) => c.id === tx.categoryId)}
+                    account={data.accounts.find((a) => a.id === tx.accountId)}
+                    money={money}
+                    onClick={() => onSelectTransaction(tx)}
+                  />
+                ))
+              ) : (
+                <p className="py-6 text-center text-xs text-muted-foreground">
+                  No recent transactions found.
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="space-y-1 divide-y divide-border/60">
-            {filteredRecent.length ? (
-              filteredRecent.map((tx) => (
-                <TransactionRow
-                  key={tx.id}
-                  transaction={tx}
-                  category={data.categories.find((c) => c.id === tx.categoryId)}
-                  account={data.accounts.find((a) => a.id === tx.accountId)}
-                  money={money}
-                  onClick={() => onSelectTransaction(tx)}
+          {/* Informative Portfolio Health & Capital Allocation Section right below transactions */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
+              <div className="flex items-center gap-2">
+                <h3 className="wt-display text-base font-bold text-foreground">
+                  Financial Health & Capital Allocation
+                </h3>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                  <Sparkles size={11} /> 50/30/20 Discipline
+                </span>
+              </div>
+              <span className="text-xs font-semibold text-muted-foreground">
+                Period Intelligence
+              </span>
+            </div>
+
+            {/* 50/30/20 Need vs Want vs Savings Breakdown */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-semibold text-foreground">50/30/20 Rule Adherence</span>
+                <span className="text-muted-foreground tabular-nums">
+                  Needs: <strong className="text-foreground">{needPct}%</strong> · Wants: <strong className="text-foreground">{wantPct}%</strong> · Retained: <strong className="text-emerald-600 dark:text-emerald-400">{savingsRate}%</strong>
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted flex shadow-inner">
+                <div
+                  style={{ width: `${Math.min(100, needPct)}%` }}
+                  className="h-full bg-blue-500 transition-all"
+                  title={`Essential Needs: ${needPct}% (Target: ≤50%)`}
                 />
-              ))
-            ) : (
-              <p className="py-6 text-center text-xs text-muted-foreground">
-                No recent transactions found.
-              </p>
-            )}
+                <div
+                  style={{ width: `${Math.min(100, wantPct)}%` }}
+                  className="h-full bg-violet-500 transition-all"
+                  title={`Discretionary Wants: ${wantPct}% (Target: ≤30%)`}
+                />
+                <div
+                  style={{ width: `${Math.max(0, Math.min(100, savingsRate))}%` }}
+                  className="h-full bg-emerald-500 transition-all"
+                  title={`Retained Savings: ${savingsRate}% (Target: ≥20%)`}
+                />
+              </div>
+              <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-blue-500" /> Essential Needs ({money(needTotal)})
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-violet-500" /> Discretionary Wants ({money(wantTotal)})
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-emerald-500" /> Surplus Retained ({money(Math.max(0, netCashFlow))})
+                </span>
+              </div>
+            </div>
+
+            {/* Key Insights Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+              {/* Liquid Runway Cushion */}
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-3 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Liquid Runway Buffer
+                </span>
+                <p className="wt-display text-base font-extrabold text-foreground tabular-nums">
+                  {runwayMonths} Months
+                </p>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block">
+                  {runwayMonths >= 6 ? "✓ Safe & Resilient" : "Moderate Runway"}
+                </span>
+              </div>
+
+              {/* Top Outflow Entity */}
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-3 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Primary Outflow Entity
+                </span>
+                <p className="wt-display text-sm font-extrabold text-foreground truncate">
+                  {topMerchant ? topMerchant.name : "Diversified"}
+                </p>
+                <span className="text-[10px] text-muted-foreground font-medium block tabular-nums">
+                  {topMerchant ? `${money(topMerchant.amount)} (${topMerchant.pct}% of outflow)` : "No single outflow >20%"}
+                </span>
+              </div>
+
+              {/* Projected Month-End Trajectory */}
+              <div className="rounded-xl border border-border/70 bg-muted/20 p-3 space-y-1">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  Month-End Cash Surplus
+                </span>
+                <p className={`wt-display text-base font-extrabold tabular-nums ${projectedSurplus >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"}`}>
+                  {projectedSurplus >= 0 ? "+" : ""}{money(projectedSurplus)}
+                </p>
+                <span className="text-[10px] text-muted-foreground font-medium block">
+                  Includes pending commitments
+                </span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Quick Deposit Modal for Sinking Funds on Dashboard */}
-      {depositFund && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xs p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 wt-shadow space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-border">
-              <div className="flex items-center gap-2">
-                <span className="text-xl">{depositFund.icon || "💰"}</span>
-                <div>
-                  <h3 className="font-bold text-sm">Deposit to {depositFund.name}</h3>
-                  <p className="text-[11px] text-muted-foreground">
-                    Target: {money(depositFund.targetAmount)} · Current: {money(depositFund.currentAmount)}
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setDepositFund(null)}
-                className="text-muted-foreground hover:text-foreground text-xs font-bold"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (depositFund && Number(depositAmount)) {
-                  onQuickDepositFund?.(depositFund.id, Number(depositAmount), depositSourceAccountId || undefined);
-                  setDepositFund(null);
-                  setDepositAmount("");
-                }
-              }}
-              className="space-y-3.5"
-            >
-              <div>
-                <label className="wt-label">From Savings / Bank Account</label>
-                <select
-                  className="wt-field h-9 text-xs"
-                  value={depositSourceAccountId}
-                  onChange={(e) => setDepositSourceAccountId(e.target.value)}
-                >
-                  {data.accounts
-                    .filter((a) => !a.archived && a.kind !== "Credit card")
-                    .map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({money(getAccountBalance(a, data.transactions))})
-                      </option>
-                    ))}
-                </select>
-              </div>
-
-              {/* Amount Quick Presets */}
-              <div>
-                <label className="wt-label">Quick Amount Presets</label>
-                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
-                  {depositFund.monthlyContribution ? (
-                    <button
-                      type="button"
-                      onClick={() => setDepositAmount(String(depositFund.monthlyContribution))}
-                      className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5"
-                    >
-                      Monthly: {money(depositFund.monthlyContribution)}
-                    </button>
-                  ) : null}
-                  {depositFund.targetAmount > depositFund.currentAmount ? (
-                    <button
-                      type="button"
-                      onClick={() => setDepositAmount(String(depositFund.targetAmount - depositFund.currentAmount))}
-                      className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5"
-                    >
-                      Remaining: {money(depositFund.targetAmount - depositFund.currentAmount)}
-                    </button>
-                  ) : null}
-                  <button
-                    type="button"
-                    onClick={() => setDepositAmount("5000")}
-                    className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/50"
-                  >
-                    ₹5,000
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="wt-label">Custom Deposit Amount (₹)</label>
-                <input
-                  type="number"
-                  placeholder="5000"
-                  className="wt-field h-9 text-sm"
-                  value={depositAmount}
-                  onChange={(e) => setDepositAmount(e.target.value)}
-                  autoFocus
-                  required
-                  min="1"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setDepositFund(null)}
-                  className="text-xs"
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" size="sm" className="text-xs font-semibold">
-                  Confirm Deposit
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

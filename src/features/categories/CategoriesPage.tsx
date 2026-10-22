@@ -42,7 +42,7 @@ export function CategoriesPage({
   });
 
   return (
-    <>
+    <div className="space-y-6">
       <PageHeading
         title="Categories"
         description="Organize your spending into smart 50/30/20 Need vs. Want classifications with monthly budget caps."
@@ -53,7 +53,7 @@ export function CategoriesPage({
         }
       />
 
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
         <div className="flex flex-wrap gap-2">
           <Button
             variant={kind === "All" ? "default" : "outline"}
@@ -197,6 +197,6 @@ export function CategoriesPage({
           );
         })}
       </div>
-    </>
+    </div>
   );
 }

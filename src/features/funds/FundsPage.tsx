@@ -40,6 +40,7 @@ export function FundsPage({
   onSavePlan,
   onDeletePlan,
   onQuickDepositFund,
+  onSkipFundMonth,
 }: {
   data: WealthState;
   money: (amount: number) => string;
@@ -48,6 +49,7 @@ export function FundsPage({
   onSavePlan: (plan: PurchasePlan) => void;
   onDeletePlan: (planId: string) => void;
   onQuickDepositFund: (fundId: string, amount: number, sourceAccountId?: string) => void;
+  onSkipFundMonth?: (fundId: string, monthStr: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"funds" | "simulator">("funds");
   const [fundModalOpen, setFundModalOpen] = useState(false);
@@ -294,6 +296,7 @@ export function FundsPage({
             {funds.map((fund) => {
               const pct = fund.targetAmount > 0 ? Math.min(100, Math.round((fund.currentAmount / fund.targetAmount) * 100)) : 0;
               const isFulfilled = fund.targetAmount > 0 && fund.currentAmount >= fund.targetAmount;
+              const isSkippedThisMonth = (fund.skippedMonths ?? []).includes("2026-10");
               const remaining = Math.max(0, fund.targetAmount - fund.currentAmount);
 
               return (
@@ -302,6 +305,8 @@ export function FundsPage({
                   className={`flex flex-col justify-between rounded-2xl border p-5 wt-shadow transition-all ${
                     isFulfilled
                       ? "border-emerald-500/40 bg-linear-to-br from-card via-card to-emerald-500/5"
+                      : isSkippedThisMonth
+                      ? "border-amber-500/30 bg-card/90"
                       : "border-border/80 bg-card hover:border-primary/40"
                   }`}
                 >
@@ -331,6 +336,10 @@ export function FundsPage({
                                     setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
                                     setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
                                   },
+                                },
+                                {
+                                  label: isSkippedThisMonth ? "Undo Skip (Oct 2026)" : "Skip Contribution (Oct 2026)",
+                                  onClick: () => onSkipFundMonth?.(fund.id, "2026-10"),
                                 },
                               ]
                             : []),
@@ -394,6 +403,12 @@ export function FundsPage({
                         </div>
                       ) : null}
 
+                      {isSkippedThisMonth ? (
+                        <div className="flex items-center gap-1.5 text-amber-700 dark:text-amber-300 font-semibold text-xs pt-0.5">
+                          <span className="size-1.5 rounded-full bg-amber-500" /> Skipped for October 2026
+                        </div>
+                      ) : null}
+
                       {isFulfilled ? (
                         <div className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
                           <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
@@ -410,21 +425,34 @@ export function FundsPage({
                     </div>
                   </div>
 
-                  {/* Bottom Quick Action: Only show deposit if not fulfilled */}
+                  {/* Bottom Quick Action: Only show deposit & skip if not fulfilled */}
                   <div className="mt-4 pt-3 border-t border-border/60">
                     {!isFulfilled ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setDepositFund(fund);
-                          setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
-                          setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
-                        }}
-                        className="w-full text-xs font-semibold h-8 gap-1.5"
-                      >
-                        <Plus size={13} /> Deposit to Fund
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => onSkipFundMonth?.(fund.id, "2026-10")}
+                          className={`text-xs font-semibold h-8 px-2.5 ${
+                            isSkippedThisMonth
+                              ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          {isSkippedThisMonth ? "Undo Skip" : "Skip Month"}
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setDepositFund(fund);
+                            setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
+                            setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
+                          }}
+                          className="flex-1 text-xs font-semibold h-8 gap-1.5 shadow-2xs"
+                        >
+                          <Plus size={13} /> Deposit to Fund
+                        </Button>
+                      </div>
                     ) : (
                       <div className="w-full text-center py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-xl">
                         ✨ Ready for this · Goal Achieved
