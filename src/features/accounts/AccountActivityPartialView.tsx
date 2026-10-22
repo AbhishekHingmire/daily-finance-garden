@@ -361,9 +361,6 @@ export function AccountActivityPartialView({
             Showing <span className="font-semibold text-foreground">{filtered.length}</span> of{" "}
             {allAccountTxs.length} transactions
           </span>
-          <Button variant="outline" size="sm" onClick={onClose} className="h-8 gap-1.5 text-xs font-semibold">
-            <X size={14} /> Close Activity
-          </Button>
         </div>
       </div>
     </div>

@@ -49,6 +49,7 @@ import {
   getAccountBalance,
   getNextRecurringDate,
   makeNotification,
+  processDueRecurringTransactions,
   STORAGE_KEY,
   type Account,
   type Category,
@@ -135,7 +136,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   // Unified Date Range Filter State
   const [dateRange, setDateRange] = useState<DateRangeValue>({
     preset: "1m",
-    selectedMonth: "2026-10",
   });
 
   // Transactions Page Specific Filters
@@ -221,10 +221,21 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           return c;
         });
 
-        setData({
+        const baseState: WealthState = {
           ...res.data,
           categories: upgradedCategories,
-        });
+        };
+        const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(baseState);
+        setData(updatedState);
+        if (processedCount > 0) {
+          const names = processedItems.map((p) => p.name).join(", ");
+          setTimeout(() => {
+            toast.success(`⚡ Automatically recorded ${processedCount} recurring transaction${processedCount > 1 ? "s" : ""}`, {
+              description: names,
+            });
+            notify("Automated Recurring Flow", `Auto-recorded: ${names}`);
+          }, 300);
+        }
       }
       setLoaded(true);
     });
@@ -721,18 +732,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   }, [data.transactions, dateRange, search, txAccount, txCategory, txPriority, txSort, txType]);
 
   const reportTransactions = useMemo(() => {
-    return data.transactions.filter((transaction) => {
-      const matchesRange = matchesDateRange(transaction.date, dateRange);
-      const matchesPriority = reportPriority === "All priorities" || transaction.need === reportPriority;
-      const matchesCategory = reportCategory === "All categories" || transaction.categoryId === reportCategory;
-      const matchesAccount =
-        reportAccount === "All accounts" ||
-        transaction.accountId === reportAccount ||
-        transaction.destinationAccountId === reportAccount;
-
-      return matchesRange && matchesPriority && matchesCategory && matchesAccount;
-    });
-  }, [data.transactions, dateRange, reportPriority, reportCategory, reportAccount]);
+    return data.transactions.filter((transaction) => matchesDateRange(transaction.date, dateRange));
+  }, [data.transactions, dateRange]);
 
   // Bulk Operations
   const toggleSelected = (id: string) =>
@@ -1457,7 +1458,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   setTxCategory(id);
                   goSection("Transactions");
                 }}
-                onRecordRecurring={recordRecurringNow}
               />
             )}
 
@@ -1537,12 +1537,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 rows={reportTransactions}
                 dateRange={dateRange}
                 setDateRange={setDateRange}
-                category={reportCategory}
-                setCategory={setReportCategory}
-                account={reportAccount}
-                setAccount={setReportAccount}
-                priority={reportPriority}
-                setPriority={setReportPriority}
                 money={money}
                 onExport={() => exportCsv(reportTransactions)}
                 onCategory={(id) => {
@@ -1573,7 +1567,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     ),
                   }))
                 }
-                onRecordNow={recordRecurringNow}
               />
             )}
 

@@ -3,10 +3,14 @@ import {
   createInitialState,
   getAccountBalance,
   getNextRecurringDate,
+  processDueRecurringTransactions,
   safeAmount,
   type Account,
+  type RecurringItem,
   type Transaction,
+  type WealthState,
 } from "@/lib/wealthtrack";
+import { matchesDateRange } from "@/components/shared/DateRangeFilter";
 
 describe("Financial Engine & Calculations", () => {
   it("safeAmount guards against NaN, undefined, null, and non-numeric values", () => {
@@ -221,5 +225,107 @@ describe("Financial Engine & Calculations", () => {
     expect(state.categories.length).toBeGreaterThanOrEqual(8);
     expect(state.transactions.length).toBeGreaterThan(0);
     expect(state.preferences.currency).toBe("INR");
+  });
+
+  it("automatically records due recurring items without manual clicking", () => {
+    const dummyState: WealthState = {
+      ...createInitialState(),
+      transactions: [],
+      recurring: [
+        {
+          id: "rec-1",
+          name: "Netflix Auto-Pay",
+          type: "Expense",
+          amount: 649,
+          frequency: "Monthly",
+          intervalDays: 30,
+          accountId: "acc-chk",
+          categoryId: "cat-ent",
+          nextDate: "2026-10-20", // Past due (reference date is 2026-10-22)
+          enabled: true,
+          need: "Want",
+        },
+        {
+          id: "rec-2",
+          name: "Future Salary",
+          type: "Income",
+          amount: 85000,
+          frequency: "Monthly",
+          intervalDays: 30,
+          accountId: "acc-chk",
+          categoryId: "cat-sal",
+          nextDate: "2026-10-31", // Future date
+          enabled: true,
+          need: "Need",
+        },
+        {
+          id: "rec-3",
+          name: "Gym (Paused)",
+          type: "Expense",
+          amount: 1500,
+          frequency: "Monthly",
+          intervalDays: 30,
+          accountId: "acc-chk",
+          categoryId: "cat-fit",
+          nextDate: "2026-10-15", // Due, but paused/disabled
+          enabled: false,
+          need: "Want",
+        },
+      ],
+    };
+
+    const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(
+      dummyState,
+      "2026-10-22"
+    );
+
+    // Only rec-1 should be auto-processed
+    expect(processedCount).toBe(1);
+    expect(processedItems[0]?.name).toBe("Netflix Auto-Pay");
+    expect(updatedState.transactions.length).toBe(1);
+    expect(updatedState.transactions[0]?.amount).toBe(649);
+    expect(updatedState.transactions[0]?.paymentMethod).toBe("Auto-debit");
+
+    // The recurring item's nextDate must have advanced to next month (2026-11-20)
+    const updatedRec1 = updatedState.recurring.find((r) => r.id === "rec-1");
+    expect(updatedRec1?.nextDate).toBe("2026-11-20");
+
+    // The future and paused recurring items should remain untouched
+    const updatedRec2 = updatedState.recurring.find((r) => r.id === "rec-2");
+    expect(updatedRec2?.nextDate).toBe("2026-10-31");
+    const updatedRec3 = updatedState.recurring.find((r) => r.id === "rec-3");
+    expect(updatedRec3?.nextDate).toBe("2026-10-15");
+  });
+
+  it("filters date ranges strictly according to 1M, 6M, 12M, and Custom Range", () => {
+    const ref = new Date(2026, 9, 22); // 2026-10-22
+
+    // 1 Month preset: current month (2026-10)
+    expect(matchesDateRange("2026-10-05", { preset: "1m" }, ref)).toBe(true);
+    expect(matchesDateRange("2026-09-30", { preset: "1m" }, ref)).toBe(false);
+
+    // 6 Months preset: May 2026 to Oct 2026
+    expect(matchesDateRange("2026-05-01", { preset: "6m" }, ref)).toBe(true);
+    expect(matchesDateRange("2026-04-30", { preset: "6m" }, ref)).toBe(false);
+
+    // 12 Months preset: Nov 2025 to Oct 2026
+    expect(matchesDateRange("2025-11-15", { preset: "12m" }, ref)).toBe(true);
+    expect(matchesDateRange("2025-10-31", { preset: "12m" }, ref)).toBe(false);
+
+    // Custom range
+    expect(
+      matchesDateRange("2026-07-15", {
+        preset: "custom",
+        customFrom: "2026-07-01",
+        customTo: "2026-07-31",
+      }, ref)
+    ).toBe(true);
+    expect(
+      matchesDateRange("2026-08-01", {
+        preset: "custom",
+        customFrom: "2026-07-01",
+        customTo: "2026-07-31",
+      }, ref)
+    ).toBe(false);
   });
 });

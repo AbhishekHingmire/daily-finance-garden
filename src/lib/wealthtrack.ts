@@ -306,3 +306,67 @@ export function createTransactionId(): string {
 export function makeNotification(title: string, description: string): WealthNotification {
   return { id: createTransactionId(), title, description, date: new Date().toISOString().slice(0, 10), read: false };
 }
+
+export function processDueRecurringTransactions(
+  state: WealthState,
+  referenceDateStr = "2026-10-22"
+): {
+  updatedState: WealthState;
+  processedCount: number;
+  processedItems: { name: string; amount: number; date: string }[];
+} {
+  let hasChanges = false;
+  const newTransactions: Transaction[] = [];
+  const processedItems: { name: string; amount: number; date: string }[] = [];
+
+  const updatedRecurring = state.recurring.map((item) => {
+    if (!item.enabled) return item;
+    // Check if nextDate is on or before reference date
+    if (item.nextDate && item.nextDate.slice(0, 10) <= referenceDateStr) {
+      hasChanges = true;
+      const cat = state.categories.find((c) => c.id === item.categoryId);
+
+      const tx: Transaction = {
+        id: createTransactionId(),
+        date: item.nextDate,
+        description: item.name,
+        type: item.type,
+        amount: item.amount,
+        categoryId: item.categoryId || "",
+        accountId: item.accountId || state.accounts[0]?.id || "",
+        destinationAccountId: "",
+        paymentMethod: "Auto-debit",
+        need: item.need || (cat?.name === "Shopping" || cat?.name === "Entertainment" ? "Want" : "Need"),
+        merchant: item.name,
+        tags: ["Recurring", "Auto-debit"],
+        notes: `Automatically recorded recurring ${item.frequency.toLowerCase()} schedule.`,
+        recurring: true,
+        customValues: {},
+      };
+      newTransactions.push(tx);
+      processedItems.push({ name: item.name, amount: item.amount, date: item.nextDate });
+
+      const advancedDate = getNextRecurringDate(item.nextDate, item.frequency, item.intervalDays);
+      return {
+        ...item,
+        lastRun: item.nextDate,
+        nextDate: advancedDate,
+      };
+    }
+    return item;
+  });
+
+  if (!hasChanges) {
+    return { updatedState: state, processedCount: 0, processedItems: [] };
+  }
+
+  return {
+    updatedState: {
+      ...state,
+      recurring: updatedRecurring,
+      transactions: [...newTransactions, ...state.transactions],
+    },
+    processedCount: newTransactions.length,
+    processedItems,
+  };
+}

@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Copy, Pencil, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/shared/Modal";
 import {
@@ -42,76 +42,89 @@ export function TransactionDetail({
     transaction.investmentAction &&
     INVESTMENT_OUTFLOW_ACTIONS.includes(transaction.investmentAction);
 
+  const isInflow =
+    transaction.type === "Income" ||
+    transaction.type === "Refund" ||
+    (transaction.type === "Investment" &&
+      !isInvestmentOutflow &&
+      transaction.investmentAction !== "Valuation");
+
   return (
     <Modal title="Transaction Details" description={`ID: ${transaction.id}`} onClose={onClose}>
       <div className="space-y-4">
-        <div className="flex items-center justify-between rounded-xl bg-muted/50 p-4 border border-border">
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-              {transaction.type}
-              {transaction.type === "Investment" && transaction.investmentAction
-                ? ` · ${transaction.investmentAction}`
-                : ""}
-            </p>
-            <h3 className="text-xl font-extrabold text-foreground mt-0.5">{transaction.description}</h3>
+        {/* Header Receipt Card */}
+        <div className="rounded-2xl border border-border bg-muted/30 p-5 flex items-center justify-between">
+          <div className="flex items-center gap-3.5">
+            <span className="grid size-12 place-items-center rounded-xl bg-card border border-border text-2xl shadow-2xs">
+              {cat?.icon || "💸"}
+            </span>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  {transaction.type}
+                  {transaction.type === "Investment" && transaction.investmentAction
+                    ? ` · ${transaction.investmentAction}`
+                    : ""}
+                </span>
+                {transaction.recurring && (
+                  <span className="rounded-md bg-primary/10 px-1.5 py-0.5 text-[9px] font-bold text-primary">
+                    Auto-Recurring
+                  </span>
+                )}
+              </div>
+              <h3 className="text-lg font-bold text-foreground mt-0.5">
+                {transaction.description}
+              </h3>
+            </div>
           </div>
-          <span
-            className={`text-2xl font-black tabular-nums ${
-              transaction.type === "Income" ||
-              transaction.type === "Refund" ||
-              (transaction.type === "Investment" && !isInvestmentOutflow && transaction.investmentAction !== "Valuation")
-                ? "text-emerald-600 dark:text-emerald-400"
-                : transaction.type === "Expense" || isInvestmentOutflow
-                ? "text-rose-600 dark:text-rose-400"
-                : "text-foreground"
-            }`}
-          >
-            {transaction.type === "Expense" || isInvestmentOutflow ? "−" : transaction.type === "Income" || (transaction.type === "Investment" && !isInvestmentOutflow) ? "+" : ""}
-            {money(transaction.amount)}
-          </span>
+
+          <div className="text-right">
+            <span
+              className={`wt-display text-2xl font-black tabular-nums block ${
+                isInflow
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400"
+              }`}
+            >
+              {isInflow ? "+" : "−"}
+              {money(transaction.amount)}
+            </span>
+            <span className="text-[10px] text-muted-foreground font-medium">
+              {transaction.paymentMethod || "Direct"}
+            </span>
+          </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3 text-sm">
+        {/* Details Grid */}
+        <div className="rounded-xl border border-border bg-card p-4 grid grid-cols-2 gap-4 text-xs">
           <div>
-            <span className="text-xs text-muted-foreground">Date</span>
-            <p className="font-semibold text-foreground">{formatDate(transaction.date)}</p>
+            <span className="text-muted-foreground font-medium block">Date & Time</span>
+            <p className="font-bold text-foreground mt-0.5">{formatDate(transaction.date)}</p>
           </div>
+
           <div>
-            <span className="text-xs text-muted-foreground">Account</span>
-            <p className="font-semibold text-foreground">{acc?.name ?? "—"}</p>
+            <span className="text-muted-foreground font-medium block">Account</span>
+            <p className="font-bold text-foreground mt-0.5">{acc?.name ?? "—"}</p>
           </div>
+
           {transaction.type === "Transfer" && (
             <div>
-              <span className="text-xs text-muted-foreground">Destination Account</span>
-              <p className="font-semibold text-foreground">{destAcc?.name ?? "—"}</p>
+              <span className="text-muted-foreground font-medium block">Destination Account</span>
+              <p className="font-bold text-foreground mt-0.5">{destAcc?.name ?? "—"}</p>
             </div>
           )}
+
           <div>
-            <span className="text-xs text-muted-foreground">Category</span>
-            <p className="font-semibold text-foreground">{cat ? `${cat.icon} ${cat.name}` : "—"}</p>
+            <span className="text-muted-foreground font-medium block">Category</span>
+            <p className="font-bold text-foreground mt-0.5">
+              {cat ? `${cat.icon} ${cat.name}` : "—"}
+            </p>
           </div>
-          {transaction.type === "Investment" && (
-            <>
-              <div>
-                <span className="text-xs text-muted-foreground">Instrument</span>
-                <p className="font-semibold text-foreground">
-                  {transaction.instrumentName || transaction.instrumentType || "—"}
-                </p>
-              </div>
-              {transaction.units != null && transaction.pricePerUnit != null && (
-                <div>
-                  <span className="text-xs text-muted-foreground">Units @ Price</span>
-                  <p className="font-semibold text-foreground">
-                    {transaction.units} units @ {money(transaction.pricePerUnit)}
-                  </p>
-                </div>
-              )}
-            </>
-          )}
+
           {transaction.type === "Expense" && (
             <div>
-              <span className="text-xs text-muted-foreground">Priority Classification</span>
-              <p className="font-semibold mt-0.5">
+              <span className="text-muted-foreground font-medium block">Priority Classification</span>
+              <div className="mt-1">
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
                     transaction.need === "Want"
@@ -121,46 +134,49 @@ export function TransactionDetail({
                 >
                   {transaction.need === "Want" ? "Want" : "Need"}
                 </span>
-              </p>
+              </div>
             </div>
           )}
-          <div>
-            <span className="text-xs text-muted-foreground">Payment Method</span>
-            <p className="font-semibold text-foreground">{transaction.paymentMethod || "UPI"}</p>
-          </div>
+
           {transaction.merchant && (
             <div>
-              <span className="text-xs text-muted-foreground">Merchant / Entity</span>
-              <p className="font-semibold text-foreground">{transaction.merchant}</p>
+              <span className="text-muted-foreground font-medium block">Merchant / Payee</span>
+              <p className="font-bold text-foreground mt-0.5">{transaction.merchant}</p>
             </div>
           )}
         </div>
 
         {transaction.notes && (
-          <div className="rounded-lg border border-border bg-card p-3 text-xs">
-            <span className="font-semibold text-muted-foreground">Notes:</span>
-            <p className="mt-1 text-foreground leading-relaxed">{transaction.notes}</p>
+          <div className="rounded-xl border border-border bg-muted/20 p-3.5 text-xs">
+            <span className="font-semibold text-muted-foreground block mb-1">Reference Notes:</span>
+            <p className="text-foreground leading-relaxed">{transaction.notes}</p>
           </div>
         )}
 
-        {transaction.tags.length > 0 && (
-          <div className="flex flex-wrap gap-1.5 pt-1">
-            {transaction.tags.map((t) => (
-              <span key={t} className="rounded-full bg-accent px-2.5 py-0.5 text-[11px] font-semibold text-accent-foreground">
-                #{t}
-              </span>
-            ))}
-          </div>
-        )}
-
-        <div className="flex justify-end gap-2 border-t border-border pt-4">
-          <Button variant="outline" size="sm" onClick={() => onDuplicate(transaction)}>
-            Duplicate
+        {/* Action Buttons */}
+        <div className="flex items-center justify-end gap-2.5 border-t border-border pt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDuplicate(transaction)}
+            className="h-9 gap-1.5 text-xs font-semibold"
+          >
+            <Copy size={13} /> Duplicate
           </Button>
-          <Button variant="outline" size="sm" onClick={() => onEdit(transaction)} className="gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onEdit(transaction)}
+            className="h-9 gap-1.5 text-xs font-semibold"
+          >
             <Pencil size={13} /> Edit
           </Button>
-          <Button variant="destructive" size="sm" onClick={() => onDelete(transaction)} className="gap-1.5">
+          <Button
+            variant="destructive"
+            size="sm"
+            onClick={() => onDelete(transaction)}
+            className="h-9 gap-1.5 text-xs font-semibold"
+          >
             <Trash2 size={13} /> Delete
           </Button>
         </div>

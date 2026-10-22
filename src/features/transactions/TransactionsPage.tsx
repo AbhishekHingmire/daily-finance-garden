@@ -101,7 +101,7 @@ export function TransactionsPage({
     setTxPriority("All priorities");
     setTxCategory("All categories");
     setTxAccount("All accounts");
-    setDateRange({ preset: "1m", selectedMonth: "2026-10" });
+    setDateRange({ preset: "1m" });
   };
 
   const hasFilter = Boolean(
@@ -148,28 +148,24 @@ export function TransactionsPage({
         }
       />
 
-      <div className="rounded-xl border border-border bg-card p-4 sm:p-5 wt-shadow">
-        {/* Unified Filter Toolbar with DateRangeFilter */}
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-6">
-          <label className="block min-w-0">
-            <span className="wt-label">Search</span>
-            <div className="relative">
-              <Search size={15} className="absolute left-3 top-2.5 text-muted-foreground" />
-              <input
-                className="wt-field pl-9"
-                aria-label="Search transactions"
-                placeholder="Description, notes…"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-              />
-            </div>
-          </label>
-
-          <div>
-            <span className="wt-label">Date Range</span>
-            <DateRangeFilter value={dateRange} onChange={setDateRange} />
+      <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 wt-shadow space-y-4">
+        {/* Top Filter Bar: Date Range Filter & Search */}
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
+          <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          <div className="relative w-full sm:w-64">
+            <Search size={15} className="absolute left-3 top-2.5 text-muted-foreground" />
+            <input
+              className="wt-field pl-9 h-9 text-xs"
+              aria-label="Search transactions"
+              placeholder="Search description, notes…"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
           </div>
+        </div>
 
+        {/* Secondary Filter Controls */}
+        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-4">
           <SelectField
             label="Type"
             value={txType}
