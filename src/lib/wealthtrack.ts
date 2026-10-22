@@ -1,6 +1,13 @@
-export type TransactionType = "Expense" | "Income" | "Refund" | "Adjustment" | "Transfer";
+export type TransactionType = "Expense" | "Income" | "Refund" | "Adjustment" | "Transfer" | "Investment";
 export type CategoryKind = "Expense" | "Income";
-export type AccountKind = "Bank account" | "Cash" | "Digital wallet" | "Credit card" | "Other";
+export type AccountKind = "Bank account" | "Cash" | "Digital wallet" | "Credit card" | "Investment" | "Other";
+export type Section = "Overview" | "Transactions" | "Accounts" | "Categories" | "Reports" | "Recurring" | "Settings";
+// Cash-flow direction for an investment transaction: money leaving (Contribution/Purchase/Fee),
+// money returning (Sale/Maturity/Dividend), or a non-cash note of current value (Valuation).
+export type InvestmentAction = "Contribution" | "Purchase" | "Sale" | "Maturity" | "Dividend" | "Fee" | "Valuation";
+export type InvestmentInstrument = "Mutual fund" | "SIP" | "Fixed deposit" | "Stocks" | "ETF" | "Bonds" | "Other";
+export const INVESTMENT_OUTFLOW_ACTIONS: InvestmentAction[] = ["Contribution", "Purchase", "Fee"];
+export const INVESTMENT_INFLOW_ACTIONS: InvestmentAction[] = ["Sale", "Maturity", "Dividend"];
 
 export interface Account {
   id: string;
@@ -20,6 +27,7 @@ export interface Category {
   icon: string;
   color: string;
   monthlyLimit: number;
+  defaultNeed?: "Need" | "Want";
   archived?: boolean;
 }
 
@@ -39,6 +47,11 @@ export interface Transaction {
   notes: string;
   recurring: boolean;
   customValues: Record<string, string | boolean>;
+  investmentAction?: InvestmentAction;
+  instrumentType?: InvestmentInstrument;
+  instrumentName?: string;
+  units?: number;
+  pricePerUnit?: number;
 }
 
 export interface RecurringItem {
@@ -53,6 +66,7 @@ export interface RecurringItem {
   startDate: string;
   endDate: string;
   nextDate: string;
+  need?: "Need" | "Want";
   enabled: boolean;
 }
 
@@ -65,6 +79,7 @@ export interface CustomField {
 }
 
 export interface WealthPreferences {
+  displayName: string;
   currency: "INR" | "USD" | "GBP" | "EUR";
   dateFormat: "DD/MM/YYYY" | "MM/DD/YYYY" | "YYYY-MM-DD";
   language: "English" | "हिन्दी";
@@ -119,16 +134,16 @@ export function createInitialState(): WealthState {
   ];
   const categories: Category[] = [
     { id: "cat-food", name: "Food & dining", kind: "Expense", icon: "🍽️", color: "rose", monthlyLimit: 12000 },
-    { id: "cat-housing", name: "Housing", kind: "Expense", icon: "⌂", color: "blue", monthlyLimit: 25000 },
-    { id: "cat-travel", name: "Transport", kind: "Expense", icon: "↗", color: "teal", monthlyLimit: 6000 },
-    { id: "cat-shopping", name: "Shopping", kind: "Expense", icon: "◇", color: "violet", monthlyLimit: 8000 },
-    { id: "cat-bills", name: "Bills & utilities", kind: "Expense", icon: "ϟ", color: "amber", monthlyLimit: 7000 },
-    { id: "cat-health", name: "Health", kind: "Expense", icon: "＋", color: "green", monthlyLimit: 5000 },
-    { id: "cat-entertainment", name: "Entertainment", kind: "Expense", icon: "♫", color: "pink", monthlyLimit: 4000 },
-    { id: "cat-salary", name: "Salary", kind: "Income", icon: "↙", color: "green", monthlyLimit: 0 },
-    { id: "cat-freelance", name: "Freelance", kind: "Income", icon: "✳", color: "blue", monthlyLimit: 0 },
-    { id: "cat-investments", name: "Investments", kind: "Income", icon: "⌁", color: "teal", monthlyLimit: 0 },
-    { id: "cat-other-income", name: "Other income", kind: "Income", icon: "＋", color: "violet", monthlyLimit: 0 },
+    { id: "cat-housing", name: "Housing", kind: "Expense", icon: "🏠", color: "blue", monthlyLimit: 25000 },
+    { id: "cat-travel", name: "Transport", kind: "Expense", icon: "🚗", color: "teal", monthlyLimit: 6000 },
+    { id: "cat-shopping", name: "Shopping", kind: "Expense", icon: "🛍️", color: "violet", monthlyLimit: 8000 },
+    { id: "cat-bills", name: "Bills & utilities", kind: "Expense", icon: "💡", color: "amber", monthlyLimit: 7000 },
+    { id: "cat-health", name: "Health", kind: "Expense", icon: "🏥", color: "green", monthlyLimit: 5000 },
+    { id: "cat-entertainment", name: "Entertainment", kind: "Expense", icon: "🎬", color: "pink", monthlyLimit: 4000 },
+    { id: "cat-salary", name: "Salary", kind: "Income", icon: "💼", color: "green", monthlyLimit: 0 },
+    { id: "cat-freelance", name: "Freelance", kind: "Income", icon: "💻", color: "blue", monthlyLimit: 0 },
+    { id: "cat-investments", name: "Investments", kind: "Income", icon: "📈", color: "teal", monthlyLimit: 0 },
+    { id: "cat-other-income", name: "Other income", kind: "Income", icon: "💰", color: "violet", monthlyLimit: 0 },
   ];
   const tx = (
     id: string, date: string, description: string, type: TransactionType, amount: number,
@@ -165,7 +180,7 @@ export function createInitialState(): WealthState {
     tx("tx-24", "2026-05-08T10:00", "Rent · May", "Expense", 22000, "cat-housing", "acc-hdfc", { merchant: "Home rent", paymentMethod: "Bank transfer", recurring: true }),
   ];
   const preferences: WealthPreferences = {
-    currency: "INR", dateFormat: "DD/MM/YYYY", language: "English", weekStart: "Monday", theme: "light",
+    displayName: "", currency: "INR", dateFormat: "DD/MM/YYYY", language: "English", weekStart: "Monday", theme: "light",
     salaryDay: 19, defaultType: "Expense", defaultAccount: "acc-hdfc", defaultPaymentMethod: "UPI",
     confirmTransactions: false, recurringReminders: true, budgetReminders: true, otherReminders: true,
   };
@@ -190,29 +205,84 @@ export function createInitialState(): WealthState {
   };
 }
 
+export function safeAmount(amount: unknown): number {
+  const num = Number(amount);
+  return Number.isFinite(num) ? num : 0;
+}
+
 export function applyTransactionToAccountBalance(balance: number, transaction: Transaction, accountId: string): number {
-  if (transaction.type === "Income" && transaction.accountId === accountId) return balance + transaction.amount;
-  if (transaction.type === "Expense" && transaction.accountId === accountId) return balance - transaction.amount;
-  if (transaction.type === "Refund" && transaction.accountId === accountId) return balance + transaction.amount;
-  if (transaction.type === "Adjustment" && transaction.accountId === accountId) return balance + transaction.amount;
+  const amount = safeAmount(transaction.amount);
+  if (transaction.type === "Income" && transaction.accountId === accountId) return balance + amount;
+  if (transaction.type === "Expense" && transaction.accountId === accountId) return balance - amount;
+  if (transaction.type === "Refund" && transaction.accountId === accountId) return balance + amount;
+  if (transaction.type === "Adjustment" && transaction.accountId === accountId) return balance + amount;
   if (transaction.type === "Transfer") {
-    if (transaction.accountId === accountId) return balance - transaction.amount;
-    if (transaction.destinationAccountId === accountId) return balance + transaction.amount;
+    if (transaction.accountId === accountId) return balance - amount;
+    if (transaction.destinationAccountId === accountId) return balance + amount;
+  }
+  if (transaction.type === "Investment" && transaction.accountId === accountId) {
+    // Valuation entries only record current worth; no cash actually moves.
+    if (transaction.investmentAction === "Valuation") return balance;
+    if (transaction.investmentAction && INVESTMENT_INFLOW_ACTIONS.includes(transaction.investmentAction)) return balance + amount;
+    return balance - amount;
   }
   return balance;
 }
 
 export function getAccountBalance(account: Account, transactions: Transaction[]): number {
-  return transactions.reduce((balance, transaction) => applyTransactionToAccountBalance(balance, transaction, account.id), account.openingBalance);
+  return transactions.reduce(
+    (balance, transaction) => applyTransactionToAccountBalance(balance, transaction, account.id),
+    safeAmount(account.openingBalance)
+  );
 }
 
 export function getMoneySummary(accounts: Account[], transactions: Transaction[]): MoneySummary {
-  const income = transactions.reduce((sum, item) => sum + (item.type === "Income" ? item.amount : 0), 0);
-  const expenseTotal = transactions.reduce((sum, item) => sum + (item.type === "Expense" ? item.amount : 0), 0);
-  const refundTotal = transactions.reduce((sum, item) => sum + (item.type === "Refund" ? item.amount : 0), 0);
+  // Transfers and investment movements are cash reallocations, not ordinary income/expense.
+  const income = transactions.reduce((sum, item) => sum + (item.type === "Income" ? safeAmount(item.amount) : 0), 0);
+  const expenseTotal = transactions.reduce((sum, item) => sum + (item.type === "Expense" ? safeAmount(item.amount) : 0), 0);
+  const refundTotal = transactions.reduce((sum, item) => sum + (item.type === "Refund" ? safeAmount(item.amount) : 0), 0);
   const expenses = Math.max(0, expenseTotal - refundTotal);
   const balance = accounts.filter((account) => !account.archived).reduce((sum, account) => sum + getAccountBalance(account, transactions), 0);
   return { income, expenses, net: income - expenses, balance };
+}
+
+export function getInvestmentSummary(transactions: Transaction[]) {
+  const investmentTx = transactions.filter((item) => item.type === "Investment");
+  const contributions = investmentTx.reduce((sum, item) => sum + (item.investmentAction && INVESTMENT_OUTFLOW_ACTIONS.includes(item.investmentAction) ? safeAmount(item.amount) : 0), 0);
+  const returns = investmentTx.reduce((sum, item) => sum + (item.investmentAction && INVESTMENT_INFLOW_ACTIONS.includes(item.investmentAction) ? safeAmount(item.amount) : 0), 0);
+  const latestValuation = [...investmentTx].filter((item) => item.investmentAction === "Valuation").sort((a, b) => b.date.localeCompare(a.date))[0];
+  return { contributions, returns, currentValue: latestValuation ? safeAmount(latestValuation.amount) : undefined };
+}
+
+export function getNextRecurringDate(
+  currentDate: string,
+  frequency: RecurringItem["frequency"],
+  intervalDays = 1
+): string {
+  const [year, month, day] = currentDate.slice(0, 10).split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  if (Number.isNaN(date.getTime())) return currentDate;
+
+  const freqLower = (frequency || "").toLowerCase();
+  if (freqLower === "weekly") {
+    date.setDate(date.getDate() + 7);
+  } else if (freqLower === "custom interval") {
+    date.setDate(date.getDate() + Math.max(1, Number(intervalDays) || 1));
+  } else if (freqLower === "yearly") {
+    date.setFullYear(date.getFullYear() + 1);
+  } else {
+    // Monthly: clamp to the last day of target month instead of overflowing (e.g. Jan 31 -> Feb 28, not Mar 3).
+    const originalDay = day;
+    date.setMonth(date.getMonth() + 1);
+    if (date.getDate() !== originalDay) {
+      date.setDate(0);
+    }
+  }
+
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 export function getCategorySpend(categoryId: string, transactions: Transaction[]): number {

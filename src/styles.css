@@ -110,6 +110,8 @@ button, input, select, textarea { font: inherit; }
 @utility wt-success { color: var(--success); }
 @utility wt-success-bg { background-color: var(--success-soft); }
 @utility wt-danger-bg { background-color: var(--danger-soft); }
+@utility text-success { color: oklch(0.62 0.18 154); }
+@utility text-danger { color: oklch(0.62 0.22 26); }
 @utility wt-display { font-family: "Manrope", sans-serif; }
 @utility wt-field {
   width: 100%;
