@@ -176,15 +176,6 @@ export function AccountModal({
   const currencySymbol =
     currency === "INR" ? "₹" : currency === "USD" ? "$" : currency === "EUR" ? "€" : "£";
 
-  const typePills: { kind: AccountKind; label: string; icon: string }[] = [
-    { kind: "Bank account", label: "Bank Account", icon: "🏦" },
-    { kind: "Digital wallet", label: "Digital Wallet", icon: "📱" },
-    { kind: "Credit card", label: "Credit Card", icon: "💳" },
-    { kind: "Cash", label: "Cash", icon: "💵" },
-    { kind: "Investment", label: "Investment", icon: "📈" },
-    { kind: "Other", label: "Other", icon: "📁" },
-  ];
-
   const previewInstitutionName =
     kind === "Cash"
       ? "Cash"
@@ -199,30 +190,21 @@ export function AccountModal({
       onClose={onClose}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
-        {/* Account Type Selector Pills */}
-        <div>
-          <span className="wt-label">Account Type</span>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-            {typePills.map((item) => {
-              const active = kind === item.kind;
-              return (
-                <button
-                  key={item.kind}
-                  type="button"
-                  onClick={() => handleKindChange(item.kind)}
-                  className={`flex items-center gap-2 rounded-xl border p-2.5 text-xs font-semibold transition ${
-                    active
-                      ? "border-primary bg-primary/10 text-primary shadow-2xs ring-1 ring-primary/20"
-                      : "border-border bg-card text-muted-foreground hover:bg-muted/60"
-                  }`}
-                >
-                  <span className="text-base">{item.icon}</span>
-                  <span className="truncate">{item.label}</span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Account Type Dropdown */}
+        <SelectField
+          label="Account Type"
+          value={kind}
+          onChange={(val) => handleKindChange(val as AccountKind)}
+          options={[
+            { value: "Bank account", label: "🏦 Bank Account" },
+            { value: "Digital wallet", label: "📱 Digital Wallet" },
+            { value: "Credit card", label: "💳 Credit Card" },
+            { value: "Cash", label: "💵 Cash" },
+            { value: "Investment", label: "📈 Investment" },
+            { value: "Other", label: "📁 Other" },
+          ]}
+          required
+        />
 
         {/* Dynamic Institution Dropdown (Bank / Wallet / Card) */}
         {kind === "Bank account" && (

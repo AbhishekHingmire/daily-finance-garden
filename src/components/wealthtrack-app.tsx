@@ -102,13 +102,20 @@ function getInitials(email: string) {
   return email.split("@")[0]?.slice(0, 2).toUpperCase() || "WT";
 }
 
+function normalizeSection(sec?: Section | string): Section {
+  if (!sec) return "Overview";
+  if (sec === "Funds" || sec === "fund-planner" || sec === "funds") return "Fund Planner";
+  if (sec === "Settings") return "Preferences";
+  return sec as Section;
+}
+
 export function WealthTrackApp({ initialSection }: { initialSection?: Section } = {}) {
   const repository = useMemo(() => getWealthRepository(), []);
 
   const [data, setData] = useState<WealthState>(() => createInitialState());
   const [loaded, setLoaded] = useState(false);
   const [active, setActive] = useState<Section>(() => {
-    if (initialSection) return initialSection;
+    if (initialSection) return normalizeSection(initialSection);
     if (typeof window !== "undefined") {
       const path = window.location.pathname.replace(/^\//, "").toLowerCase();
       if (path === "transactions") return "Transactions";
@@ -750,17 +757,18 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
   // Navigation Handler
   const goSection = (section: Section) => {
-    setActive(section);
+    const targetSection = normalizeSection(section);
+    setActive(targetSection);
     setMobileNav(false);
     setSelectedTransaction(null);
     setSelectedAccount(null);
     if (typeof window !== "undefined") {
       const targetPath =
-        section === "Overview"
+        targetSection === "Overview"
           ? "/"
-          : section === "Fund Planner" || (section as string) === "Funds"
+          : targetSection === "Fund Planner" || (targetSection as string) === "Funds"
           ? "/funds"
-          : `/${section.toLowerCase()}`;
+          : `/${targetSection.toLowerCase()}`;
       if (window.location.pathname !== targetPath) {
         window.history.pushState(null, "", targetPath);
       }
@@ -1744,19 +1752,26 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               Workspace
             </p>
             <nav className="mt-3 space-y-1">
-              {navItems.map(({ label, icon: Icon }) => (
-                <Button
-                  key={label}
-                  variant={active === label ? "secondary" : "ghost"}
-                  className={`h-10 w-full justify-start gap-3 px-3 text-xs ${
-                    active === label ? "font-bold text-primary shadow-2xs" : "text-muted-foreground font-medium"
-                  }`}
-                  onClick={() => goSection(label)}
-                >
-                  <Icon size={17} />
-                  {label}
-                </Button>
-              ))}
+              {navItems.map(({ label, icon: Icon }) => {
+                const isItemActive =
+                  active === label ||
+                  (label === "Fund Planner" && (active === "Funds" || active === "Fund Planner")) ||
+                  (label === "Preferences" && (active === "Preferences" || (active as string) === "Settings"));
+
+                return (
+                  <Button
+                    key={label}
+                    variant={isItemActive ? "secondary" : "ghost"}
+                    className={`h-10 w-full justify-start gap-3 px-3 text-xs ${
+                      isItemActive ? "font-bold text-primary shadow-2xs" : "text-muted-foreground font-medium"
+                    }`}
+                    onClick={() => goSection(label)}
+                  >
+                    <Icon size={17} />
+                    {label}
+                  </Button>
+                );
+              })}
             </nav>
           </div>
           <div className="mt-auto p-4">
@@ -2286,7 +2301,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         })}
         <button
           type="button"
-          className="flex min-h-12 py-1 flex-col items-center justify-center gap-0.5 text-[9.5px] text-muted-foreground font-medium hover:text-foreground transition-colors"
+          className={`flex min-h-12 py-1 flex-col items-center justify-center gap-0.5 text-[9.5px] transition-colors ${
+            !["Overview", "Transactions", "Accounts", "Investments"].includes(active)
+              ? "font-bold text-primary"
+              : "text-muted-foreground font-medium hover:text-foreground"
+          }`}
           onClick={() => setMobileNav(true)}
         >
           <Menu size={16} />
