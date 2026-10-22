@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createInitialState,
   getAccountBalance,
+  getHoldingsSummary,
   getNextRecurringDate,
   processDueRecurringTransactions,
   safeAmount,
@@ -327,5 +328,27 @@ describe("Financial Engine & Calculations", () => {
         customTo: "2026-07-31",
       }, ref)
     ).toBe(false);
+  });
+
+  it("calculates investment holdings summary with accurate earned returns and P&L %", () => {
+    const state = createInitialState();
+    expect(state.investments).toBeDefined();
+    expect(state.investments?.length).toBeGreaterThan(0);
+
+    const summary = getHoldingsSummary(state.investments);
+
+    expect(summary.totalInvested).toBe(395000);
+    expect(summary.currentValue).toBe(482500);
+    expect(summary.totalReturns).toBe(87500);
+    expect(summary.returnPercentage).toBeCloseTo(22.15, 1);
+  });
+
+  it("initializes separate UserProfile with financial targets and risk profile", () => {
+    const state = createInitialState();
+    expect(state.profile).toBeDefined();
+    expect(state.profile?.fullName).toBe("Abhishek Hingmire");
+    expect(state.profile?.monthlyIncomeTarget).toBe(100000);
+    expect(state.profile?.emergencyFundTarget).toBe(150000);
+    expect(state.profile?.riskProfile).toBe("Balanced");
   });
 });

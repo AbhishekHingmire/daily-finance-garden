@@ -7,6 +7,7 @@ export function InputField({
   error,
   required,
   min,
+  max,
   step,
   ...props
 }: {
@@ -18,6 +19,7 @@ export function InputField({
   error?: string;
   required?: boolean;
   min?: string;
+  max?: string;
   step?: string;
   autoComplete?: string;
   disabled?: boolean;
@@ -36,6 +38,7 @@ export function InputField({
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         min={min}
+        max={max}
         step={step}
         {...props}
       />

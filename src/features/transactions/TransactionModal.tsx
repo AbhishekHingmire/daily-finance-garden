@@ -1,15 +1,13 @@
-import { useState } from "react";
-import { Plus } from "lucide-react";
+import { useMemo, useState } from "react";
+import { ChevronDown, ChevronUp, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
-import {
-  INVESTMENT_OUTFLOW_ACTIONS,
-  type InvestmentAction,
-  type InvestmentInstrument,
-  type Transaction,
-  type TransactionType,
-  type WealthState,
+import type {
+  Category,
+  Transaction,
+  TransactionType,
+  WealthState,
 } from "@/lib/wealthtrack";
 
 export function TransactionModal({
@@ -29,7 +27,7 @@ export function TransactionModal({
   onClose: () => void;
   onSave: (keepOpen?: boolean) => void;
 }) {
-  const type = form.type ?? "Expense";
+  const type = (form.type ?? "Expense") as TransactionType;
   const currencySymbol =
     data.preferences.currency === "INR"
       ? "₹"
@@ -39,16 +37,30 @@ export function TransactionModal({
       ? "€"
       : "£";
 
-  const categories = data.categories.filter(
-    (category) =>
-      !category.archived &&
-      (type === "Income" ? category.kind === "Income" : category.kind === "Expense")
-  );
+  // Available categories for current type
+  const categories = useMemo(() => {
+    return data.categories.filter(
+      (c) => !c.archived && (type === "Income" ? c.kind === "Income" : c.kind === "Expense")
+    );
+  }, [data.categories, type]);
 
-  const set = (key: keyof Transaction, value: any) => setForm((current) => ({ ...current, [key]: value }));
-  const [showOptional, setShowOptional] = useState<boolean>(
-    Boolean(form.merchant || form.notes || form.tags?.length)
-  );
+  // Frequently used top categories for instant 1-click chip selection
+  const quickCategories = useMemo(() => {
+    return categories.slice(0, 6);
+  }, [categories]);
+
+  const [showMore, setShowMore] = useState<boolean>(() => {
+    return Boolean(
+      edit ||
+      form.merchant ||
+      form.notes ||
+      (form.tags && form.tags.length > 0) ||
+      (form.date && !form.date.startsWith(new Date().toISOString().slice(0, 10)))
+    );
+  });
+
+  const set = (key: keyof Transaction, value: any) =>
+    setForm((current) => ({ ...current, [key]: value }));
 
   const handleSelectCategory = (catId: string) => {
     const cat = data.categories.find((c) => c.id === catId);
@@ -70,261 +82,207 @@ export function TransactionModal({
     });
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      // Don't auto-submit if target is a textarea
+      if ((e.target as HTMLElement).tagName.toLowerCase() === "textarea") return;
+      e.preventDefault();
+      onSave(false);
+    }
+  };
+
   return (
     <Modal
       title={edit ? "Edit Transaction" : "Quick Add Transaction"}
-      description="Select a category, enter the amount, and save in seconds."
+      description="Enter amount and category. Everything else is optional."
       onClose={onClose}
-      wide
     >
-      <div className="space-y-4">
-        {/* Type Selector */}
-        <div>
-          <span className="wt-label">Transaction Type</span>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-            {(["Expense", "Income", "Transfer", "Refund", "Investment"] as TransactionType[]).map((t) => (
-              <Button
-                key={t}
-                size="sm"
-                variant={type === t ? "default" : "outline"}
-                className="h-9 text-xs font-semibold"
-                onClick={() => set("type", t)}
-              >
-                {t}
-              </Button>
-            ))}
-          </div>
+      <form onSubmit={(e) => { e.preventDefault(); onSave(false); }} onKeyDown={handleKeyDown} className="space-y-4">
+        {/* Simplified 3-Type Segment: Expense | Income | Transfer */}
+        <div className="flex rounded-lg bg-muted p-1">
+          {(["Expense", "Income", "Transfer"] as TransactionType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              className={`flex-1 rounded-md py-1.5 text-xs font-bold transition-all ${
+                type === t
+                  ? "bg-background text-foreground shadow-xs"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+              onClick={() => {
+                set("type", t);
+                if (t === "Transfer") {
+                  set("categoryId", "");
+                  set("description", "Account Transfer");
+                }
+              }}
+            >
+              {t}
+            </button>
+          ))}
         </div>
 
-        {/* Category Dropdown */}
-        {type !== "Transfer" && type !== "Adjustment" && type !== "Investment" && (
-          <div>
-            <SelectField
-              label="Category"
-              value={form.categoryId ?? ""}
-              onChange={handleSelectCategory}
-              options={categories.map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` }))}
-              placeholder="Choose category…"
-              error={errors.categoryId}
-              required
-            />
-            <p className="mt-1 text-[11px] text-muted-foreground">
-              Auto-fills title and sets smart 50/30/20 Need or Want priority.
-            </p>
-          </div>
-        )}
-
-        {/* Investment-specific fields */}
-        {type === "Investment" && (
-          <div className="grid gap-3 sm:grid-cols-2 rounded-xl border border-border bg-muted/20 p-3.5">
-            <SelectField
-              label="Instrument Type"
-              value={form.instrumentType ?? ""}
-              onChange={(v) => set("instrumentType", v)}
-              options={([
-                "Mutual fund",
-                "SIP",
-                "Fixed deposit",
-                "Stocks",
-                "ETF",
-                "Bonds",
-                "Other",
-              ] as InvestmentInstrument[]).map((v) => ({ value: v, label: v }))}
-              placeholder="Choose instrument…"
-              error={errors.instrumentType}
-              required
-            />
-            <SelectField
-              label="Investment Action"
-              value={form.investmentAction ?? ""}
-              onChange={(v) => set("investmentAction", v)}
-              options={([
-                "Contribution",
-                "Purchase",
-                "Sale",
-                "Maturity",
-                "Dividend",
-                "Fee",
-                "Valuation",
-              ] as InvestmentAction[]).map((v) => ({ value: v, label: v }))}
-              placeholder="Choose action…"
-              error={errors.investmentAction}
-              required
-            />
-            <InputField
-              label="Fund / Instrument Name"
-              placeholder="e.g. Parag Parikh Flexi Cap"
-              value={form.instrumentName ?? ""}
-              onChange={(v) => set("instrumentName", v)}
-            />
-            <div className="grid grid-cols-2 gap-2">
-              <InputField
-                label="Units (optional)"
-                type="number"
-                min="0"
-                step="0.0001"
-                value={form.units ?? ""}
-                onChange={(v) =>
-                  setForm((current) => {
-                    const units = v === "" ? undefined : Number(v);
-                    const price = current.pricePerUnit;
-                    return {
-                      ...current,
-                      units,
-                      amount: units && price ? Number((units * price).toFixed(2)) : current.amount,
-                    };
-                  })
-                }
-              />
-              <InputField
-                label="Price / Unit (optional)"
-                type="number"
-                min="0"
-                step="0.01"
-                value={form.pricePerUnit ?? ""}
-                onChange={(v) =>
-                  setForm((current) => {
-                    const price = v === "" ? undefined : Number(v);
-                    const units = current.units;
-                    return {
-                      ...current,
-                      pricePerUnit: price,
-                      amount: units && price ? Number((units * price).toFixed(2)) : current.amount,
-                    };
-                  })
-                }
-              />
-            </div>
-            <p className="text-[11px] text-muted-foreground sm:col-span-2">
-              {form.investmentAction === "Valuation"
-                ? "Valuation entries record current portfolio worth; no cash balance moves."
-                : INVESTMENT_OUTFLOW_ACTIONS.includes(form.investmentAction as InvestmentAction)
-                ? "Outflow: This amount will be debited from the chosen account."
-                : "Inflow: This amount will be credited to the chosen account."}
-            </p>
-          </div>
-        )}
-
-        {/* Amount & Account */}
-        <div className="grid gap-3 sm:grid-cols-2">
+        {/* 1. Large Amount Input */}
+        <div>
           <label className="block">
             <span className="wt-label">
               Amount ({currencySymbol}) <span className="text-destructive">*</span>
             </span>
             <div className="relative">
-              <span className="absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">
+              <span className="absolute left-3.5 top-2.5 text-lg font-black text-muted-foreground">
                 {currencySymbol}
               </span>
               <input
-                className="wt-field pl-8 text-lg font-bold"
+                className="wt-field h-12 pl-9 text-2xl font-black tracking-tight"
                 type="number"
-                min={type === "Adjustment" ? undefined : "0.01"}
-                step="0.01"
-                placeholder="0.00"
-                value={form.amount ?? ""}
-                onChange={(e) => set("amount", Number(e.target.value))}
+                min="0.01"
+                step="any"
+                placeholder="0"
+                value={form.amount !== undefined && form.amount !== null ? form.amount : ""}
+                onChange={(e) =>
+                  set("amount", e.target.value === "" ? undefined : Number(e.target.value))
+                }
                 autoFocus
               />
             </div>
-            {errors.amount && <span className="mt-1 block text-xs text-destructive">{errors.amount}</span>}
+            {errors.amount && (
+              <span className="mt-1 block text-xs text-destructive">{errors.amount}</span>
+            )}
           </label>
+        </div>
 
-          {type === "Transfer" ? (
-            <div className="grid grid-cols-2 gap-2">
+        {/* 2. Category Selection (For Expense and Income) */}
+        {type !== "Transfer" && (
+          <div className="space-y-2">
+            <span className="wt-label">Category <span className="text-destructive">*</span></span>
+
+            {/* Quick-Pick Category Chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {quickCategories.map((c) => {
+                const isSelected = form.categoryId === c.id;
+                return (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleSelectCategory(c.id)}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-all ${
+                      isSelected
+                        ? "border-primary bg-primary text-primary-foreground shadow-xs font-bold"
+                        : "border-border bg-card text-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <span>{c.icon}</span>
+                    <span>{c.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Complete Category Dropdown */}
+            <div className="pt-1">
               <SelectField
-                label="From Account"
-                value={form.accountId ?? ""}
-                onChange={(v) => set("accountId", v)}
-                options={data.accounts
-                  .filter((a) => !a.archived)
-                  .map((a) => ({ value: a.id, label: a.name }))}
-                error={errors.accountId}
-                required
-              />
-              <SelectField
-                label="To Account"
-                value={form.destinationAccountId ?? ""}
-                onChange={(v) => set("destinationAccountId", v)}
-                options={data.accounts
-                  .filter((a) => !a.archived)
-                  .map((a) => ({ value: a.id, label: a.name }))}
-                error={errors.destinationAccountId}
-                required
+                label=""
+                value={form.categoryId ?? ""}
+                onChange={handleSelectCategory}
+                options={categories.map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` }))}
+                placeholder="Or select other category…"
+                error={errors.categoryId}
               />
             </div>
-          ) : (
+          </div>
+        )}
+
+        {/* 3. Account Selection */}
+        {type === "Transfer" ? (
+          <div className="grid gap-3 sm:grid-cols-2">
             <SelectField
-              label="Account"
+              label="Transfer From"
               value={form.accountId ?? ""}
               onChange={(v) => set("accountId", v)}
               options={data.accounts
                 .filter((a) => !a.archived)
-                .map((a) => ({ value: a.id, label: `${a.name} (${a.kind})` }))}
+                .map((a) => ({ value: a.id, label: a.name }))}
               error={errors.accountId}
               required
             />
-          )}
-        </div>
+            <SelectField
+              label="Transfer To"
+              value={form.destinationAccountId ?? ""}
+              onChange={(v) => set("destinationAccountId", v)}
+              options={data.accounts
+                .filter((a) => !a.archived)
+                .map((a) => ({ value: a.id, label: a.name }))}
+              error={errors.destinationAccountId}
+              required
+            />
+          </div>
+        ) : (
+          <SelectField
+            label="Paid with Account"
+            value={form.accountId ?? ""}
+            onChange={(v) => set("accountId", v)}
+            options={data.accounts
+              .filter((a) => !a.archived)
+              .map((a) => ({ value: a.id, label: `${a.name} (${a.kind})` }))}
+            error={errors.accountId}
+            required
+          />
+        )}
 
-        {/* Priority Classification Dropdown */}
-        <div>
-          <label className="block min-w-0">
-            <div className="flex items-center justify-between mb-1">
-              <span className="wt-label mb-0">
-                Priority Classification {type === "Expense" && <span className="text-destructive">*</span>}
-              </span>
-              <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                50/30/20 Rule
-              </span>
-            </div>
-            <select
-              className="wt-field"
-              value={form.need ?? "Need"}
-              onChange={(e) => set("need", e.target.value as "Need" | "Want")}
-              aria-label="Priority Classification"
-            >
-              <option value="Need">Need (Essential — Rent, groceries, utility bills, healthcare, obligations)</option>
-              <option value="Want">Want (Discretionary — Dining out, hobbies, shopping, leisure)</option>
-            </select>
-          </label>
-        </div>
-
-        {/* Date and Time */}
-        <InputField
-          label="Date & Time"
-          type="datetime-local"
-          value={(form.date ?? "").slice(0, 16)}
-          onChange={(v) => set("date", v)}
-          error={errors.date}
-          required
-        />
-
-        {/* Optional Collapsible Details */}
+        {/* 4. Collapsible Accordion: More options (optional) */}
         <div className="border-t border-border pt-2">
           <button
             type="button"
-            className="flex items-center gap-1.5 text-xs font-semibold text-primary hover:underline py-1"
-            onClick={() => setShowOptional(!showOptional)}
+            className="flex w-full items-center justify-between py-1 text-xs font-bold text-muted-foreground hover:text-foreground"
+            onClick={() => setShowMore(!showMore)}
           >
-            <span>
-              {showOptional
-                ? "− Hide optional details"
-                : "+ Add custom title, merchant, notes or payment method"}
+            <span className="flex items-center gap-1.5 text-primary">
+              <Sparkles size={13} />
+              {showMore ? "Hide optional details" : "More options (date, merchant, priority, notes)"}
             </span>
+            {showMore ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
 
-          {showOptional && (
-            <div className="mt-3 space-y-3 rounded-xl border border-border bg-muted/30 p-3.5">
+          {showMore && (
+            <div className="mt-3 space-y-3 rounded-xl border border-border bg-muted/20 p-3.5 animate-in fade-in-50 duration-150">
+              {/* Custom Title */}
               <InputField
-                label="Custom Title / Description (optional)"
-                placeholder="e.g. Weekly Groceries (defaults to category)"
+                label="Custom Description (optional)"
+                placeholder="e.g. Nature's Basket, Team Lunch (defaults to category)"
                 value={form.description ?? ""}
                 onChange={(v) => set("description", v)}
               />
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                {/* Date & Time */}
+                <InputField
+                  label="Date & Time"
+                  type="datetime-local"
+                  value={(form.date ?? new Date().toISOString()).slice(0, 16)}
+                  onChange={(v) => set("date", v)}
+                  error={errors.date}
+                />
+
+                {/* Priority Classification Dropdown */}
+                <div>
+                  <label className="block">
+                    <span className="wt-label">Priority Classification</span>
+                    <select
+                      className="wt-field text-xs font-semibold"
+                      value={form.need ?? "Need"}
+                      onChange={(e) => set("need", e.target.value as "Need" | "Want")}
+                    >
+                      <option value="Need">Need (50% Essential — Groceries, bills, rent)</option>
+                      <option value="Want">Want (30% Discretionary — Dining, shopping)</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+
               <div className="grid gap-3 sm:grid-cols-2">
                 <InputField
-                  label="Merchant / Entity"
-                  placeholder="e.g. Nature's Basket, Uber, Jio"
+                  label="Merchant / Entity (optional)"
+                  placeholder="e.g. Swiggy, Amazon, Airtel"
                   value={form.merchant ?? ""}
                   onChange={(v) => set("merchant", v)}
                 />
@@ -338,11 +296,12 @@ export function TransactionModal({
                   }))}
                 />
               </div>
+
               <label className="block">
-                <span className="wt-label">Notes</span>
+                <span className="wt-label">Notes (optional)</span>
                 <textarea
-                  className="wt-field min-h-16 resize-y text-xs"
-                  placeholder="Add any extra notes…"
+                  className="wt-field min-h-14 resize-y text-xs"
+                  placeholder="Add any extra details…"
                   value={form.notes ?? ""}
                   onChange={(e) => set("notes", e.target.value)}
                 />
@@ -353,21 +312,26 @@ export function TransactionModal({
 
         {/* Footer Actions */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-          <Button variant="ghost" onClick={onClose}>
+          <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
           </Button>
           <div className="flex items-center gap-2">
             {!edit && (
-              <Button type="button" variant="outline" onClick={() => onSave(true)} className="gap-1.5 text-xs font-semibold">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => onSave(true)}
+                className="gap-1.5 text-xs font-semibold"
+              >
                 <Plus size={14} /> Save & Add Another
               </Button>
             )}
-            <Button type="button" onClick={() => onSave(false)} className="text-xs font-semibold">
+            <Button type="submit" className="text-xs font-semibold px-5">
               {edit ? "Save Changes" : "Save Transaction"}
             </Button>
           </div>
         </div>
-      </div>
+      </form>
     </Modal>
   );
 }

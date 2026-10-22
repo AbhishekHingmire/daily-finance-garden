@@ -13,7 +13,10 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as CategoriesRouteImport } from './routes/categories'
+import { Route as InvestmentsRouteImport } from './routes/investments'
 import { Route as OverviewRouteImport } from './routes/overview'
+import { Route as PreferencesRouteImport } from './routes/preferences'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RecurringRouteImport } from './routes/recurring'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -39,9 +42,24 @@ const CategoriesRoute = CategoriesRouteImport.update({
   path: '/categories',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InvestmentsRoute = InvestmentsRouteImport.update({
+  id: '/investments',
+  path: '/investments',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OverviewRoute = OverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PreferencesRoute = PreferencesRouteImport.update({
+  id: '/preferences',
+  path: '/preferences',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecurringRoute = RecurringRouteImport.update({
@@ -70,7 +88,10 @@ export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
+  '/investments': typeof InvestmentsRoute
   '/overview': typeof OverviewRoute
+  '/preferences': typeof PreferencesRoute
+  '/profile': typeof ProfileRoute
   '/recurring': typeof RecurringRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -81,7 +102,10 @@ export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
+  '/investments': typeof InvestmentsRoute
   '/overview': typeof OverviewRoute
+  '/preferences': typeof PreferencesRoute
+  '/profile': typeof ProfileRoute
   '/recurring': typeof RecurringRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -93,7 +117,10 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
+  '/investments': typeof InvestmentsRoute
   '/overview': typeof OverviewRoute
+  '/preferences': typeof PreferencesRoute
+  '/profile': typeof ProfileRoute
   '/recurring': typeof RecurringRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -106,7 +133,10 @@ export interface FileRouteTypes {
     | '/$'
     | '/accounts'
     | '/categories'
+    | '/investments'
     | '/overview'
+    | '/preferences'
+    | '/profile'
     | '/recurring'
     | '/reports'
     | '/settings'
@@ -117,7 +147,10 @@ export interface FileRouteTypes {
     | '/$'
     | '/accounts'
     | '/categories'
+    | '/investments'
     | '/overview'
+    | '/preferences'
+    | '/profile'
     | '/recurring'
     | '/reports'
     | '/settings'
@@ -128,7 +161,10 @@ export interface FileRouteTypes {
     | '/$'
     | '/accounts'
     | '/categories'
+    | '/investments'
     | '/overview'
+    | '/preferences'
+    | '/profile'
     | '/recurring'
     | '/reports'
     | '/settings'
@@ -140,7 +176,10 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   AccountsRoute: typeof AccountsRoute
   CategoriesRoute: typeof CategoriesRoute
+  InvestmentsRoute: typeof InvestmentsRoute
   OverviewRoute: typeof OverviewRoute
+  PreferencesRoute: typeof PreferencesRoute
+  ProfileRoute: typeof ProfileRoute
   RecurringRoute: typeof RecurringRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
@@ -177,11 +216,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategoriesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/investments': {
+      id: '/investments'
+      path: '/investments'
+      fullPath: '/investments'
+      preLoaderRoute: typeof InvestmentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/overview': {
       id: '/overview'
       path: '/overview'
       fullPath: '/overview'
       preLoaderRoute: typeof OverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/preferences': {
+      id: '/preferences'
+      path: '/preferences'
+      fullPath: '/preferences'
+      preLoaderRoute: typeof PreferencesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recurring': {
@@ -220,7 +280,10 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   AccountsRoute: AccountsRoute,
   CategoriesRoute: CategoriesRoute,
+  InvestmentsRoute: InvestmentsRoute,
   OverviewRoute: OverviewRoute,
+  PreferencesRoute: PreferencesRoute,
+  ProfileRoute: ProfileRoute,
   RecurringRoute: RecurringRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,

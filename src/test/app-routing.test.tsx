@@ -17,10 +17,13 @@ describe("App routing", () => {
   it.each([
     "/transactions",
     "/accounts",
+    "/investments",
     "/categories",
     "/reports",
     "/recurring",
     "/settings",
+    "/preferences",
+    "/profile",
     "/overview",
   ])("matches modular route for %s", (path) => {
     const matches = router.matchRoutes(path);

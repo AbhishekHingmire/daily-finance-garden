@@ -87,6 +87,14 @@ export function Dashboard({
     return getInvestmentSummary(data.transactions);
   }, [data.transactions]);
 
+  const holdingsValuation = useMemo(() => {
+    return (data.investments ?? []).reduce((sum, h) => sum + (h.currentAmount || 0), 0);
+  }, [data.investments]);
+
+  const effectiveInvestmentsVal = holdingsValuation > 0
+    ? holdingsValuation
+    : (investmentSummary.currentValue ?? investmentSummary.contributions);
+
   const activeAccounts = useMemo(() => data.accounts.filter((item) => !item.archived), [data.accounts]);
   const totalBalance = useMemo(
     () =>
@@ -105,9 +113,9 @@ export function Dashboard({
     .filter((a) => a.kind === "Credit card")
     .reduce((sum, a) => sum + Math.abs(getAccountBalance(a, data.transactions)), 0);
 
-  const totalAssetsSum = Math.max(1, liquidAssets + (investmentSummary.currentValue ?? investmentSummary.contributions) + creditLiabilities);
+  const totalAssetsSum = Math.max(1, liquidAssets + effectiveInvestmentsVal + creditLiabilities);
   const liquidPct = Math.round((liquidAssets / totalAssetsSum) * 100);
-  const invPct = Math.round(((investmentSummary.currentValue ?? investmentSummary.contributions) / totalAssetsSum) * 100);
+  const invPct = Math.round((effectiveInvestmentsVal / totalAssetsSum) * 100);
   const creditPct = Math.round((creditLiabilities / totalAssetsSum) * 100);
 
   // 6-Month Cash Flow Trend Data
@@ -249,7 +257,7 @@ export function Dashboard({
 
             <div
               className="group rounded-2xl border border-border/70 bg-card/80 p-3.5 hover:border-violet-500/40 hover:shadow-xs transition-all cursor-pointer"
-              onClick={() => onNavigate("Reports")}
+              onClick={() => onNavigate("Investments")}
             >
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
@@ -260,7 +268,7 @@ export function Dashboard({
                 </span>
               </div>
               <p className="mt-1.5 text-sm sm:text-base font-extrabold text-foreground tabular-nums truncate">
-                {money(investmentSummary.currentValue ?? investmentSummary.contributions)}
+                {money(effectiveInvestmentsVal)}
               </p>
               <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium block mt-0.5">
                 {invPct}% of portfolio

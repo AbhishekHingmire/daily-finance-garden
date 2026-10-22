@@ -14,7 +14,10 @@ import {
   Search,
   Settings2,
   ShieldCheck,
+  SlidersHorizontal,
   Tag,
+  TrendingUp,
+  User,
   Wallet,
   X,
 } from "lucide-react";
@@ -34,6 +37,10 @@ import { ImportModal } from "@/features/transactions/ImportModal";
 import { AccountsPage } from "@/features/accounts/AccountsPage";
 import { AccountModal } from "@/features/accounts/AccountModal";
 import { TransferModal } from "@/features/accounts/TransferModal";
+import { InvestmentsPage } from "@/features/investments/InvestmentsPage";
+import { InvestmentHoldingModal } from "@/features/investments/InvestmentHoldingModal";
+import { ProfilePage } from "@/features/profile/ProfilePage";
+import { PreferencesPage } from "@/features/preferences/PreferencesPage";
 import { CategoriesPage } from "@/features/categories/CategoriesPage";
 import { CategoryModal } from "@/features/categories/CategoryModal";
 import { ReportsPage } from "@/features/reports/ReportsPage";
@@ -47,6 +54,7 @@ import {
   createTransactionId,
   formatMoney,
   getAccountBalance,
+  getHoldingsSummary,
   getNextRecurringDate,
   makeNotification,
   processDueRecurringTransactions,
@@ -56,11 +64,13 @@ import {
   type CategoryKind,
   type CustomField,
   type InvestmentAction,
+  type InvestmentHolding,
   type InvestmentInstrument,
   type RecurringItem,
   type Section,
   type Transaction,
   type TransactionType,
+  type UserProfile,
   type WealthPreferences,
   type WealthState,
 } from "@/lib/wealthtrack";
@@ -69,6 +79,7 @@ const navItems: { label: Section; path: string; icon: typeof LayoutDashboard }[]
   { label: "Overview", path: "/", icon: LayoutDashboard },
   { label: "Transactions", path: "/transactions", icon: ArrowLeftRight },
   { label: "Accounts", path: "/accounts", icon: Wallet },
+  { label: "Investments", path: "/investments", icon: TrendingUp },
   { label: "Categories", path: "/categories", icon: Tag },
   { label: "Reports", path: "/reports", icon: Activity },
   { label: "Recurring", path: "/recurring", icon: CalendarDays },
@@ -89,10 +100,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       const path = window.location.pathname.replace(/^\//, "").toLowerCase();
       if (path === "transactions") return "Transactions";
       if (path === "accounts") return "Accounts";
+      if (path === "investments") return "Investments";
       if (path === "categories") return "Categories";
       if (path === "reports") return "Reports";
       if (path === "recurring") return "Recurring";
-      if (path === "settings") return "Settings";
+      if (path === "profile") return "Profile";
+      if (path === "preferences" || path === "settings") return "Preferences";
     }
     return "Overview";
   });
@@ -163,8 +176,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const [csvError, setCsvError] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Settings Page States
+  // Settings & Preferences States
   const [settingsTab, setSettingsTab] = useState("General");
+  const [preferencesTab, setPreferencesTab] = useState("General & Regional");
+  const [editingHolding, setEditingHolding] = useState<InvestmentHolding | null>(null);
+  const [holdingModalOpen, setHoldingModalOpen] = useState(false);
   const [fieldForm, setFieldForm] = useState<Partial<CustomField>>({
     type: "Text",
     options: [],
@@ -283,6 +299,51 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       ...current,
       preferences: { ...current.preferences, ...patch },
     }));
+  };
+
+  const handleAddHolding = () => {
+    setEditingHolding(null);
+    setHoldingModalOpen(true);
+  };
+
+  const handleEditHolding = (holding: InvestmentHolding) => {
+    setEditingHolding(holding);
+    setHoldingModalOpen(true);
+  };
+
+  const handleSaveHolding = (holding: InvestmentHolding) => {
+    setData((current) => {
+      const holdings = current.investments ?? [];
+      const idx = holdings.findIndex((h) => h.id === holding.id);
+      let nextHoldings: InvestmentHolding[];
+      if (idx >= 0) {
+        nextHoldings = [...holdings];
+        nextHoldings[idx] = holding;
+      } else {
+        nextHoldings = [holding, ...holdings];
+      }
+      return { ...current, investments: nextHoldings };
+    });
+    setHoldingModalOpen(false);
+    toast.success(editingHolding ? "Investment holding updated" : "Investment holding added", {
+      description: `${holding.name} · ${money(holding.currentAmount)}`,
+    });
+  };
+
+  const handleDeleteHolding = (holding: InvestmentHolding) => {
+    setData((current) => ({
+      ...current,
+      investments: (current.investments ?? []).filter((h) => h.id !== holding.id),
+    }));
+    toast.success("Holding removed", {
+      description: `${holding.name} was removed from your investments.`,
+    });
+  };
+
+  const handleSaveProfile = (profile: UserProfile) => {
+    setData((current) => ({ ...current, profile }));
+    setEmail(profile.email);
+    setFullName(profile.fullName);
   };
 
   const notify = (title: string, description: string) => {
@@ -1222,15 +1283,31 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             <Button
               variant="ghost"
               className={`mt-3 h-10 w-full justify-start gap-3 px-3 text-xs ${
-                active === "Settings" ? "bg-secondary font-bold text-primary" : "text-muted-foreground font-medium"
+                active === "Preferences" || active === "Settings"
+                  ? "bg-secondary font-bold text-primary shadow-2xs"
+                  : "text-muted-foreground font-medium"
               }`}
               onClick={() => {
-                goSection("Settings");
-                setSettingsTab("General");
+                goSection("Preferences");
+                setPreferencesTab("General & Regional");
               }}
             >
-              <Settings2 size={17} />
-              Settings
+              <SlidersHorizontal size={17} />
+              Preferences
+            </Button>
+            <Button
+              variant="ghost"
+              className={`mt-1 h-10 w-full justify-start gap-3 px-3 text-xs ${
+                active === "Profile"
+                  ? "bg-secondary font-bold text-primary shadow-2xs"
+                  : "text-muted-foreground font-medium"
+              }`}
+              onClick={() => {
+                goSection("Profile");
+              }}
+            >
+              <User size={17} />
+              My Profile
             </Button>
           </div>
         </aside>
@@ -1400,19 +1477,31 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 {profileOpen && (
                   <div className="absolute right-0 top-12 z-30 w-52 rounded-xl border border-border bg-card p-1.5 wt-shadow">
                     <div className="border-b border-border px-3 py-2">
-                      <p className="text-xs font-bold text-foreground">Local Profile</p>
+                      <p className="text-xs font-bold text-foreground">
+                        {data.profile?.fullName || "Local Profile"}
+                      </p>
                       <p className="truncate text-[11px] text-muted-foreground">{email}</p>
                     </div>
                     <Button
                       variant="ghost"
                       className="mt-1 w-full justify-start text-xs font-semibold"
                       onClick={() => {
-                        goSection("Settings");
-                        setSettingsTab("General");
+                        goSection("Profile");
                         setProfileOpen(false);
                       }}
                     >
-                      Preferences
+                      <User size={14} className="mr-1.5" /> My Profile
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-xs font-semibold"
+                      onClick={() => {
+                        goSection("Preferences");
+                        setPreferencesTab("General & Regional");
+                        setProfileOpen(false);
+                      }}
+                    >
+                      <SlidersHorizontal size={14} className="mr-1.5" /> Preferences
                     </Button>
                     <Button
                       variant="ghost"
@@ -1519,6 +1608,16 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
+            {active === "Investments" && (
+              <InvestmentsPage
+                data={data}
+                money={money}
+                onAddHolding={handleAddHolding}
+                onEditHolding={handleEditHolding}
+                onDeleteHolding={handleDeleteHolding}
+              />
+            )}
+
             {active === "Categories" && (
               <CategoriesPage
                 data={data}
@@ -1570,11 +1669,19 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {active === "Settings" && (
-              <SettingsPage
+            {active === "Profile" && (
+              <ProfilePage
                 data={data}
-                settingsTab={settingsTab}
-                setSettingsTab={setSettingsTab}
+                money={money}
+                onSaveProfile={handleSaveProfile}
+              />
+            )}
+
+            {(active === "Preferences" || active === "Settings") && (
+              <PreferencesPage
+                data={data}
+                preferencesTab={preferencesTab}
+                setPreferencesTab={setPreferencesTab}
                 updatePreferences={updatePreferences}
                 money={money}
                 onExport={() => exportCsv()}
@@ -1642,7 +1749,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
       {/* Mobile Bottom Navigation Bar */}
       <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] pt-1 backdrop-blur-xs lg:hidden">
-        {["Overview", "Transactions", "Accounts", "Reports"].map((section) => {
+        {["Overview", "Transactions", "Accounts", "Investments"].map((section) => {
           const item = navItems.find((nav) => nav.label === section);
           const Icon = item?.icon ?? LayoutDashboard;
           return (
@@ -1856,6 +1963,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             </Button>
           </div>
         </Modal>
+      )}
+
+      {holdingModalOpen && (
+        <InvestmentHoldingModal
+          data={data}
+          existing={editingHolding}
+          onClose={() => setHoldingModalOpen(false)}
+          onSave={handleSaveHolding}
+        />
       )}
 
       {selectedTransaction && (

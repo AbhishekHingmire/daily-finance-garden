@@ -1,13 +1,55 @@
 export type TransactionType = "Expense" | "Income" | "Refund" | "Adjustment" | "Transfer" | "Investment";
 export type CategoryKind = "Expense" | "Income";
 export type AccountKind = "Bank account" | "Cash" | "Digital wallet" | "Credit card" | "Investment" | "Other";
-export type Section = "Overview" | "Transactions" | "Accounts" | "Categories" | "Reports" | "Recurring" | "Settings";
+export type Section =
+  | "Overview"
+  | "Transactions"
+  | "Accounts"
+  | "Investments"
+  | "Categories"
+  | "Reports"
+  | "Recurring"
+  | "Preferences"
+  | "Profile"
+  | "Settings";
 // Cash-flow direction for an investment transaction: money leaving (Contribution/Purchase/Fee),
 // money returning (Sale/Maturity/Dividend), or a non-cash note of current value (Valuation).
 export type InvestmentAction = "Contribution" | "Purchase" | "Sale" | "Maturity" | "Dividend" | "Fee" | "Valuation";
 export type InvestmentInstrument = "Mutual fund" | "SIP" | "Fixed deposit" | "Stocks" | "ETF" | "Bonds" | "Other";
 export const INVESTMENT_OUTFLOW_ACTIONS: InvestmentAction[] = ["Contribution", "Purchase", "Fee"];
 export const INVESTMENT_INFLOW_ACTIONS: InvestmentAction[] = ["Sale", "Maturity", "Dividend"];
+
+export type AssetType =
+  | "Mutual fund"
+  | "Stocks & Equity"
+  | "ETF"
+  | "Gold & Commodities"
+  | "Fixed deposit"
+  | "Crypto"
+  | "Other";
+
+export interface InvestmentHolding {
+  id: string;
+  name: string;
+  assetType: AssetType;
+  investedAmount: number;
+  currentAmount: number;
+  institution?: string;
+  notes?: string;
+  updatedAt: string;
+}
+
+export interface UserProfile {
+  fullName: string;
+  email: string;
+  phone: string;
+  occupation: string;
+  monthlyIncomeTarget: number;
+  emergencyFundTarget: number;
+  savingsRateTarget: number;
+  riskProfile: "Conservative" | "Balanced" | "Aggressive";
+  bio?: string;
+}
 
 export interface Account {
   id: string;
@@ -107,10 +149,12 @@ export interface WealthState {
   session: boolean;
   onboarded: boolean;
   preferences: WealthPreferences;
+  profile?: UserProfile;
   accounts: Account[];
   categories: Category[];
   transactions: Transaction[];
   recurring: RecurringItem[];
+  investments?: InvestmentHolding[];
   notifications: WealthNotification[];
   tags: string[];
   customFields: CustomField[];
@@ -202,6 +246,69 @@ export function createInitialState(): WealthState {
     ],
     tags: ["weekly", "work", "travel", "subscription"],
     customFields: [],
+    profile: {
+      fullName: "Abhishek Hingmire",
+      email: "demo@wealthtrack.app",
+      phone: "+91 98765 43210",
+      occupation: "Senior Product Designer & Engineer",
+      monthlyIncomeTarget: 100000,
+      emergencyFundTarget: 150000,
+      savingsRateTarget: 35,
+      riskProfile: "Balanced",
+      bio: "Disciplined compounding, clean cashflow, and mindful wealth accumulation.",
+    },
+    investments: [
+      {
+        id: "inv-01",
+        name: "Parag Parikh Flexi Cap Fund",
+        assetType: "Mutual fund",
+        investedAmount: 120000,
+        currentAmount: 154800,
+        institution: "Groww",
+        notes: "Monthly SIP of ₹10,000 active",
+        updatedAt: "2026-10-22",
+      },
+      {
+        id: "inv-02",
+        name: "Nifty 50 Index Fund",
+        assetType: "ETF",
+        investedAmount: 90000,
+        currentAmount: 108200,
+        institution: "Zerodha Coin",
+        notes: "Passive core index holding",
+        updatedAt: "2026-10-21",
+      },
+      {
+        id: "inv-03",
+        name: "Tata Motors Ltd",
+        assetType: "Stocks & Equity",
+        investedAmount: 65000,
+        currentAmount: 84500,
+        institution: "Zerodha Kite",
+        notes: "Long-term EV growth bet",
+        updatedAt: "2026-10-22",
+      },
+      {
+        id: "inv-04",
+        name: "Sovereign Gold Bond 2028",
+        assetType: "Gold & Commodities",
+        investedAmount: 50000,
+        currentAmount: 62000,
+        institution: "RBI / HDFC Sec",
+        notes: "2.5% semi-annual interest + capital appreciation",
+        updatedAt: "2026-10-15",
+      },
+      {
+        id: "inv-05",
+        name: "HDFC 3-Yr Tax Saver FD",
+        assetType: "Fixed deposit",
+        investedAmount: 70000,
+        currentAmount: 73000,
+        institution: "HDFC Bank",
+        notes: "7.10% compounded quarterly",
+        updatedAt: "2026-10-01",
+      },
+    ],
   };
 }
 
@@ -244,6 +351,19 @@ export function getMoneySummary(accounts: Account[], transactions: Transaction[]
   const expenses = Math.max(0, expenseTotal - refundTotal);
   const balance = accounts.filter((account) => !account.archived).reduce((sum, account) => sum + getAccountBalance(account, transactions), 0);
   return { income, expenses, net: income - expenses, balance };
+}
+
+export function getHoldingsSummary(investments: InvestmentHolding[] = []) {
+  const totalInvested = investments.reduce((sum, item) => sum + safeAmount(item.investedAmount), 0);
+  const currentValue = investments.reduce((sum, item) => sum + safeAmount(item.currentAmount), 0);
+  const totalReturns = currentValue - totalInvested;
+  const returnPercentage = totalInvested > 0 ? (totalReturns / totalInvested) * 100 : 0;
+  return {
+    totalInvested,
+    currentValue,
+    totalReturns,
+    returnPercentage,
+  };
 }
 
 export function getInvestmentSummary(transactions: Transaction[]) {
