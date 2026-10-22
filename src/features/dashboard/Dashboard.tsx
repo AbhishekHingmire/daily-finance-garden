@@ -8,6 +8,7 @@ import {
   CreditCard,
   Landmark,
   Plus,
+  ShieldCheck,
   Sparkles,
   TrendingUp,
   Wallet,
@@ -59,6 +60,7 @@ export function Dashboard({
   onCategory: (id: string) => void;
 }) {
   const [dashboardPriority, setDashboardPriority] = useState<string>("All");
+  const [hoveredTrendKey, setHoveredTrendKey] = useState<string | null>(null);
 
   // Filter transactions according to the unified date range
   const periodTransactions = useMemo(() => {
@@ -210,6 +212,19 @@ export function Dashboard({
       .sort((a, b) => a.nextDate.localeCompare(b.nextDate))
       .slice(0, 4);
   }, [data.recurring]);
+
+  const totalMonthlyRecurringCommitments = useMemo(() => {
+    return data.recurring
+      .filter((item) => item.enabled && item.type === "Expense")
+      .reduce((sum, item) => sum + item.amount, 0);
+  }, [data.recurring]);
+
+  const activeTrend = useMemo(() => {
+    if (hoveredTrendKey) {
+      return monthlyTrends.find((m) => m.key === hoveredTrendKey) ?? null;
+    }
+    return monthlyTrends[monthlyTrends.length - 1] ?? null;
+  }, [monthlyTrends, hoveredTrendKey]);
 
   return (
     <div className="space-y-6">
@@ -432,46 +447,104 @@ export function Dashboard({
         {/* Interactive 6-Month Cash Flow Velocity Chart */}
         <div className="rounded-2xl border border-border/80 bg-card p-6 wt-shadow flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between">
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <div>
                 <h3 className="wt-display text-base font-bold text-foreground">
                   Cash Flow Velocity
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  6-month comparison of total money inflows vs outflows
+                  6-month inflow vs outflow with interactive inspection
                 </p>
               </div>
               <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
-                  <span className="size-2 rounded-full bg-emerald-500" /> Inflows
+                <span className="flex items-center gap-1.5 text-muted-foreground font-semibold">
+                  <span className="size-2.5 rounded-full bg-emerald-500 shadow-xs" /> Inflows
                 </span>
-                <span className="flex items-center gap-1.5 text-muted-foreground font-medium">
-                  <span className="size-2 rounded-full bg-rose-500" /> Outflows
+                <span className="flex items-center gap-1.5 text-muted-foreground font-semibold">
+                  <span className="size-2.5 rounded-full bg-rose-500 shadow-xs" /> Outflows
+                </span>
+              </div>
+            </div>
+
+            {/* Interactive Live Inspection Banner */}
+            <div className="mt-3.5 flex items-center justify-between rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2 text-xs">
+              <span className="font-bold text-foreground">
+                {activeTrend ? `${activeTrend.label} 2026` : "Monthly Velocity"}
+              </span>
+              <div className="flex items-center gap-3 tabular-nums text-xs">
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                  +{money(activeTrend ? activeTrend.income : 0)}
+                </span>
+                <span className="text-muted-foreground">·</span>
+                <span className="font-extrabold text-rose-600 dark:text-rose-400">
+                  −{money(activeTrend ? activeTrend.expense : 0)}
+                </span>
+                <span className="text-muted-foreground">·</span>
+                <span
+                  className={`font-extrabold ${
+                    (activeTrend ? activeTrend.income - activeTrend.expense : 0) >= 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : "text-rose-600 dark:text-rose-400"
+                  }`}
+                >
+                  Net: {money(activeTrend ? activeTrend.income - activeTrend.expense : 0)}
                 </span>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 flex h-44 items-end justify-between gap-3 pt-4 border-b border-border pb-2">
+          {/* Premium Visual Bar Chart with Track Background & Hover Interaction */}
+          <div className="mt-5 flex h-48 items-end justify-between gap-2.5 pt-4 border-b border-border/80 pb-2">
             {monthlyTrends.map((m) => {
-              const incHeight = Math.max(8, Math.round((m.income / maxTrendValue) * 140));
-              const expHeight = Math.max(8, Math.round((m.expense / maxTrendValue) * 140));
+              const isHovered = hoveredTrendKey === m.key;
+              const isLatest = m.key === monthlyTrends[monthlyTrends.length - 1]?.key;
+              const incHeight = Math.max(8, Math.round((m.income / maxTrendValue) * 144));
+              const expHeight = Math.max(8, Math.round((m.expense / maxTrendValue) * 144));
 
               return (
-                <div key={m.key} className="flex flex-1 flex-col items-center gap-1.5 h-full justify-end">
-                  <div className="flex w-full items-end justify-center gap-1.5 h-[140px]">
-                    <div
-                      style={{ height: `${incHeight}px` }}
-                      className="w-3.5 rounded-t-md bg-emerald-500 hover:bg-emerald-600 transition-all cursor-pointer"
-                      title={`${m.label} Inflow: ${money(m.income)}`}
-                    />
-                    <div
-                      style={{ height: `${expHeight}px` }}
-                      className="w-3.5 rounded-t-md bg-rose-500 hover:bg-rose-600 transition-all cursor-pointer"
-                      title={`${m.label} Outflow: ${money(m.expense)}`}
-                    />
+                <div
+                  key={m.key}
+                  onMouseEnter={() => setHoveredTrendKey(m.key)}
+                  onMouseLeave={() => setHoveredTrendKey(null)}
+                  className={`flex flex-1 flex-col items-center gap-2 h-full justify-end rounded-xl p-1.5 transition-all cursor-pointer ${
+                    isHovered
+                      ? "bg-muted/60 ring-1 ring-primary/30"
+                      : isLatest && !hoveredTrendKey
+                      ? "bg-muted/20"
+                      : "hover:bg-muted/30"
+                  }`}
+                >
+                  <div className="flex w-full items-end justify-center gap-1.5 h-[144px]">
+                    {/* Inflow Bar */}
+                    <div className="h-full w-4 flex items-end justify-center">
+                      <div
+                        style={{ height: `${incHeight}px` }}
+                        className={`w-full rounded-t-md bg-gradient-to-t from-emerald-600 to-emerald-400 shadow-xs transition-all duration-200 ${
+                          isHovered ? "brightness-110 scale-y-105" : ""
+                        }`}
+                        title={`${m.label} Inflow: ${money(m.income)}`}
+                      />
+                    </div>
+
+                    {/* Outflow Bar */}
+                    <div className="h-full w-4 flex items-end justify-center">
+                      <div
+                        style={{ height: `${expHeight}px` }}
+                        className={`w-full rounded-t-md bg-gradient-to-t from-rose-600 to-rose-400 shadow-xs transition-all duration-200 ${
+                          isHovered ? "brightness-110 scale-y-105" : ""
+                        }`}
+                        title={`${m.label} Outflow: ${money(m.expense)}`}
+                      />
+                    </div>
                   </div>
-                  <span className="text-[11px] font-semibold text-muted-foreground">
+
+                  <span
+                    className={`text-[11px] font-bold transition-colors ${
+                      isHovered || (isLatest && !hoveredTrendKey)
+                        ? "text-primary"
+                        : "text-muted-foreground"
+                    }`}
+                  >
                     {m.label}
                   </span>
                 </div>
@@ -541,7 +614,23 @@ export function Dashboard({
                 );
               })
             ) : (
-              <EmptyInline message="No expenses in this period." />
+              <div className="rounded-2xl border border-dashed border-border/80 bg-muted/15 p-6 text-center space-y-2">
+                <span className="mx-auto grid size-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                  <ShieldCheck size={20} />
+                </span>
+                <p className="text-xs font-bold text-foreground">Zero Expense Outflow</p>
+                <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                  No expenditure recorded for this timeframe. Your capital is 100% preserved.
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onNavigate("Reports")}
+                  className="mt-2 text-xs font-semibold h-7 px-3"
+                >
+                  View Full Reports
+                </Button>
+              </div>
             )}
           </div>
         </div>
@@ -549,9 +638,9 @@ export function Dashboard({
 
       {/* Two Column Layout: Upcoming Recurring & Recent Activity Feed */}
       <div className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
-        {/* Upcoming Automated Recurring Schedules */}
+        {/* Upcoming Automated Recurring Schedules (No Empty Gaps) */}
         <div className="rounded-2xl border border-border/80 bg-card p-6 wt-shadow flex flex-col justify-between">
-          <div>
+          <div className="space-y-4">
             <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div className="flex items-center gap-2">
                 <h3 className="wt-display text-base font-bold text-foreground">
@@ -569,49 +658,58 @@ export function Dashboard({
                 Manage →
               </button>
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Automated bills and payroll schedules
-            </p>
-          </div>
 
-          <div className="mt-4 space-y-2.5">
-            {upcomingRecurring.length ? (
-              upcomingRecurring.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/15 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary text-sm">
-                      <CalendarDays size={16} />
-                    </span>
-                    <div>
-                      <p className="text-xs font-bold text-foreground">{item.name}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Due {formatDate(item.nextDate)} · {item.frequency}
-                      </p>
+            <div className="space-y-2.5">
+              {upcomingRecurring.length ? (
+                upcomingRecurring.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/15 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary text-sm">
+                        <CalendarDays size={16} />
+                      </span>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{item.name}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Due {formatDate(item.nextDate)} · {item.frequency}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span
+                        className={`text-xs font-bold tabular-nums block ${
+                          item.type === "Income"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {item.type === "Income" ? "+" : "−"}
+                        {money(item.amount)}
+                      </span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        Auto-records
+                      </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span
-                      className={`text-xs font-bold tabular-nums block ${
-                        item.type === "Income"
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-foreground"
-                      }`}
-                    >
-                      {item.type === "Income" ? "+" : "−"}
-                      {money(item.amount)}
-                    </span>
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                      Auto-records
-                    </span>
-                  </div>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/80 bg-muted/15 p-5 text-center space-y-1.5">
+                  <CalendarDays size={18} className="mx-auto text-muted-foreground" />
+                  <p className="text-xs font-semibold text-foreground">No Upcoming Recurring Bills</p>
+                  <p className="text-[11px] text-muted-foreground">All schedules are current</p>
                 </div>
-              ))
-            ) : (
-              <EmptyInline message="No upcoming recurring schedules." />
-            )}
+              )}
+            </div>
+          </div>
+
+          {/* Bottom Commitment Summary Bar (Fills gap and balances card) */}
+          <div className="mt-4 pt-3 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+            <span className="font-medium">Total Monthly Commitment</span>
+            <span className="font-extrabold text-foreground tabular-nums">
+              {money(totalMonthlyRecurringCommitments)}/mo
+            </span>
           </div>
         </div>
 

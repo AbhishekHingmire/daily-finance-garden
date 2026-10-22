@@ -142,18 +142,40 @@ export function RecurringModal({
               .map((a) => ({ value: a.id, label: a.name }))}
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div
+          className={`grid gap-3 ${
+            form.frequency === "Custom interval" ? "sm:grid-cols-4" : "sm:grid-cols-3"
+          }`}
+        >
           <SelectField
             label="Frequency"
             value={form.frequency ?? "Monthly"}
             onChange={(frequency) =>
-              setForm((f) => ({ ...f, frequency: frequency as RecurringItem["frequency"] }))
+              setForm((f) => ({
+                ...f,
+                frequency: frequency as RecurringItem["frequency"],
+                intervalDays: frequency === "Custom interval" ? f.intervalDays || 14 : f.intervalDays,
+              }))
             }
             options={["Weekly", "Monthly", "Yearly", "Custom interval"].map((v) => ({
               value: v,
               label: v,
             }))}
           />
+          {form.frequency === "Custom interval" && (
+            <InputField
+              label="Interval (Days)"
+              type="number"
+              min="1"
+              max="365"
+              value={form.intervalDays ?? 14}
+              onChange={(val) =>
+                setForm((f) => ({ ...f, intervalDays: Math.max(1, Number(val) || 1) }))
+              }
+              placeholder="e.g. 15"
+              required
+            />
+          )}
           <InputField
             label="Start Date"
             type="date"

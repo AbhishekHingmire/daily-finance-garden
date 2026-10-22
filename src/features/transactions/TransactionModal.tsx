@@ -54,11 +54,6 @@ export function TransactionModal({
     );
   }, [data.categories, isInflowType]);
 
-  // Frequently used top categories for instant 1-click chip selection
-  const quickCategories = useMemo(() => {
-    return categories.slice(0, 6);
-  }, [categories]);
-
   const [showMore, setShowMore] = useState<boolean>(() => {
     return Boolean(
       edit ||
@@ -131,167 +126,6 @@ export function TransactionModal({
       onClose={onClose}
     >
       <form onSubmit={(e) => { e.preventDefault(); onSave(false); }} onKeyDown={handleKeyDown} className="space-y-4">
-        {/* Primary Type Selector: Expense | Income | Loan / Debt | Transfer */}
-        <div className="flex rounded-xl bg-muted p-1">
-          {[
-            { id: "Expense", label: "Expense" },
-            { id: "Income", label: "Income" },
-            { id: "Loan / Debt", label: "Loan / Debt" },
-            { id: "Transfer", label: "Transfer" },
-          ].map((tab) => {
-            const isTabActive =
-              tab.id === "Loan / Debt"
-                ? isDebtType
-                : type === tab.id;
-
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${
-                  isTabActive
-                    ? "bg-background text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-                onClick={() => {
-                  if (tab.id === "Loan / Debt") {
-                    setForm((cur) => {
-                      const catLoan = data.categories.find((c) => c.id === "cat-loan-emi")?.id;
-                      return {
-                        ...cur,
-                        type: "EMI / Loan Payment",
-                        categoryId: catLoan || cur.categoryId,
-                        description: cur.description || "Loan EMI",
-                      };
-                    });
-                  } else if (tab.id === "Transfer") {
-                    setForm((cur) => ({
-                      ...cur,
-                      type: "Transfer",
-                      categoryId: "",
-                      description: "Account Transfer",
-                    }));
-                  } else {
-                    setForm((cur) => ({
-                      ...cur,
-                      type: tab.id as TransactionType,
-                    }));
-                  }
-                }}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Loan & Debt Sub-Category Pill Toggle */}
-        {isDebtType && (
-          <div className="space-y-3 rounded-2xl border border-primary/20 bg-primary/[0.03] p-3.5">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block">
-              Debt Transaction Kind
-            </span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
-              {[
-                { id: "EMI / Loan Payment", label: "EMI Repayment", icon: "💳", hint: "Outflow" },
-                { id: "Borrow / Loan Taken", label: "Borrow Money", icon: "🏦", hint: "Inflow" },
-                { id: "Lend / Loan Given", label: "Lend Money", icon: "🤝", hint: "Outflow" },
-                { id: "Debt Recovery", label: "Debt Recovery", icon: "💵", hint: "Inflow" },
-              ].map((item) => {
-                const isSelected = type === item.id;
-                return (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => {
-                      const nextType = item.id as TransactionType;
-                      let defaultCat = "";
-                      let defaultDesc = "";
-                      if (nextType === "EMI / Loan Payment") {
-                        defaultCat = data.categories.find((c) => c.id === "cat-loan-emi")?.id || "";
-                        defaultDesc = "Loan EMI";
-                      } else if (nextType === "Borrow / Loan Taken") {
-                        defaultCat = data.categories.find((c) => c.id === "cat-borrow")?.id || "";
-                        defaultDesc = "Loan Borrowed";
-                      } else if (nextType === "Lend / Loan Given") {
-                        defaultCat = data.categories.find((c) => c.id === "cat-lend")?.id || "";
-                        defaultDesc = "Money Lent";
-                      } else if (nextType === "Debt Recovery") {
-                        defaultCat = data.categories.find((c) => c.id === "cat-debt-recovery")?.id || "";
-                        defaultDesc = "Debt Repaid";
-                      }
-                      setForm((current) => ({
-                        ...current,
-                        type: nextType,
-                        categoryId: defaultCat || current.categoryId,
-                        description: current.description || defaultDesc,
-                      }));
-                    }}
-                    className={`flex flex-col items-center justify-center p-2 rounded-xl text-xs font-bold transition-all ${
-                      isSelected
-                        ? "bg-card text-foreground shadow-xs border border-border"
-                        : "text-muted-foreground hover:text-foreground hover:bg-card/50"
-                    }`}
-                  >
-                    <span className="text-base">{item.icon}</span>
-                    <span className="mt-0.5 text-center">{item.label}</span>
-                    <span
-                      className={`text-[10px] font-semibold mt-0.5 ${
-                        item.hint === "Inflow"
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-rose-600 dark:text-rose-400"
-                      }`}
-                    >
-                      {item.hint}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Optional Loan Linkage for EMI Repayment */}
-            {type === "EMI / Loan Payment" && (data.loans?.length ?? 0) > 0 && (
-              <div className="rounded-xl border border-border/80 bg-card p-3 space-y-1.5">
-                <label className="block">
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <Landmark size={13} className="text-primary" />
-                    <span className="wt-label font-bold text-foreground">
-                      Link to Loan (Reduces Outstanding Balance)
-                    </span>
-                  </div>
-                  <select
-                    className="wt-field h-9 text-xs"
-                    value={form.loanId || ""}
-                    onChange={(e) => {
-                      const selectedLoan = data.loans?.find((l) => l.id === e.target.value);
-                      setForm((cur) => ({
-                        ...cur,
-                        loanId: e.target.value || undefined,
-                        amount: cur.amount || (selectedLoan ? selectedLoan.emiAmount : undefined),
-                        merchant: cur.merchant || selectedLoan?.lenderInstitution || "",
-                        description:
-                          cur.description && cur.description !== "Loan EMI"
-                            ? cur.description
-                            : selectedLoan
-                            ? `${selectedLoan.name} EMI`
-                            : "Loan EMI",
-                      }));
-                    }}
-                  >
-                    <option value="">-- None / General Debt Payment --</option>
-                    {data.loans?.map((loan) => (
-                      <option key={loan.id} value={loan.id}>
-                        {loan.name} ({loan.lenderInstitution} · Outstanding: {currencySymbol}
-                        {loan.currentOutstanding})
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
-            )}
-          </div>
-        )}
-
         {/* 1. Large Amount Input */}
         <div>
           <label className="block">
@@ -321,56 +155,127 @@ export function TransactionModal({
           </label>
         </div>
 
-        {/* 2. Category Selection (For Expense, Income, and Loan types) */}
-        {type !== "Transfer" && (
-          <div className="space-y-2">
-            <span className="wt-label">Category <span className="text-destructive">*</span></span>
-
-            {/* Quick-Pick Category Chips */}
-            <div className="flex flex-wrap gap-1.5 items-center">
-              {quickCategories.map((c) => {
-                const isSelected = form.categoryId === c.id;
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={() => handleSelectCategory(c.id)}
-                    className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs font-semibold transition-all ${
-                      isSelected
-                        ? "border-primary bg-primary text-primary-foreground shadow-xs font-bold"
-                        : "border-border bg-card text-foreground hover:bg-muted"
-                    }`}
-                  >
-                    <span>{c.icon}</span>
-                    <span>{c.name}</span>
-                  </button>
-                );
-              })}
-              <button
-                type="button"
-                onClick={() => setIsCreatingCategory(true)}
-                className="inline-flex items-center gap-1 rounded-lg border border-dashed border-primary/60 bg-primary/5 px-2.5 py-1.5 text-xs font-bold text-primary hover:bg-primary/10 transition-colors"
-                title="Create a new category"
+        {/* 2. Type & Category Selection (Both strictly in Dropdowns as requested) */}
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="block">
+              <span className="wt-label">
+                Transaction Type <span className="text-destructive">*</span>
+              </span>
+              <select
+                className="wt-field h-10 text-xs font-bold"
+                value={type}
+                onChange={(e) => {
+                  const t = e.target.value as TransactionType;
+                  let defaultCat = "";
+                  let defaultDesc = "";
+                  if (t === "Transfer") {
+                    defaultDesc = "Account Transfer";
+                  } else if (t === "EMI / Loan Payment") {
+                    defaultCat = data.categories.find((c) => c.id === "cat-loan-emi")?.id || "";
+                    defaultDesc = "Loan EMI";
+                  } else if (t === "Borrow / Loan Taken") {
+                    defaultCat = data.categories.find((c) => c.id === "cat-borrow")?.id || "";
+                    defaultDesc = "Loan Borrowed";
+                  } else if (t === "Lend / Loan Given") {
+                    defaultCat = data.categories.find((c) => c.id === "cat-lend")?.id || "";
+                    defaultDesc = "Money Lent";
+                  } else if (t === "Debt Recovery") {
+                    defaultCat = data.categories.find((c) => c.id === "cat-debt-recovery")?.id || "";
+                    defaultDesc = "Debt Repaid";
+                  }
+                  setForm((cur) => ({
+                    ...cur,
+                    type: t,
+                    categoryId: defaultCat || (t === "Transfer" ? "" : cur.categoryId),
+                    description: cur.description || defaultDesc,
+                  }));
+                }}
               >
-                <Plus size={13} />
-                <span>+ Create</span>
-              </button>
-            </div>
+                <option value="Expense">Expense (Money spent / Outflow)</option>
+                <option value="Income">Income (Earnings / Salary / Inflow)</option>
+                <option value="EMI / Loan Payment">EMI / Loan Repayment (Outflow to debt)</option>
+                <option value="Borrow / Loan Taken">Borrow / Loan Taken (Inflow borrowed)</option>
+                <option value="Lend / Loan Given">Lend / Loan Given (Outflow advance to someone)</option>
+                <option value="Debt Recovery">Debt Recovery (Inflow lent money returned)</option>
+                <option value="Transfer">Transfer between Accounts</option>
+              </select>
+            </label>
+          </div>
 
-            {/* Complete Category Dropdown */}
-            <div className="pt-1">
-              <SelectField
-                label=""
+          {/* Category Dropdown */}
+          {type !== "Transfer" && (
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <span className="wt-label mb-0">
+                  Category <span className="text-destructive">*</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingCategory(true)}
+                  className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
+                >
+                  <Plus size={12} /> Create Category
+                </button>
+              </div>
+              <select
+                className="wt-field h-10 text-xs font-semibold"
                 value={form.categoryId ?? ""}
-                onChange={handleDropdownSelectCategory}
-                options={[
-                  ...categories.map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` })),
-                  { value: "__new_category__", label: "＋ Create new category…" },
-                ]}
-                placeholder="Or select other category…"
-                error={errors.categoryId}
-              />
+                onChange={(e) => handleDropdownSelectCategory(e.target.value)}
+              >
+                <option value="">-- Select Category --</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.icon} {c.name}
+                  </option>
+                ))}
+                <option value="__new_category__">＋ Create new category…</option>
+              </select>
+              {errors.categoryId && (
+                <span className="mt-1 block text-xs text-destructive">{errors.categoryId}</span>
+              )}
             </div>
+          )}
+        </div>
+
+        {/* Optional Loan Linkage Dropdown for EMI Repayment */}
+        {type === "EMI / Loan Payment" && (data.loans?.length ?? 0) > 0 && (
+          <div className="rounded-xl border border-border/80 bg-muted/20 p-3 space-y-1.5">
+            <label className="block">
+              <div className="flex items-center gap-1.5 mb-1">
+                <Landmark size={13} className="text-primary" />
+                <span className="wt-label font-bold text-foreground mb-0">
+                  Link to Loan (Reduces Outstanding Balance)
+                </span>
+              </div>
+              <select
+                className="wt-field h-9 text-xs font-semibold"
+                value={form.loanId || ""}
+                onChange={(e) => {
+                  const selectedLoan = data.loans?.find((l) => l.id === e.target.value);
+                  setForm((cur) => ({
+                    ...cur,
+                    loanId: e.target.value || undefined,
+                    amount: cur.amount || (selectedLoan ? selectedLoan.emiAmount : undefined),
+                    merchant: cur.merchant || selectedLoan?.lenderInstitution || "",
+                    description:
+                      cur.description && cur.description !== "Loan EMI"
+                        ? cur.description
+                        : selectedLoan
+                        ? `${selectedLoan.name} EMI`
+                        : "Loan EMI",
+                  }));
+                }}
+              >
+                <option value="">-- None / General Debt Payment --</option>
+                {data.loans?.map((loan) => (
+                  <option key={loan.id} value={loan.id}>
+                    {loan.name} ({loan.lenderInstitution} · Outstanding: {currencySymbol}
+                    {loan.currentOutstanding})
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         )}
 
