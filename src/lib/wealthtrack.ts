@@ -37,6 +37,7 @@ export type Section =
   | "Accounts"
   | "Investments"
   | "Loans"
+  | "Funds"
   | "Categories"
   | "Reports"
   | "Recurring"
@@ -106,6 +107,40 @@ export interface LoanLiability {
   paidEmisCount: number;
   autoRecurringEmi: boolean;
   notes?: string;
+  updatedAt: string;
+}
+
+export type FundType = "Emergency" | "PurchaseGoal" | "Custom";
+
+export interface CustomFund {
+  id: string;
+  name: string;
+  type: FundType;
+  targetAmount: number;
+  currentAmount: number;
+  monthlyContribution?: number;
+  targetDate?: string;
+  linkedAccountId?: string;
+  notes?: string;
+  icon?: string;
+  color?: string;
+  status: "Active" | "Completed" | "Paused";
+  updatedAt: string;
+}
+
+export type PlanCategory = "Real Estate" | "Vehicle" | "Asset" | "Gadget" | "Life Event" | "Custom";
+
+export interface PurchasePlan {
+  id: string;
+  title: string;
+  category: PlanCategory;
+  targetCost: number;
+  downPaymentPercent: number; // e.g. 20%
+  targetDate: string; // YYYY-MM
+  estimatedLoanRate?: number; // e.g. 8.5%
+  loanTenureYears?: number; // e.g. 5
+  notes?: string;
+  status: "Active" | "Draft" | "Achieved";
   updatedAt: string;
 }
 
@@ -215,6 +250,8 @@ export interface WealthState {
   recurring: RecurringItem[];
   investments?: InvestmentHolding[];
   loans?: LoanLiability[];
+  funds?: CustomFund[];
+  plans?: PurchasePlan[];
   notifications: WealthNotification[];
   tags: string[];
   customFields: CustomField[];
@@ -438,6 +475,68 @@ export function createInitialState(): WealthState {
         updatedAt: "2026-10-22",
       },
     ],
+    funds: [
+      {
+        id: "fund-01",
+        name: "Emergency Reserve Fund (6-Mo)",
+        type: "Emergency",
+        targetAmount: 180000,
+        currentAmount: 125000,
+        monthlyContribution: 10000,
+        targetDate: "2027-04-30",
+        linkedAccountId: "acc-hdfc",
+        notes: "Liquid emergency cushion held across everyday bank accounts.",
+        icon: "🛡️",
+        color: "emerald",
+        status: "Active",
+        updatedAt: "2026-10-22",
+      },
+      {
+        id: "fund-02",
+        name: "House Downpayment Fund",
+        type: "PurchaseGoal",
+        targetAmount: 800000,
+        currentAmount: 320000,
+        monthlyContribution: 25000,
+        targetDate: "2028-06-30",
+        linkedAccountId: "acc-sbi",
+        notes: "Targeting 20% down payment for future family apartment upgrade.",
+        icon: "🏠",
+        color: "blue",
+        status: "Active",
+        updatedAt: "2026-10-22",
+      },
+      {
+        id: "fund-03",
+        name: "Japan Vacation Fund",
+        type: "Custom",
+        targetAmount: 150000,
+        currentAmount: 85000,
+        monthlyContribution: 8000,
+        targetDate: "2027-09-15",
+        linkedAccountId: "acc-hdfc",
+        notes: "Flights, accommodation, and bullet train passes.",
+        icon: "✈️",
+        color: "violet",
+        status: "Active",
+        updatedAt: "2026-10-20",
+      },
+    ],
+    plans: [
+      {
+        id: "plan-01",
+        title: "Electric SUV (Tata Harrier EV)",
+        category: "Vehicle",
+        targetCost: 2400000,
+        downPaymentPercent: 25,
+        targetDate: "2027-11",
+        estimatedLoanRate: 8.75,
+        loanTenureYears: 5,
+        notes: "Upgrading daily commute vehicle to a modern long-range EV.",
+        status: "Active",
+        updatedAt: "2026-10-22",
+      },
+    ],
   };
 }
 
@@ -657,5 +756,100 @@ export function processDueRecurringTransactions(
     },
     processedCount: newTransactions.length,
     processedItems,
+  };
+}
+
+export function getEmergencyFundSummary(
+  profile?: UserProfile,
+  liquidBalance = 0,
+  monthlyExpenses = 35000,
+  funds: CustomFund[] = []
+) {
+  const emergencyFund = funds.find((f) => f.type === "Emergency");
+  const target = emergencyFund?.targetAmount || profile?.emergencyFundTarget || monthlyExpenses * 6;
+  const current = emergencyFund ? emergencyFund.currentAmount : liquidBalance;
+  const runwayMonths = monthlyExpenses > 0 ? Number((current / monthlyExpenses).toFixed(1)) : 0;
+  const percent = target > 0 ? Math.min(100, Math.round((current / target) * 100)) : 0;
+
+  const status = runwayMonths >= 6 ? "Optimal (6+ Mo)" : runwayMonths >= 3 ? "Adequate (3–6 Mo)" : "Building (< 3 Mo)";
+  const statusColor = runwayMonths >= 6 ? "emerald" : runwayMonths >= 3 ? "blue" : "amber";
+
+  return {
+    target,
+    current,
+    runwayMonths,
+    percent,
+    status,
+    statusColor,
+  };
+}
+
+export function getPlanSimulation(
+  plan: PurchasePlan,
+  liquidBalance: number,
+  monthlySurplus: number,
+  emergencyBuffer = 150000
+) {
+  const downPayment = Math.round(plan.targetCost * (plan.downPaymentPercent / 100));
+  const loanPrincipal = Math.max(0, plan.targetCost - downPayment);
+
+  // Time horizon in months (reference Oct 2026)
+  const now = new Date(2026, 9, 22);
+  const target = new Date(plan.targetDate + "-01");
+  const monthsDiff = Math.max(1, (target.getFullYear() - now.getFullYear()) * 12 + (target.getMonth() - now.getMonth()));
+
+  // Required monthly savings for down payment
+  const requiredMonthlySavings = Math.round(downPayment / monthsDiff);
+
+  // Calculate Loan EMI: P * r * (1+r)^n / ((1+r)^n - 1)
+  let estimatedMonthlyEmi = 0;
+  if (loanPrincipal > 0 && plan.estimatedLoanRate && plan.loanTenureYears) {
+    const r = plan.estimatedLoanRate / 12 / 100;
+    const n = plan.loanTenureYears * 12;
+    estimatedMonthlyEmi = Math.round((loanPrincipal * r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1));
+  }
+
+  // Usable liquid cash without breaching emergency buffer
+  const safeLiquidDeployable = Math.max(0, liquidBalance - emergencyBuffer);
+
+  // Feasibility assessment
+  let feasibility: "Optimal" | "Feasible" | "Stretch" = "Feasible";
+  let feasibilityBadge = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+
+  if (requiredMonthlySavings <= monthlySurplus * 0.5) {
+    feasibility = "Optimal";
+    feasibilityBadge = "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
+  } else if (requiredMonthlySavings <= monthlySurplus) {
+    feasibility = "Feasible";
+    feasibilityBadge = "bg-blue-500/15 text-blue-700 dark:text-blue-300";
+  } else {
+    feasibility = "Stretch";
+    feasibilityBadge = "bg-amber-500/15 text-amber-700 dark:text-amber-300";
+  }
+
+  // AI recommendations
+  const aiRecommendations: string[] = [
+    `Save ₹${requiredMonthlySavings.toLocaleString("en-IN")}/mo over the next ${monthsDiff} months to fully fund your ₹${downPayment.toLocaleString("en-IN")} down payment.`,
+    safeLiquidDeployable > 0
+      ? `You have ₹${safeLiquidDeployable.toLocaleString("en-IN")} in surplus liquid cash above your emergency safety net that can jumpstart this goal.`
+      : `Preserve your liquid cash to keep your emergency safety buffer fully intact.`,
+  ];
+
+  if (loanPrincipal > 0) {
+    aiRecommendations.push(
+      `Financing ₹${loanPrincipal.toLocaleString("en-IN")} at ${plan.estimatedLoanRate}% for ${plan.loanTenureYears} years results in an estimated EMI of ₹${estimatedMonthlyEmi.toLocaleString("en-IN")}/mo.`
+    );
+  }
+
+  return {
+    downPayment,
+    loanPrincipal,
+    monthsDiff,
+    requiredMonthlySavings,
+    estimatedMonthlyEmi,
+    safeLiquidDeployable,
+    feasibility,
+    feasibilityBadge,
+    aiRecommendations,
   };
 }

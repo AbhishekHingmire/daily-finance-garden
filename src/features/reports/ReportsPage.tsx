@@ -6,7 +6,6 @@ import {
   Compass,
   Download,
   Landmark,
-  PieChart as PieChartIcon,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
@@ -134,7 +133,7 @@ export function ReportsPage({
     [rows]
   );
 
-  // Category breakdown
+  // Category breakdown for Donut Chart
   const categorySpendList = useMemo(() => {
     return data.categories
       .filter((c) => c.kind === "Expense" && !c.archived)
@@ -158,27 +157,6 @@ export function ReportsPage({
       .filter((c) => c.amount > 0)
       .sort((a, b) => b.amount - a.amount);
   }, [data.categories, activeRows, totalExpenses]);
-
-  // Top merchants / payees
-  const topMerchants = useMemo(() => {
-    const map = new Map<string, { amount: number; count: number }>();
-    for (const r of activeRows) {
-      if (r.type === "Expense") {
-        const name = r.merchant?.trim() || r.description?.trim() || "Unspecified";
-        const cur = map.get(name) || { amount: 0, count: 0 };
-        map.set(name, { amount: cur.amount + r.amount, count: cur.count + 1 });
-      }
-    }
-    return Array.from(map.entries())
-      .map(([name, stat]) => ({
-        name,
-        amount: stat.amount,
-        count: stat.count,
-        pct: totalExpenses > 0 ? Math.round((stat.amount / totalExpenses) * 100) : 0,
-      }))
-      .sort((a, b) => b.amount - a.amount)
-      .slice(0, 5);
-  }, [activeRows, totalExpenses]);
 
   // Income Sources
   const incomeSources = useMemo(() => {
@@ -204,8 +182,8 @@ export function ReportsPage({
   return (
     <div className="space-y-6">
       <PageHeading
-        title="Reports"
-        description="Cash flow velocity, category allocation, and wealth accumulation."
+        title="Reports & Analytics"
+        description="Comprehensive cash flow velocity, category allocation, and wealth accumulation."
         actions={
           <Button
             size="sm"
@@ -243,7 +221,7 @@ export function ReportsPage({
           <div>
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Net Surplus
+                Net Surplus Retained
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
                 <Sparkles size={11} /> {savingsRate}% Saved
@@ -295,7 +273,7 @@ export function ReportsPage({
         </div>
       </div>
 
-      {/* Reused Cash Flow Velocity Chart (Weekly if Monthly filter, Monthly if Year/All filter) */}
+      {/* Reused Cash Flow Velocity Chart (Day-by-Day view when Month selected) */}
       <CashFlowVelocityChart
         transactions={data.transactions}
         dateRange={dateRange}
@@ -303,108 +281,7 @@ export function ReportsPage({
         title="Cash Flow Velocity Breakdown"
       />
 
-      {/* 50 / 30 / 20 Budget Rule Diagnostic with Circular Percentage Gauges */}
-      <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-4 border-b border-border/60">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="wt-display text-base font-bold text-foreground">
-                50 / 30 / 20 Budget Diagnostic & Allocations
-              </h2>
-              <span className="rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                Fintech Benchmark
-              </span>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Standard benchmark: 50% Essential Needs · 30% Lifestyle Wants · 20% Financial Freedom
-            </p>
-          </div>
-          <div className="text-left sm:text-right">
-            <span className="text-xs text-muted-foreground">Period Income Baseline</span>
-            <p className="wt-display text-sm font-extrabold text-foreground tabular-nums">
-              {money(totalIncome)}
-            </p>
-          </div>
-        </div>
-
-        {/* 3 Circular Percentage Gauge Charts */}
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <CirclePercentageGauge
-            label="Needs & Essentials"
-            percentage={needsPct}
-            target="Target: Under 50%"
-            amountFormatted={money(needsSpend)}
-            statusText={needsPct <= 50 ? "✓ Optimal" : "⚠ Exceeding"}
-            statusVariant={needsPct <= 50 ? "success" : "warning"}
-            strokeColor="#3b82f6"
-            subLabel="Rent, bills, groceries & healthcare"
-          />
-
-          <CirclePercentageGauge
-            label="Lifestyle Wants"
-            percentage={wantsPct}
-            target="Target: Under 30%"
-            amountFormatted={money(wantsSpend)}
-            statusText={wantsPct <= 30 ? "✓ Disciplined" : "⚠ High"}
-            statusVariant={wantsPct <= 30 ? "success" : "danger"}
-            strokeColor="#f59e0b"
-            subLabel="Dining, entertainment & shopping"
-          />
-
-          <CirclePercentageGauge
-            label="Savings & Wealth"
-            percentage={savingsPct}
-            target="Target: Over 20%"
-            amountFormatted={money(netSavings)}
-            statusText={savingsPct >= 20 ? "★ Compounding" : "Needs Boost"}
-            statusVariant={savingsPct >= 20 ? "success" : "info"}
-            strokeColor="#10b981"
-            subLabel="Investments, emergency fund & surplus"
-          />
-        </div>
-
-        {/* Multi-segmented Progress Bar */}
-        <div className="mt-5">
-          <div className="h-3 w-full overflow-hidden rounded-full bg-muted flex shadow-inner">
-            <div
-              style={{ width: `${Math.min(100, needsPct)}%` }}
-              className="h-full bg-blue-500 transition-all duration-300"
-              title={`Needs: ${needsPct}%`}
-            />
-            <div
-              style={{ width: `${Math.min(100, wantsPct)}%` }}
-              className="h-full bg-amber-500 transition-all duration-300"
-              title={`Wants: ${wantsPct}%`}
-            />
-            <div
-              style={{ width: `${Math.min(100, savingsPct)}%` }}
-              className="h-full bg-emerald-500 transition-all duration-300"
-              title={`Savings: ${savingsPct}%`}
-            />
-          </div>
-          <div className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
-            <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-blue-500" /> Needs ({needsPct}%)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-amber-500" /> Wants ({wantsPct}%)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="size-2 rounded-full bg-emerald-500" /> Savings ({savingsPct}%)
-            </span>
-          </div>
-        </div>
-
-        {/* Advisor Insight Strip */}
-        <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-200 border border-emerald-500/20">
-          <Award size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
-          <span>
-            <strong>Advisor Insight:</strong> Disciplined capital stewardship. Your lifestyle expenses are {wantsPct}%, enabling a {savingsPct}% savings rate that compounds portfolio wealth.
-          </span>
-        </div>
-      </div>
-
-      {/* Two Column Visual Analytics: Donut / Pie Chart & Top Payees */}
+      {/* Two Column Visual Analytics: Allocation Donut & 50/30/20 Diagnostic */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Interactive Category Pie / Donut Chart */}
         <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between">
@@ -434,55 +311,63 @@ export function ReportsPage({
           </div>
         </div>
 
-        {/* Top Expense Payees & Merchants */}
+        {/* 50 / 30 / 20 Budget Diagnostic & Allocations */}
         <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div>
                 <h3 className="wt-display text-base font-bold text-foreground">
-                  Top Expense Payees & Merchants
+                  50 / 30 / 20 Diagnostic
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Entities where your expenditure concentrated most heavily
+                  50% Needs · 30% Wants · 20% Wealth compounding
                 </p>
               </div>
-              <span className="text-xs font-semibold text-muted-foreground">
-                {topMerchants.length} recorded
+              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                Rule Check
               </span>
+            </div>
+
+            {/* 3 Circular Percentage Gauge Charts */}
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <CirclePercentageGauge
+                label="Needs"
+                percentage={needsPct}
+                target="< 50%"
+                amountFormatted={money(needsSpend)}
+                statusText={needsPct <= 50 ? "✓ Optimal" : "⚠ High"}
+                statusVariant={needsPct <= 50 ? "success" : "warning"}
+                strokeColor="#3b82f6"
+              />
+
+              <CirclePercentageGauge
+                label="Wants"
+                percentage={wantsPct}
+                target="< 30%"
+                amountFormatted={money(wantsSpend)}
+                statusText={wantsPct <= 30 ? "✓ Disciplined" : "⚠ High"}
+                statusVariant={wantsPct <= 30 ? "success" : "danger"}
+                strokeColor="#f59e0b"
+              />
+
+              <CirclePercentageGauge
+                label="Savings"
+                percentage={savingsPct}
+                target="> 20%"
+                amountFormatted={money(netSavings)}
+                statusText={savingsPct >= 20 ? "★ Compounding" : "Boost"}
+                statusVariant={savingsPct >= 20 ? "success" : "info"}
+                strokeColor="#10b981"
+              />
             </div>
           </div>
 
-          <div className="mt-4 space-y-2.5">
-            {topMerchants.length === 0 ? (
-              <EmptyInline message="No expenses recorded in this period." />
-            ) : (
-              topMerchants.map((item, index) => (
-                <div
-                  key={item.name}
-                  className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/20 p-3 hover:bg-muted/40 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-7 place-items-center rounded-lg bg-card text-xs font-bold text-foreground border border-border shadow-2xs">
-                      #{index + 1}
-                    </span>
-                    <div>
-                      <p className="text-xs font-bold text-foreground">{item.name}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {item.count} transaction{item.count > 1 ? "s" : ""}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-xs font-extrabold text-foreground tabular-nums">
-                      {money(item.amount)}
-                    </p>
-                    <span className="text-[10px] font-semibold text-muted-foreground">
-                      {item.pct}% of total outflow
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
+          {/* Advisor Insight Strip */}
+          <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-200 border border-emerald-500/20">
+            <Award size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+            <span>
+              <strong>Advisor Insight:</strong> Disciplined capital stewardship. Your lifestyle expenses are {wantsPct}%, enabling a {savingsPct}% savings rate that compounds portfolio wealth.
+            </span>
           </div>
         </div>
       </div>
@@ -493,86 +378,6 @@ export function ReportsPage({
         dateRange={dateRange}
         money={money}
       />
-
-      {/* Expense Allocation by Category (2-in-a-Row Responsive Grid) */}
-      <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b border-border/60">
-          <div>
-            <h3 className="wt-display text-base font-bold text-foreground">
-              Ranked Category Expenditure Bars
-            </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Detailed breakdown of expenditure across your budgeted categories
-            </p>
-          </div>
-          <span className="text-xs font-semibold text-muted-foreground">
-            {categorySpendList.length} categories active
-          </span>
-        </div>
-
-        {/* 2 in a Row Grid */}
-        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {categorySpendList.length === 0 ? (
-            <div className="col-span-2">
-              <EmptyInline message="No category spending found in this date range." />
-            </div>
-          ) : (
-            categorySpendList.map((cat, idx) => {
-              const barColors = [
-                "bg-blue-500",
-                "bg-emerald-500",
-                "bg-violet-500",
-                "bg-amber-500",
-                "bg-rose-500",
-                "bg-cyan-500",
-                "bg-fuchsia-500",
-              ];
-              const barColor = barColors[idx % barColors.length];
-
-              return (
-                <div
-                  key={cat.id}
-                  className="rounded-2xl border border-border/70 bg-card p-4.5 hover:border-primary/50 hover:shadow-xs transition-all cursor-pointer group"
-                  onClick={() => onCategory?.(cat.id)}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted/60 text-lg group-hover:scale-105 transition-transform">
-                        {cat.icon || "🏷️"}
-                      </span>
-                      <div className="min-w-0">
-                        <span className="text-sm font-bold text-foreground block truncate group-hover:text-primary transition-colors">
-                          {cat.name}
-                        </span>
-                        <span className="text-[11px] text-muted-foreground block mt-0.5">
-                          {cat.count} transaction{cat.count > 1 ? "s" : ""}
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="text-right shrink-0">
-                      <span className="text-sm font-extrabold text-foreground tabular-nums block">
-                        {money(cat.amount)}
-                      </span>
-                      <span className="inline-block mt-0.5 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-                        {cat.pctOfTotal}% of total
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
-                    <div
-                      style={{ width: `${Math.min(100, Math.max(3, cat.pctOfTotal))}%` }}
-                      className={`h-full ${barColor} rounded-full transition-all`}
-                    />
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-      </div>
 
       {/* 3-Pillar Capital Flow: Income Streams, Investments, and Debt/Loan Cash Flow */}
       <div className="grid gap-6 lg:grid-cols-3">

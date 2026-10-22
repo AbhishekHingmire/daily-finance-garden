@@ -42,6 +42,7 @@ import { InvestmentsPage } from "@/features/investments/InvestmentsPage";
 import { InvestmentHoldingModal } from "@/features/investments/InvestmentHoldingModal";
 import { LoansPage } from "@/features/loans/LoansPage";
 import { LoanModal } from "@/features/loans/LoanModal";
+import { FundsPage } from "@/features/funds/FundsPage";
 import { ProfilePage } from "@/features/profile/ProfilePage";
 import { PreferencesPage } from "@/features/preferences/PreferencesPage";
 import { CategoriesPage } from "@/features/categories/CategoriesPage";
@@ -68,10 +69,12 @@ import {
   type Category,
   type CategoryKind,
   type CustomField,
+  type CustomFund,
   type InvestmentAction,
   type InvestmentHolding,
   type InvestmentInstrument,
   type LoanLiability,
+  type PurchasePlan,
   type RecurringItem,
   type Section,
   type Transaction,
@@ -87,6 +90,7 @@ const navItems: { label: Section; path: string; icon: typeof LayoutDashboard }[]
   { label: "Accounts", path: "/accounts", icon: Wallet },
   { label: "Investments", path: "/investments", icon: TrendingUp },
   { label: "Loans", path: "/loans", icon: Landmark },
+  { label: "Funds", path: "/funds", icon: ShieldCheck },
   { label: "Recurring", path: "/recurring", icon: CalendarDays },
   { label: "Categories", path: "/categories", icon: Tag },
   { label: "Reports", path: "/reports", icon: Activity },
@@ -109,6 +113,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       if (path === "accounts") return "Accounts";
       if (path === "investments") return "Investments";
       if (path === "loans") return "Loans";
+      if (path === "funds") return "Funds";
       if (path === "categories") return "Categories";
       if (path === "reports") return "Reports";
       if (path === "recurring") return "Recurring";
@@ -453,6 +458,68 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setData((current) => ({ ...current, profile }));
     setEmail(profile.email);
     setFullName(profile.fullName);
+  };
+
+  const handleSaveFund = (fund: CustomFund) => {
+    setData((current) => {
+      const existing = current.funds ?? [];
+      const index = existing.findIndex((f) => f.id === fund.id);
+      const updated =
+        index >= 0
+          ? existing.map((f, i) => (i === index ? fund : f))
+          : [...existing, fund];
+      return { ...current, funds: updated };
+    });
+    toast.success(fund.name, {
+      description: `Fund saved with target ${money(fund.targetAmount)}.`,
+    });
+  };
+
+  const handleDeleteFund = (fundId: string) => {
+    setData((current) => ({
+      ...current,
+      funds: (current.funds ?? []).filter((f) => f.id !== fundId),
+    }));
+    toast.success("Fund deleted", {
+      description: "The fund has been removed from your goals.",
+    });
+  };
+
+  const handleQuickDepositFund = (fundId: string, amount: number) => {
+    setData((current) => {
+      const updated = (current.funds ?? []).map((f) =>
+        f.id === fundId ? { ...f, currentAmount: f.currentAmount + amount } : f
+      );
+      return { ...current, funds: updated };
+    });
+    toast.success("Deposit recorded", {
+      description: `Allocated ${money(amount)} to fund balance.`,
+    });
+  };
+
+  const handleSavePlan = (plan: PurchasePlan) => {
+    setData((current) => {
+      const existing = current.plans ?? [];
+      const index = existing.findIndex((p) => p.id === plan.id);
+      const updated =
+        index >= 0
+          ? existing.map((p, i) => (i === index ? plan : p))
+          : [...existing, plan];
+      return { ...current, plans: updated };
+    });
+    toast.success(plan.title, {
+      description: `Simulation updated for ${money(plan.targetCost)}.`,
+    });
+  };
+
+  const handleDeletePlan = (planId: string) => {
+    setData((current) => ({
+      ...current,
+      plans: (current.plans ?? []).filter((p) => p.id !== planId),
+    }));
+    toast.success("Plan deleted", {
+      description: "The purchase scenario has been removed.",
+    });
   };
 
   const notify = (title: string, description: string) => {
@@ -1772,6 +1839,18 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 onEditLoan={handleEditLoan}
                 onDeleteLoan={handleDeleteLoan}
                 onRecordEmiPayment={handleRecordLoanEmiPayment}
+              />
+            )}
+
+            {active === "Funds" && (
+              <FundsPage
+                data={data}
+                money={money}
+                onSaveFund={handleSaveFund}
+                onDeleteFund={handleDeleteFund}
+                onSavePlan={handleSavePlan}
+                onDeletePlan={handleDeletePlan}
+                onQuickDepositFund={handleQuickDepositFund}
               />
             )}
 

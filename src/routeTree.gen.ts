@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as CategoriesRouteImport } from './routes/categories'
+import { Route as FundsRouteImport } from './routes/funds'
 import { Route as InvestmentsRouteImport } from './routes/investments'
 import { Route as LoansRouteImport } from './routes/loans'
 import { Route as OverviewRouteImport } from './routes/overview'
@@ -41,6 +42,11 @@ const AccountsRoute = AccountsRouteImport.update({
 const CategoriesRoute = CategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FundsRoute = FundsRouteImport.update({
+  id: '/funds',
+  path: '/funds',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InvestmentsRoute = InvestmentsRouteImport.update({
@@ -94,6 +100,7 @@ export interface FileRoutesByFullPath {
   '/$': typeof SplatRoute
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
+  '/funds': typeof FundsRoute
   '/investments': typeof InvestmentsRoute
   '/loans': typeof LoansRoute
   '/overview': typeof OverviewRoute
@@ -109,6 +116,7 @@ export interface FileRoutesByTo {
   '/$': typeof SplatRoute
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
+  '/funds': typeof FundsRoute
   '/investments': typeof InvestmentsRoute
   '/loans': typeof LoansRoute
   '/overview': typeof OverviewRoute
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/$': typeof SplatRoute
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
+  '/funds': typeof FundsRoute
   '/investments': typeof InvestmentsRoute
   '/loans': typeof LoansRoute
   '/overview': typeof OverviewRoute
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/accounts'
     | '/categories'
+    | '/funds'
     | '/investments'
     | '/loans'
     | '/overview'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/accounts'
     | '/categories'
+    | '/funds'
     | '/investments'
     | '/loans'
     | '/overview'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/$'
     | '/accounts'
     | '/categories'
+    | '/funds'
     | '/investments'
     | '/loans'
     | '/overview'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   SplatRoute: typeof SplatRoute
   AccountsRoute: typeof AccountsRoute
   CategoriesRoute: typeof CategoriesRoute
+  FundsRoute: typeof FundsRoute
   InvestmentsRoute: typeof InvestmentsRoute
   LoansRoute: typeof LoansRoute
   OverviewRoute: typeof OverviewRoute
@@ -227,6 +240,13 @@ declare module '@tanstack/react-router' {
       path: '/categories'
       fullPath: '/categories'
       preLoaderRoute: typeof CategoriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/funds': {
+      id: '/funds'
+      path: '/funds'
+      fullPath: '/funds'
+      preLoaderRoute: typeof FundsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/investments': {
@@ -300,6 +320,7 @@ const rootRouteChildren: RootRouteChildren = {
   SplatRoute: SplatRoute,
   AccountsRoute: AccountsRoute,
   CategoriesRoute: CategoriesRoute,
+  FundsRoute: FundsRoute,
   InvestmentsRoute: InvestmentsRoute,
   LoansRoute: LoansRoute,
   OverviewRoute: OverviewRoute,
