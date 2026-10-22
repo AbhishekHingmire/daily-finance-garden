@@ -678,6 +678,32 @@ export function CashFlowVelocityChart({
             })}
           </div>
         </div>
+
+        {/* Symmetrical Bottom Velocity Metrics Footer */}
+        <div className="mt-4 pt-3 border-t border-border/60 flex flex-wrap items-center justify-between gap-2 text-xs">
+          <div>
+            <span className="font-bold text-foreground">Period Velocity Movement</span>
+            <span className="text-[11px] block text-muted-foreground mt-0.5">
+              Inflows: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">+{money(chartItems.reduce((s, it) => s + it.income, 0))}</strong> · Outflows: <strong className="text-rose-600 dark:text-rose-400 font-bold">−{money(chartItems.reduce((s, it) => s + it.expense, 0))}</strong>
+            </span>
+          </div>
+          <div className="text-right">
+            <span
+              className={`font-extrabold tabular-nums ${
+                chartItems.reduce((s, it) => s + (it.income - it.expense), 0) >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400"
+              }`}
+            >
+              {chartItems.reduce((s, it) => s + (it.income - it.expense), 0) >= 0
+                ? `+${money(chartItems.reduce((s, it) => s + (it.income - it.expense), 0))}`
+                : `−${money(Math.abs(chartItems.reduce((s, it) => s + (it.income - it.expense), 0)))}`}
+            </span>
+            <span className="text-[10px] font-bold text-muted-foreground block">
+              Net Velocity Flow
+            </span>
+          </div>
+        </div>
       </div>
     </div>
   );

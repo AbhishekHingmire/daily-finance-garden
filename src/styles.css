@@ -101,7 +101,11 @@
 }
 
 * { border-color: var(--color-border); }
-html { min-width: 320px; font-family: "DM Sans", sans-serif; }
+html {
+  font-size: 75%; /* Reduced by 25% across the entire web application */
+  min-width: 320px;
+  font-family: "DM Sans", sans-serif;
+}
 body { margin: 0; min-width: 320px; background: var(--color-background); color: var(--color-foreground); }
 button, input, select, textarea { font: inherit; }
 ::selection { background: color-mix(in oklab, var(--primary) 20%, transparent); }

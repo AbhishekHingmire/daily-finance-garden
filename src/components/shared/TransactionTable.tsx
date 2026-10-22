@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -127,6 +127,30 @@ export function TransactionTable({
     return { totalNet: net, totalInflow: inflow, totalOutflow: outflow };
   }, [sortedTransactions]);
 
+  // Pagination State (Default 15 records per page as requested)
+  const [pageSize, setPageSize] = useState<number>(15);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+
+  // Auto-reset page when search, total records, sort order, or pageSize changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortedTransactions.length, sortOrder, pageSize]);
+
+  const totalRecords = sortedTransactions.length;
+  const totalPages =
+    pageSize === -1
+      ? 1
+      : Math.max(1, Math.ceil(totalRecords / (pageSize || 15)));
+  const safePage = Math.min(Math.max(1, currentPage), totalPages);
+  const startIndex = pageSize === -1 ? 0 : (safePage - 1) * pageSize;
+  const endIndex =
+    pageSize === -1 ? totalRecords : Math.min(totalRecords, startIndex + pageSize);
+
+  const paginatedTransactions = useMemo(() => {
+    if (pageSize === -1) return sortedTransactions;
+    return sortedTransactions.slice(startIndex, endIndex);
+  }, [sortedTransactions, startIndex, endIndex, pageSize]);
+
   const toggleSelect = (id: string) => {
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
@@ -134,15 +158,16 @@ export function TransactionTable({
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === sortedTransactions.length) {
+    if (selectedIds.length === paginatedTransactions.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(sortedTransactions.map((t) => t.id));
+      setSelectedIds(paginatedTransactions.map((t) => t.id));
     }
   };
 
   const isAllSelected =
-    sortedTransactions.length > 0 && selectedIds.length === sortedTransactions.length;
+    paginatedTransactions.length > 0 &&
+    selectedIds.length === paginatedTransactions.length;
 
   return (
     <div className="rounded-2xl border border-border/80 bg-card overflow-hidden wt-shadow">
@@ -298,8 +323,8 @@ export function TransactionTable({
 
       {/* Table Rows */}
       <div className="divide-y divide-border/60">
-        {sortedTransactions.length ? (
-          sortedTransactions.map((tx) => {
+        {paginatedTransactions.length ? (
+          paginatedTransactions.map((tx) => {
             const isSelected = selectedIds.includes(tx.id);
             const isInvestmentOutflow =
               tx.type === "Investment" &&
@@ -556,6 +581,91 @@ export function TransactionTable({
             )}
           </div>
         )}
+      </div>
+
+      {/* Bottom Pagination & Rows-Per-Page Controls Bar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-muted/20 px-4 py-3 text-xs">
+        {/* Left: Showing range */}
+        <div className="flex items-center gap-2 text-muted-foreground font-medium">
+          <span>
+            {totalRecords > 0 ? (
+              <>
+                Showing <strong className="text-foreground font-bold">{startIndex + 1}–{endIndex}</strong> of{" "}
+                <strong className="text-foreground font-bold">{totalRecords}</strong> transaction{totalRecords !== 1 ? "s" : ""}
+              </>
+            ) : (
+              "0 transactions"
+            )}
+          </span>
+        </div>
+
+        {/* Center: Rows per page selector */}
+        <div className="flex items-center gap-2">
+          <span className="text-muted-foreground font-medium whitespace-nowrap">Rows per page:</span>
+          <select
+            className="wt-field h-8 py-0 px-2 text-xs font-semibold bg-background w-20 cursor-pointer"
+            value={pageSize}
+            onChange={(e) => {
+              setPageSize(Number(e.target.value));
+              setCurrentPage(1);
+            }}
+          >
+            <option value={15}>15</option>
+            <option value={25}>25</option>
+            <option value={50}>50</option>
+            <option value={100}>100</option>
+            <option value={-1}>All</option>
+          </select>
+        </div>
+
+        {/* Right: Page navigation buttons */}
+        <div className="flex items-center gap-1.5">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-xs font-semibold"
+            disabled={safePage <= 1}
+            onClick={() => setCurrentPage(1)}
+            title="First page"
+          >
+            « First
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-xs font-semibold"
+            disabled={safePage <= 1}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            title="Previous page"
+          >
+            ‹ Prev
+          </Button>
+
+          <span className="px-2 font-bold text-foreground tabular-nums whitespace-nowrap">
+            Page {safePage} of {totalPages}
+          </span>
+
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-xs font-semibold"
+            disabled={safePage >= totalPages}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            title="Next page"
+          >
+            Next ›
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2.5 text-xs font-semibold"
+            disabled={safePage >= totalPages}
+            onClick={() => setCurrentPage(totalPages)}
+            title="Last page"
+          >
+            Last »
+          </Button>
+        </div>
       </div>
     </div>
   );

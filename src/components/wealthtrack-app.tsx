@@ -1682,38 +1682,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 <span className="text-xs font-bold text-foreground">100% Offline & Private</span>
               </div>
               <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                All records stored only in your local browser cache.
+                All records stored only in your local browser cache. Access your Profile and Preferences from the top-right user menu.
               </p>
             </div>
-            <Button
-              variant="ghost"
-              className={`mt-3 h-10 w-full justify-start gap-3 px-3 text-xs ${
-                active === "Preferences" || active === "Settings"
-                  ? "bg-secondary font-bold text-primary shadow-2xs"
-                  : "text-muted-foreground font-medium"
-              }`}
-              onClick={() => {
-                goSection("Preferences");
-                setPreferencesTab("General & Regional");
-              }}
-            >
-              <SlidersHorizontal size={17} />
-              Preferences
-            </Button>
-            <Button
-              variant="ghost"
-              className={`mt-1 h-10 w-full justify-start gap-3 px-3 text-xs ${
-                active === "Profile"
-                  ? "bg-secondary font-bold text-primary shadow-2xs"
-                  : "text-muted-foreground font-medium"
-              }`}
-              onClick={() => {
-                goSection("Profile");
-              }}
-            >
-              <User size={17} />
-              My Profile
-            </Button>
           </div>
         </aside>
 
@@ -1862,6 +1833,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 <Button
                   variant="ghost"
                   className="h-9 gap-2 px-1.5"
+                  aria-label="User Profile and Preferences"
                   onClick={() => {
                     setProfileOpen((value) => !value);
                     setNotificationOpen(false);
@@ -1873,58 +1845,81 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   <ChevronDown size={14} className="hidden sm:block text-muted-foreground" />
                 </Button>
                 {profileOpen && (
-                  <div className="absolute right-0 top-12 z-30 w-52 rounded-xl border border-border bg-card p-1.5 wt-shadow">
-                    <div className="border-b border-border px-3 py-2">
-                      <p className="text-xs font-bold text-foreground">
-                        {data.profile?.fullName || "Local Profile"}
-                      </p>
-                      <p className="truncate text-[11px] text-muted-foreground">{email}</p>
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setProfileOpen(false)}
+                      aria-label="Close user menu"
+                    />
+                    <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-border bg-card p-1.5 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
+                      <div className="border-b border-border px-3 py-2">
+                        <p className="text-xs font-bold text-foreground">
+                          {data.profile?.fullName || "Local Profile"}
+                        </p>
+                        <p className="truncate text-[11px] text-muted-foreground">{email}</p>
+                      </div>
+                      <Button
+                        variant={active === "Profile" ? "secondary" : "ghost"}
+                        className={`mt-1 w-full justify-start text-xs font-semibold ${
+                          active === "Profile"
+                            ? "font-bold text-primary bg-secondary shadow-2xs"
+                            : ""
+                        }`}
+                        onClick={() => {
+                          goSection("Profile");
+                          setProfileOpen(false);
+                        }}
+                      >
+                        <User size={15} className="mr-2" /> My Profile
+                      </Button>
+                      <Button
+                        variant={
+                          active === "Preferences" || active === "Settings"
+                            ? "secondary"
+                            : "ghost"
+                        }
+                        className={`w-full justify-start text-xs font-semibold ${
+                          active === "Preferences" || active === "Settings"
+                            ? "font-bold text-primary bg-secondary shadow-2xs"
+                            : ""
+                        }`}
+                        onClick={() => {
+                          goSection("Preferences");
+                          setPreferencesTab("General & Regional");
+                          setProfileOpen(false);
+                        }}
+                      >
+                        <SlidersHorizontal size={15} className="mr-2" /> Preferences
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-xs font-semibold"
+                        onClick={() => {
+                          toast("WealthTrack Local Workspace", {
+                            description:
+                              "Your financial data remains strictly in your browser.",
+                          });
+                          setProfileOpen(false);
+                        }}
+                      >
+                        <CircleHelp size={15} className="mr-2" /> Help & Support
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-xs font-semibold text-destructive"
+                        onClick={() => {
+                          setPendingDelete({
+                            kind: "signout",
+                            label: "Sign out of this session?",
+                          });
+                          setModal("confirm");
+                          setProfileOpen(false);
+                        }}
+                      >
+                        <LogOut size={15} className="mr-2" /> Sign Out
+                      </Button>
                     </div>
-                    <Button
-                      variant="ghost"
-                      className="mt-1 w-full justify-start text-xs font-semibold"
-                      onClick={() => {
-                        goSection("Profile");
-                        setProfileOpen(false);
-                      }}
-                    >
-                      <User size={14} className="mr-1.5" /> My Profile
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-xs font-semibold"
-                      onClick={() => {
-                        goSection("Preferences");
-                        setPreferencesTab("General & Regional");
-                        setProfileOpen(false);
-                      }}
-                    >
-                      <SlidersHorizontal size={14} className="mr-1.5" /> Preferences
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-xs font-semibold"
-                      onClick={() => {
-                        toast("WealthTrack Local Workspace", {
-                          description: "Your financial data remains strictly in your browser.",
-                        });
-                        setProfileOpen(false);
-                      }}
-                    >
-                      <CircleHelp size={14} className="mr-1.5" /> Help
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      className="w-full justify-start text-xs font-semibold text-destructive"
-                      onClick={() => {
-                        setPendingDelete({ kind: "signout", label: "Sign out of this session?" });
-                        setModal("confirm");
-                        setProfileOpen(false);
-                      }}
-                    >
-                      <LogOut size={14} className="mr-1.5" /> Sign Out
-                    </Button>
-                  </div>
+                  </>
                 )}
               </div>
             </div>

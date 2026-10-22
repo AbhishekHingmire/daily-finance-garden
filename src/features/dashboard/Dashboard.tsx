@@ -532,7 +532,7 @@ export function Dashboard({
       </div>
 
       {/* Two Column Layout: Cash Flow Velocity Chart & Top Spending Categories */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
         <CashFlowVelocityChart
           transactions={data.transactions}
           dateRange={dateRange}

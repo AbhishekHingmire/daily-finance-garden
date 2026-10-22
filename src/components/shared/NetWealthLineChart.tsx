@@ -129,9 +129,9 @@ export function NetWealthLineChart({
   }, [transactions, dateRange]);
 
   // Coordinate geometry calculations
-  const { pathD, areaD, coordinates, minVal, maxVal } = useMemo(() => {
+  const { pathD, areaD, coordinates, milestones, minVal, maxVal } = useMemo(() => {
     if (points.length === 0) {
-      return { pathD: "", areaD: "", coordinates: [], minVal: 0, maxVal: 0 };
+      return { pathD: "", areaD: "", coordinates: [], milestones: [], minVal: 0, maxVal: 0 };
     }
 
     const values = points.map((p) => p.value);
@@ -169,10 +169,18 @@ export function NetWealthLineChart({
     const baselineY = height - paddingBottom;
     const area = `${d} L ${coords[coords.length - 1].x} ${baselineY} L ${coords[0].x} ${baselineY} Z`;
 
+    const milestoneList = coords.filter(
+      (pt, idx) =>
+        idx === 0 ||
+        idx === coords.length - 1 ||
+        (pt.day && pt.day % 5 === 0)
+    );
+
     return {
       pathD: d,
       areaD: area,
       coordinates: coords,
+      milestones: milestoneList,
       minVal: minRaw,
       maxVal: maxRaw,
     };
@@ -217,7 +225,7 @@ export function NetWealthLineChart({
       <div className="relative mt-4 w-full">
         <svg
           viewBox="0 0 600 180"
-          className="w-full h-48 overflow-visible select-none"
+          className="w-full h-44 overflow-visible select-none"
           preserveAspectRatio="none"
         >
           <defs>
@@ -288,10 +296,6 @@ export function NetWealthLineChart({
           {coordinates.map((pt, idx) => {
             const isHovered = hoveredIndex === idx;
             const isLatest = idx === coordinates.length - 1;
-            const isMilestone =
-              idx === 0 ||
-              idx === coordinates.length - 1 ||
-              (pt.day && pt.day % 5 === 0);
 
             return (
               <g
@@ -309,22 +313,38 @@ export function NetWealthLineChart({
                   strokeWidth={isHovered ? 2.5 : 1.5}
                   className="transition-all duration-150"
                 />
-                {isMilestone && (
-                  <text
-                    x={pt.x}
-                    y="166"
-                    textAnchor="middle"
-                    className={`text-[10px] font-bold ${
-                      isHovered ? "fill-primary font-black" : "fill-muted-foreground"
-                    }`}
-                  >
-                    {pt.shortLabel || pt.label}
-                  </text>
-                )}
               </g>
             );
           })}
         </svg>
+
+        {/* Sharp, Crisp HTML X-Axis Milestone Labels (Replaced blurry stretched SVG text) */}
+        <div className="relative mt-2 h-5 w-full text-[11px] font-bold text-muted-foreground select-none">
+          {milestones?.map((pt, idx) => {
+            const isFirst = idx === 0;
+            const isLast = idx === milestones.length - 1;
+            const isHovered =
+              hoveredIndex !== null && coordinates[hoveredIndex]?.day === pt.day;
+            const leftPct = (pt.x / 600) * 100;
+            const transformClass = isFirst
+              ? "translate-x-0"
+              : isLast
+              ? "-translate-x-full"
+              : "-translate-x-1/2";
+
+            return (
+              <span
+                key={pt.label}
+                style={{ left: `${leftPct}%` }}
+                className={`absolute top-0 transform ${transformClass} whitespace-nowrap transition-colors ${
+                  isHovered ? "text-primary font-black" : ""
+                }`}
+              >
+                {pt.day === 1 ? "Day 1" : pt.shortLabel || pt.label}
+              </span>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
