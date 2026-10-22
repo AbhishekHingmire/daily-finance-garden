@@ -8,6 +8,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import { TransactionTable } from "@/components/shared/TransactionTable";
 import {
   getAccountBalance,
@@ -88,17 +89,7 @@ export function AccountActivityPartialView({
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/80 pb-4">
           <div className="flex items-center gap-3.5">
-            <span className="grid size-12 place-items-center rounded-2xl bg-primary/10 text-primary">
-              {account.kind === "Bank account" ? (
-                <Wallet className="size-6" />
-              ) : account.kind === "Credit card" ? (
-                <CreditCard className="size-6" />
-              ) : account.kind === "Investment" ? (
-                <TrendingUp className="size-6" />
-              ) : (
-                <Wallet className="size-6" />
-              )}
-            </span>
+            <InstitutionLogo name={account.institution || account.name} size="lg" />
             <div>
               <div className="flex items-center gap-2">
                 <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">

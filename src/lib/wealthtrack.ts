@@ -897,3 +897,56 @@ export function getPlanSimulation(
     aiRecommendations,
   };
 }
+
+export function calculateNextSalaryInfo(
+  salaryDay: number | null | undefined,
+  referenceDateStr = "2026-10-22"
+): {
+  nextDate: string;
+  daysRemaining: number;
+  isToday: boolean;
+  dayOfMonth: number;
+} {
+  const day = typeof salaryDay === "number" && salaryDay >= 1 && salaryDay <= 31 ? salaryDay : 19;
+
+  const [refYear, refMonth, refDay] = referenceDateStr.slice(0, 10).split("-").map(Number);
+  const refDate = new Date(refYear, refMonth - 1, refDay);
+  refDate.setHours(0, 0, 0, 0);
+
+  let targetYear = refYear;
+  let targetMonth = refMonth - 1; // 0-indexed
+
+  const daysInCurrentMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+  const clampedDayCurrent = Math.min(day, daysInCurrentMonth);
+  const candidateCurrent = new Date(targetYear, targetMonth, clampedDayCurrent);
+
+  let targetDate: Date;
+  if (candidateCurrent >= refDate) {
+    targetDate = candidateCurrent;
+  } else {
+    targetMonth += 1;
+    if (targetMonth > 11) {
+      targetMonth = 0;
+      targetYear += 1;
+    }
+    const daysInNextMonth = new Date(targetYear, targetMonth + 1, 0).getDate();
+    const clampedDayNext = Math.min(day, daysInNextMonth);
+    targetDate = new Date(targetYear, targetMonth, clampedDayNext);
+  }
+
+  const diffTime = targetDate.getTime() - refDate.getTime();
+  const daysRemaining = Math.max(0, Math.round(diffTime / (1000 * 60 * 60 * 24)));
+  const isToday = daysRemaining === 0;
+
+  const y = targetDate.getFullYear();
+  const m = String(targetDate.getMonth() + 1).padStart(2, "0");
+  const d = String(targetDate.getDate()).padStart(2, "0");
+  const nextDate = `${y}-${m}-${d}`;
+
+  return {
+    nextDate,
+    daysRemaining,
+    isToday,
+    dayOfMonth: day,
+  };
+}

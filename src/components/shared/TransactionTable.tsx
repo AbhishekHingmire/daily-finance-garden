@@ -12,6 +12,7 @@ import {
 import { ActionMenu } from "@/components/shared/ActionMenu";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import {
   INVESTMENT_OUTFLOW_ACTIONS,
   type Transaction,
@@ -435,8 +436,14 @@ export function TransactionTable({
 
                   {/* Account */}
                   {showAccountColumn && (
-                    <span className="truncate text-xs text-muted-foreground">
-                      {account?.name || "—"}
+                    <span className="truncate text-xs text-muted-foreground flex items-center gap-1.5">
+                      {account && (
+                        <InstitutionLogo
+                          name={account.institution || account.name}
+                          size="xs"
+                        />
+                      )}
+                      <span className="truncate">{account?.name || "—"}</span>
                     </span>
                   )}
 

@@ -54,6 +54,7 @@ import { SettingsPage } from "@/features/settings/SettingsPage";
 import { getWealthRepository } from "@/services/api";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
 import {
+  calculateNextSalaryInfo,
   createInitialState,
   createTransactionId,
   formatMoney,
@@ -541,6 +542,57 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setData((current) => ({ ...current, profile }));
     setEmail(profile.email);
     setFullName(profile.fullName);
+  };
+
+  const handleUpdateSalary = (amount: number, salaryDay: number, accountId: string) => {
+    setData((current) => {
+      const preferences = { ...current.preferences, salaryDay };
+      const profile = current.profile ? { ...current.profile, monthlyIncomeTarget: amount } : undefined;
+
+      const salaryInfo = calculateNextSalaryInfo(salaryDay, "2026-10-22");
+
+      let nextRecurring = [...current.recurring];
+      const salaryIdx = nextRecurring.findIndex(
+        (r) => r.id === "rec-salary" || (r.type === "Income" && r.name.toLowerCase().includes("salary"))
+      );
+
+      const targetCatId =
+        nextRecurring[salaryIdx]?.categoryId ||
+        current.categories.find((c) => c.name.toLowerCase().includes("salary"))?.id ||
+        "cat-salary";
+
+      const salaryItem: RecurringItem = {
+        id: salaryIdx >= 0 ? nextRecurring[salaryIdx].id : "rec-salary",
+        name: salaryIdx >= 0 ? nextRecurring[salaryIdx].name : "Monthly salary",
+        type: "Income",
+        amount,
+        categoryId: targetCatId,
+        accountId: accountId || current.accounts[0]?.id || "acc-hdfc",
+        frequency: "Monthly",
+        intervalDays: 0,
+        startDate: salaryIdx >= 0 ? nextRecurring[salaryIdx].startDate : "2026-05-19",
+        endDate: "",
+        nextDate: salaryInfo.nextDate,
+        enabled: true,
+      };
+
+      if (salaryIdx >= 0) {
+        nextRecurring[salaryIdx] = salaryItem;
+      } else {
+        nextRecurring = [salaryItem, ...nextRecurring];
+      }
+
+      return {
+        ...current,
+        preferences,
+        profile,
+        recurring: nextRecurring,
+      };
+    });
+
+    toast.success("Salary & Payday Updated", {
+      description: `${money(amount)}/mo on the ${salaryDay}th of every month.`,
+    });
   };
 
   const handleSaveFund = (fund: CustomFund) => {
@@ -1940,6 +1992,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   setTxCategory(id);
                   goSection("Transactions");
                 }}
+                onUpdateSalary={handleUpdateSalary}
               />
             )}
 

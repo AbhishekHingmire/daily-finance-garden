@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeftRight, ArrowRight, CheckCircle2, CreditCard, Info, TrendingUp, Wallet, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import {
   formatMoney,
   getAccountBalance,
@@ -143,10 +144,18 @@ export function TransferModal({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                   From Account
                 </span>
-                <p className="text-xs font-bold text-foreground truncate mt-0.5">
-                  {fromAccount?.name || "Select account"}
-                </p>
-                <p className="text-[11px] text-muted-foreground tabular-nums">
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {fromAccount && (
+                    <InstitutionLogo
+                      name={fromAccount.institution || fromAccount.name}
+                      size="xs"
+                    />
+                  )}
+                  <p className="text-xs font-bold text-foreground truncate">
+                    {fromAccount?.name || "Select account"}
+                  </p>
+                </div>
+                <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
                   {formatMoney(fromBalance, currency)}
                 </p>
               </div>
@@ -169,10 +178,18 @@ export function TransferModal({
                 <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
                   To Account
                 </span>
-                <p className="text-xs font-bold text-foreground truncate mt-0.5">
-                  {toAccount?.name || "Select account"}
-                </p>
-                <p className="text-[11px] text-muted-foreground tabular-nums">
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  {toAccount && (
+                    <InstitutionLogo
+                      name={toAccount.institution || toAccount.name}
+                      size="xs"
+                    />
+                  )}
+                  <p className="text-xs font-bold text-foreground truncate">
+                    {toAccount?.name || "Select account"}
+                  </p>
+                </div>
+                <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
                   {formatMoney(toBalance, currency)}
                 </p>
               </div>

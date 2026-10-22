@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  calculateNextSalaryInfo,
   createInitialState,
   getAccountBalance,
   getHoldingsSummary,
@@ -12,6 +13,7 @@ import {
   type Transaction,
   type WealthState,
 } from "@/lib/wealthtrack";
+import { resolveInstitution } from "@/lib/institution-registry";
 import { matchesDateRange } from "@/components/shared/DateRangeFilter";
 
 describe("Financial Engine & Calculations", () => {
@@ -524,5 +526,58 @@ describe("Financial Engine & Calculations", () => {
     // Starting: 50,000 + 20,000 (borrow) - 5,000 (emi) - 8,000 (lend) + 3,000 (recovery) = 60,000
     const finalBalance = getAccountBalance(bankAccount, debtTxs);
     expect(finalBalance).toBe(60000);
+  });
+
+  it("calculates salary countdown & payday remaining accurately across all calendar boundaries", () => {
+    // Reference date: 2026-10-22
+    // Case 1: Payday is 19th -> has already passed in October, next is Nov 19, 2026 (28 days)
+    const oct19 = calculateNextSalaryInfo(19, "2026-10-22");
+    expect(oct19.nextDate).toBe("2026-11-19");
+    expect(oct19.daysRemaining).toBe(28);
+    expect(oct19.isToday).toBe(false);
+
+    // Case 2: Payday is 22nd -> is today!
+    const oct22 = calculateNextSalaryInfo(22, "2026-10-22");
+    expect(oct22.nextDate).toBe("2026-10-22");
+    expect(oct22.daysRemaining).toBe(0);
+    expect(oct22.isToday).toBe(true);
+
+    // Case 3: Payday is 25th -> 3 days remaining in current month
+    const oct25 = calculateNextSalaryInfo(25, "2026-10-22");
+    expect(oct25.nextDate).toBe("2026-10-25");
+    expect(oct25.daysRemaining).toBe(3);
+    expect(oct25.isToday).toBe(false);
+
+    // Case 4: Payday 31st in a 30-day month (e.g. ref date 2026-11-20, salary day 31 -> clamped to Nov 30)
+    const nov31 = calculateNextSalaryInfo(31, "2026-11-20");
+    expect(nov31.nextDate).toBe("2026-11-30");
+    expect(nov31.daysRemaining).toBe(10);
+
+    // Case 5: Default fallback when null/undefined passed
+    const fallback = calculateNextSalaryInfo(null, "2026-10-22");
+    expect(fallback.dayOfMonth).toBe(19);
+    expect(fallback.nextDate).toBe("2026-11-19");
+  });
+
+  it("resolves authentic banking and institution metadata accurately", () => {
+    // Exact and alias matching
+    expect(resolveInstitution("HDFC Bank")?.id).toBe("HDFC");
+    expect(resolveInstitution("hdfc")?.id).toBe("HDFC");
+    expect(resolveInstitution("State Bank of India")?.id).toBe("SBI");
+    expect(resolveInstitution("sbi bank")?.id).toBe("SBI");
+    expect(resolveInstitution("ICICI Bank Ltd")?.id).toBe("ICICI");
+    expect(resolveInstitution("Axis Bank")?.id).toBe("AXIS");
+    expect(resolveInstitution("Kotak Mahindra Bank")?.id).toBe("KOTAK");
+    expect(resolveInstitution("Paytm Payments Bank")?.id).toBe("PAYTM");
+    expect(resolveInstitution("phonepe")?.id).toBe("PHONEPE");
+    expect(resolveInstitution("Google Pay")?.id).toBe("GPAY");
+    expect(resolveInstitution("Zerodha Kite")?.id).toBe("ZERODHA");
+    expect(resolveInstitution("Groww")?.id).toBe("GROWW");
+    expect(resolveInstitution("Cash wallet")?.id).toBe("CASH");
+    expect(resolveInstitution("Bank of America")?.id).toBe("BOA");
+
+    // Unknown institution returns null for graceful fallback
+    expect(resolveInstitution("Unknown Co-op Bank")).toBeNull();
+    expect(resolveInstitution("")).toBeNull();
   });
 });

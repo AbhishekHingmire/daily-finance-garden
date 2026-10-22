@@ -1,5 +1,6 @@
 import React from "react";
 import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight } from "lucide-react";
+import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import {
   INVESTMENT_OUTFLOW_ACTIONS,
   type Account,
@@ -103,8 +104,9 @@ export function TransactionRow({
       <span className="hidden truncate text-xs text-muted-foreground sm:block font-medium">
         {category ? `${category.icon} ${category.name}` : transaction.type}
       </span>
-      <span className="hidden truncate text-xs text-muted-foreground sm:block">
-        {account?.name || "—"}
+      <span className="hidden truncate text-xs text-muted-foreground sm:flex items-center gap-1.5">
+        {account && <InstitutionLogo name={account.institution || account.name} size="xs" />}
+        <span className="truncate">{account?.name || "—"}</span>
       </span>
       <span
         className={`text-right text-sm font-bold tabular-nums ${

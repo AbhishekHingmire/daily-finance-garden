@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { ActionMenu } from "@/components/shared/ActionMenu";
 import { PageHeading } from "@/components/shared/PageHeading";
+import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import { AccountActivityPartialView } from "./AccountActivityPartialView";
 import { ReconcileModal } from "./ReconcileModal";
 import {
@@ -192,21 +193,11 @@ export function AccountsPage({
                     {account.identifier ? `· ${account.identifier}` : ""}
                   </p>
                 </div>
-                <span
-                  className={`grid size-10 place-items-center rounded-xl transition-colors ${
-                    isSelected
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-primary/10 text-primary"
-                  }`}
-                >
-                  {isCard ? (
-                    <CreditCard size={19} />
-                  ) : account.kind === "Investment" ? (
-                    <TrendingUp size={19} />
-                  ) : (
-                    <Wallet size={19} />
-                  )}
-                </span>
+                <InstitutionLogo
+                  name={account.institution || account.name}
+                  size="md"
+                  className={isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}
+                />
               </div>
 
               <div className="mt-5 border-t border-border pt-4">

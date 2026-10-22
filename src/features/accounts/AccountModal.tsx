@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
+import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import type { Account, AccountKind } from "@/lib/wealthtrack";
 
 export const POPULAR_BANKS = [
@@ -184,6 +185,13 @@ export function AccountModal({
     { kind: "Other", label: "Other", icon: "📁" },
   ];
 
+  const previewInstitutionName =
+    kind === "Cash"
+      ? "Cash"
+      : selectedPreset === "custom"
+      ? customInstitution || name
+      : selectedPreset || customInstitution || name;
+
   return (
     <Modal
       title={account ? "Edit Account" : "Add Account"}
@@ -300,6 +308,21 @@ export function AccountModal({
                 : "e.g. Crypto Exchange, Brokerage, Co-op"
             }
           />
+        )}
+
+        {/* Institution Brand Badge Preview */}
+        {previewInstitutionName && (
+          <div className="flex items-center gap-2 rounded-xl border border-border/80 bg-muted/20 px-3 py-2 text-xs">
+            <InstitutionLogo name={previewInstitutionName} size="sm" />
+            <div>
+              <span className="font-bold text-foreground block">
+                {previewInstitutionName}
+              </span>
+              <span className="text-[10px] text-muted-foreground block">
+                Verified Institution Branding
+              </span>
+            </div>
+          </div>
         )}
 
         {/* Account Name & Identifier Grid */}

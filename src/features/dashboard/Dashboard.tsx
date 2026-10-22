@@ -23,6 +23,7 @@ import { CashFlowVelocityChart } from "@/components/shared/CashFlowVelocityChart
 import { EmptyInline } from "@/components/shared/EmptyInline";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { TransactionRow } from "@/components/shared/TransactionRow";
+import { SalaryCountdownCard } from "./SalaryCountdownCard";
 import {
   getAccountBalance,
   getCategorySpend,
@@ -53,6 +54,7 @@ export function Dashboard({
   onNavigate,
   onSelectTransaction,
   onCategory,
+  onUpdateSalary,
 }: {
   data: WealthState;
   money: (amount: number) => string;
@@ -63,6 +65,7 @@ export function Dashboard({
   onNavigate: (section: Section) => void;
   onSelectTransaction: (transaction: Transaction) => void;
   onCategory: (id: string) => void;
+  onUpdateSalary?: (amount: number, salaryDay: number, accountId: string) => void;
 }) {
   const [dashboardPriority, setDashboardPriority] = useState<string>("All");
   const [dismissedGoals, setDismissedGoals] = useState<string[]>([]);
@@ -470,6 +473,13 @@ export function Dashboard({
           </div>
         </div>
       </div>
+
+      {/* Salary Countdown & Inflow Tracker */}
+      <SalaryCountdownCard
+        data={data}
+        money={money}
+        onUpdateSalary={onUpdateSalary}
+      />
 
       {/* Timeframe Filter Bar */}
       <div className="flex items-center justify-between">
