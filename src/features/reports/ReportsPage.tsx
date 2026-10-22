@@ -455,9 +455,9 @@ export function ReportsPage({
         </div>
       </div>
 
-      {/* Expense Allocation by Category */}
-      <div className="rounded-2xl border border-border bg-card p-6 wt-shadow">
-        <div className="flex items-center justify-between">
+      {/* Expense Allocation by Category (2-in-a-Row Responsive Grid) */}
+      <div className="rounded-2xl border border-border/80 bg-card p-6 wt-shadow">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pb-4 border-b border-border/60">
           <div>
             <h3 className="wt-display text-base font-bold text-foreground">
               Expense Allocation by Category
@@ -471,49 +471,93 @@ export function ReportsPage({
           </span>
         </div>
 
-        <div className="mt-5 space-y-3.5">
+        {/* Proportional Multi-Color Allocation Bar */}
+        {categorySpendList.length > 0 && (
+          <div className="mt-4">
+            <div className="h-3 w-full overflow-hidden rounded-full bg-muted flex shadow-inner">
+              {categorySpendList.map((cat, idx) => {
+                const colors = [
+                  "bg-blue-500",
+                  "bg-emerald-500",
+                  "bg-violet-500",
+                  "bg-amber-500",
+                  "bg-rose-500",
+                  "bg-cyan-500",
+                  "bg-fuchsia-500",
+                ];
+                return (
+                  <div
+                    key={cat.id}
+                    style={{ width: `${Math.max(2, cat.pctOfTotal)}%` }}
+                    className={`h-full ${colors[idx % colors.length]} transition-all`}
+                    title={`${cat.name}: ${cat.pctOfTotal}% (${money(cat.amount)})`}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* 2 in a Row Grid */}
+        <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
           {categorySpendList.length === 0 ? (
-            <EmptyInline message="No category spending found in this date range." />
+            <div className="col-span-2">
+              <EmptyInline message="No category spending found in this date range." />
+            </div>
           ) : (
-            categorySpendList.map((cat) => (
-              <div
-                key={cat.id}
-                className="rounded-xl border border-border/80 bg-muted/15 p-3.5 hover:bg-muted/30 transition-colors cursor-pointer"
-                onClick={() => onCategory?.(cat.id)}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-9 place-items-center rounded-lg bg-primary/10 text-primary text-base">
-                      {cat.icon || "🏷️"}
-                    </span>
-                    <div>
-                      <span className="text-xs font-bold text-foreground block">
-                        {cat.name}
+            categorySpendList.map((cat, idx) => {
+              const barColors = [
+                "bg-blue-500",
+                "bg-emerald-500",
+                "bg-violet-500",
+                "bg-amber-500",
+                "bg-rose-500",
+                "bg-cyan-500",
+                "bg-fuchsia-500",
+              ];
+              const barColor = barColors[idx % barColors.length];
+
+              return (
+                <div
+                  key={cat.id}
+                  className="rounded-2xl border border-border/70 bg-card p-4.5 hover:border-primary/50 hover:shadow-xs transition-all cursor-pointer group"
+                  onClick={() => onCategory?.(cat.id)}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="grid size-10 shrink-0 place-items-center rounded-xl bg-muted/60 text-lg group-hover:scale-105 transition-transform">
+                        {cat.icon || "🏷️"}
                       </span>
-                      <span className="text-[11px] text-muted-foreground">
-                        {cat.count} transaction{cat.count > 1 ? "s" : ""}
+                      <div className="min-w-0">
+                        <span className="text-sm font-bold text-foreground block truncate group-hover:text-primary transition-colors">
+                          {cat.name}
+                        </span>
+                        <span className="text-[11px] text-muted-foreground block mt-0.5">
+                          {cat.count} transaction{cat.count > 1 ? "s" : ""}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="text-sm font-extrabold text-foreground tabular-nums block">
+                        {money(cat.amount)}
+                      </span>
+                      <span className="inline-block mt-0.5 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                        {cat.pctOfTotal}% of total
                       </span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs font-extrabold text-foreground tabular-nums block">
-                      {money(cat.amount)}
-                    </span>
-                    <span className="text-[11px] font-semibold text-muted-foreground">
-                      {cat.pctOfTotal}% of total spend
-                    </span>
+
+                  {/* Progress Bar */}
+                  <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      style={{ width: `${Math.min(100, Math.max(3, cat.pctOfTotal))}%` }}
+                      className={`h-full ${barColor} rounded-full transition-all`}
+                    />
                   </div>
                 </div>
-
-                {/* Visual Share Bar */}
-                <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                  <div
-                    style={{ width: `${Math.min(100, cat.pctOfTotal)}%` }}
-                    className="h-full bg-primary rounded-full transition-all"
-                  />
-                </div>
-              </div>
-            ))
+              );
+            })
           )}
         </div>
       </div>
