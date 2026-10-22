@@ -5,13 +5,16 @@ import {
   ArrowLeftRight,
   ArrowUpRight,
   CalendarDays,
+  CheckCircle2,
   CreditCard,
   Landmark,
+  PiggyBank,
   Plus,
   ShieldCheck,
   Sparkles,
   TrendingUp,
   Wallet,
+  X,
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -24,6 +27,7 @@ import {
   getAccountBalance,
   getCategorySpend,
   getInvestmentSummary,
+  type CustomFund,
   type Section,
   type Transaction,
   type WealthState,
@@ -49,6 +53,8 @@ export function Dashboard({
   onNavigate,
   onSelectTransaction,
   onCategory,
+  onQuickDepositFund,
+  onSkipFundMonth,
 }: {
   data: WealthState;
   money: (amount: number) => string;
@@ -59,8 +65,16 @@ export function Dashboard({
   onNavigate: (section: Section) => void;
   onSelectTransaction: (transaction: Transaction) => void;
   onCategory: (id: string) => void;
+  onQuickDepositFund?: (fundId: string, amount: number, sourceAccountId?: string) => void;
+  onSkipFundMonth?: (fundId: string, monthStr: string) => void;
 }) {
   const [dashboardPriority, setDashboardPriority] = useState<string>("All");
+  const [dismissedGoals, setDismissedGoals] = useState<string[]>([]);
+
+  // Quick Deposit Dialog state for Sinking Funds
+  const [depositFund, setDepositFund] = useState<CustomFund | null>(null);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositSourceAccountId, setDepositSourceAccountId] = useState(data.accounts[0]?.id || "");
 
   // Filter transactions according to the unified date range
   const periodTransactions = useMemo(() => {
@@ -193,6 +207,27 @@ export function Dashboard({
       .reduce((sum, item) => sum + item.amount, 0);
   }, [data.recurring]);
 
+  // Fulfilled goals celebration banner
+  const fulfilledFunds = useMemo(() => {
+    return (data.funds ?? []).filter(
+      (f) => f.targetAmount > 0 && f.currentAmount >= f.targetAmount && !dismissedGoals.includes(f.id)
+    );
+  }, [data.funds, dismissedGoals]);
+
+  // Active Sinking Funds for Monthly Allocation Tracker
+  const activeFunds = useMemo(() => {
+    return (data.funds ?? []).filter((f) => f.type !== "Emergency");
+  }, [data.funds]);
+
+  // Total committed category budgets vs actual spending
+  const totalCommittedBudget = useMemo(() => {
+    const sumLimits = data.categories.reduce((acc, c) => acc + (c.monthlyLimit || 0), 0);
+    return sumLimits > 0 ? sumLimits : 45000;
+  }, [data.categories]);
+
+  const budgetUsedPct = totalCommittedBudget > 0 ? Math.min(100, Math.round((monthExpenses / totalCommittedBudget) * 100)) : 0;
+  const budgetDifference = totalCommittedBudget - monthExpenses;
+
   return (
     <div className="space-y-6">
       <PageHeading
@@ -218,6 +253,49 @@ export function Dashboard({
           </div>
         }
       />
+
+      {/* Fulfilled Sinking Funds & Savings Celebration Banners */}
+      {fulfilledFunds.map((fund) => (
+        <div
+          key={fund.id}
+          className="relative flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-2xl border border-emerald-500/40 bg-gradient-to-r from-emerald-500/15 via-emerald-500/10 to-card p-4 wt-shadow"
+        >
+          <div className="flex items-center gap-3">
+            <span className="grid size-10 place-items-center rounded-xl bg-emerald-500/20 text-xl shrink-0">
+              {fund.icon || "🎉"}
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-extrabold text-emerald-800 dark:text-emerald-300">
+                  Goal 100% Achieved
+                </span>
+                <span className="text-xs font-bold text-foreground">{fund.name}</span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Target of <strong className="text-foreground">{money(fund.targetAmount)}</strong> fulfilled! Ready for this milestone.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onNavigate("Fund Planner")}
+              className="h-8 text-xs font-semibold border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10"
+            >
+              View Goal →
+            </Button>
+            <button
+              type="button"
+              onClick={() => setDismissedGoals((prev) => [...prev, fund.id])}
+              className="grid size-7 place-items-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground text-xs"
+              aria-label="Dismiss alert"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        </div>
+      ))}
 
       {/* Ultra-Premium Hero Net Worth Card with Gradient Accent & Asset Distribution */}
       <div className="relative overflow-hidden rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card to-emerald-500/[0.04] p-6 sm:p-7 wt-shadow">
@@ -508,84 +586,252 @@ export function Dashboard({
               </div>
             )}
           </div>
+
+          {/* Bottom Commitment vs Actual Spending Progress Footer */}
+          <div className="mt-5 pt-3.5 border-t border-border/60 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <div>
+                <span className="font-bold text-foreground">Total Budget Commitment</span>
+                <span className="text-[11px] block mt-0.5">
+                  {monthExpenses <= totalCommittedBudget ? (
+                    <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                      ✨ {money(budgetDifference)} under committed budget · Progressing safely
+                    </span>
+                  ) : (
+                    <span className="text-rose-600 dark:text-rose-400 font-semibold">
+                      ⚠️ {money(Math.abs(budgetDifference))} over committed budget
+                    </span>
+                  )}
+                </span>
+              </div>
+              <div className="text-right">
+                <span className="font-extrabold text-foreground tabular-nums">
+                  {money(monthExpenses)} <span className="text-muted-foreground font-normal">/ {money(totalCommittedBudget)}</span>
+                </span>
+                <span className="text-[10px] font-bold text-muted-foreground block">
+                  {budgetUsedPct}% Limit Used
+                </span>
+              </div>
+            </div>
+            <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+              <div
+                style={{ width: `${Math.min(100, budgetUsedPct)}%` }}
+                className={`h-full rounded-full transition-all duration-500 ${
+                  budgetUsedPct <= 85 ? "bg-emerald-500" : budgetUsedPct <= 100 ? "bg-amber-500" : "bg-rose-500"
+                }`}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Two Column Layout: Upcoming Recurring & Recent Activity Feed */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_1.5fr]">
-        {/* Upcoming Automated Recurring Schedules */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col">
-          <div className="flex items-center justify-between pb-3 border-b border-border/60">
-            <div className="flex items-center gap-2">
-              <h3 className="wt-display text-base font-bold text-foreground">
-                Upcoming Recurring
-              </h3>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                <Zap size={11} /> Auto
-              </span>
+      {/* Two Column Layout: Sinking Funds & Recurring Left, Recent Activity Feed Right */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.4fr]">
+        <div className="space-y-6 flex flex-col">
+          {/* Monthly Sinking Funds & Savings Allocations Card */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
+              <div className="flex items-center gap-2">
+                <h3 className="wt-display text-base font-bold text-foreground">
+                  Sinking Funds & Savings
+                </h3>
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                  <PiggyBank size={11} /> Goals
+                </span>
+              </div>
+              <button
+                type="button"
+                className="text-xs font-semibold text-primary hover:underline"
+                onClick={() => onNavigate("Fund Planner")}
+              >
+                Fund Planner →
+              </button>
             </div>
-            <button
-              type="button"
-              className="text-xs font-semibold text-primary hover:underline"
-              onClick={() => onNavigate("Recurring")}
-            >
-              Manage →
-            </button>
-          </div>
-          <p className="text-xs text-muted-foreground mt-2 mb-3.5">
-            Automated bills and payroll schedules
-          </p>
+            <p className="text-xs text-muted-foreground mt-2 mb-3.5">
+              Monthly capital allocations & milestone envelopes
+            </p>
 
-          <div className="space-y-2.5">
-            {upcomingRecurring.length ? (
-              upcomingRecurring.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/15 hover:bg-muted/30 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary text-sm">
-                      <CalendarDays size={16} />
-                    </span>
-                    <div>
-                      <p className="text-xs font-bold text-foreground">{item.name}</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Due {formatDate(item.nextDate)} · {item.frequency}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <span
-                      className={`text-xs font-bold tabular-nums block ${
-                        item.type === "Income"
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : "text-foreground"
+            <div className="space-y-3">
+              {activeFunds.length ? (
+                activeFunds.map((fund) => {
+                  const pct = fund.targetAmount > 0 ? Math.min(100, Math.round((fund.currentAmount / fund.targetAmount) * 100)) : 0;
+                  const isFulfilled = fund.targetAmount > 0 && fund.currentAmount >= fund.targetAmount;
+                  const isSkippedThisMonth = (fund.skippedMonths ?? []).includes("2026-10");
+
+                  return (
+                    <div
+                      key={fund.id}
+                      className={`p-3.5 rounded-xl border transition-colors ${
+                        isFulfilled
+                          ? "border-emerald-500/30 bg-emerald-500/5"
+                          : isSkippedThisMonth
+                          ? "border-border/60 bg-muted/20 opacity-80"
+                          : "border-border/60 bg-muted/15 hover:bg-muted/30"
                       }`}
                     >
-                      {item.type === "Income" ? "+" : "−"}
-                      {money(item.amount)}
-                    </span>
-                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                      Auto-records
-                    </span>
-                  </div>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex items-center gap-2.5">
+                          <span className="grid size-8 place-items-center rounded-lg bg-card text-base shadow-2xs">
+                            {fund.icon || "🎯"}
+                          </span>
+                          <div>
+                            <p className="text-xs font-bold text-foreground">{fund.name}</p>
+                            <p className="text-[11px] text-muted-foreground">
+                              {money(fund.currentAmount)} / {money(fund.targetAmount)} ({pct}%)
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Status / Quick Action */}
+                        <div>
+                          {isFulfilled ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                              <CheckCircle2 size={11} /> Ready for this!
+                            </span>
+                          ) : isSkippedThisMonth ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[10px] font-medium text-muted-foreground">
+                                Skipped Oct
+                              </span>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => onSkipFundMonth?.(fund.id, "2026-10")}
+                                className="h-6 px-1.5 text-[10px] font-semibold text-primary"
+                              >
+                                Undo
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => onSkipFundMonth?.(fund.id, "2026-10")}
+                                className="h-6 px-2 text-[10px] font-medium text-muted-foreground hover:text-foreground"
+                              >
+                                Skip month
+                              </Button>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setDepositFund(fund);
+                                  setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
+                                  setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
+                                }}
+                                className="h-6 px-2.5 text-[10px] font-bold shadow-2xs"
+                              >
+                                {fund.monthlyContribution ? `Deposit ${money(fund.monthlyContribution)}` : "Deposit"}
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Miniature Progress Bar */}
+                      <div className="mt-2.5 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          style={{ width: `${pct}%` }}
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            isFulfilled ? "bg-emerald-500" : "bg-primary"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/80 bg-muted/15 p-5 text-center space-y-1.5">
+                  <PiggyBank size={18} className="mx-auto text-muted-foreground" />
+                  <p className="text-xs font-semibold text-foreground">No Sinking Funds Configured</p>
+                  <p className="text-[11px] text-muted-foreground">Set up dedicated savings goals in Fund Planner</p>
                 </div>
-              ))
-            ) : (
-              <div className="rounded-xl border border-dashed border-border/80 bg-muted/15 p-5 text-center space-y-1.5">
-                <CalendarDays size={18} className="mx-auto text-muted-foreground" />
-                <p className="text-xs font-semibold text-foreground">No Upcoming Recurring Bills</p>
-                <p className="text-[11px] text-muted-foreground">All schedules are current</p>
-              </div>
-            )}
+              )}
+            </div>
+
+            {/* Bottom Total Allocation summary */}
+            <div className="mt-auto pt-4 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+              <span className="font-medium">Total Monthly Savings Target</span>
+              <span className="font-extrabold text-foreground tabular-nums">
+                {money(activeFunds.reduce((sum, f) => sum + (f.monthlyContribution || 0), 0))}/mo
+              </span>
+            </div>
           </div>
 
-          {/* Bottom Commitment Summary Bar anchored cleanly at bottom */}
-          <div className="mt-auto pt-4 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
-            <span className="font-medium">Total Monthly Commitment</span>
-            <span className="font-extrabold text-foreground tabular-nums">
-              {money(totalMonthlyRecurringCommitments)}/mo
-            </span>
+          {/* Upcoming Automated Recurring Schedules */}
+          <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
+              <div className="flex items-center gap-2">
+                <h3 className="wt-display text-base font-bold text-foreground">
+                  Upcoming Recurring
+                </h3>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+                  <Zap size={11} /> Auto
+                </span>
+              </div>
+              <button
+                type="button"
+                className="text-xs font-semibold text-primary hover:underline"
+                onClick={() => onNavigate("Recurring")}
+              >
+                Manage →
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2 mb-3.5">
+              Automated bills and payroll schedules
+            </p>
+
+            <div className="space-y-2.5">
+              {upcomingRecurring.length ? (
+                upcomingRecurring.map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/15 hover:bg-muted/30 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="grid size-9 place-items-center rounded-xl bg-primary/10 text-primary text-sm">
+                        <CalendarDays size={16} />
+                      </span>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{item.name}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                          Due {formatDate(item.nextDate)} · {item.frequency}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span
+                        className={`text-xs font-bold tabular-nums block ${
+                          item.type === "Income"
+                            ? "text-emerald-600 dark:text-emerald-400"
+                            : "text-foreground"
+                        }`}
+                      >
+                        {item.type === "Income" ? "+" : "−"}
+                        {money(item.amount)}
+                      </span>
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                        Auto-records
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-border/80 bg-muted/15 p-5 text-center space-y-1.5">
+                  <CalendarDays size={18} className="mx-auto text-muted-foreground" />
+                  <p className="text-xs font-semibold text-foreground">No Upcoming Recurring Bills</p>
+                  <p className="text-[11px] text-muted-foreground">All schedules are current</p>
+                </div>
+              )}
+            </div>
+
+            {/* Bottom Commitment Summary Bar anchored cleanly at bottom */}
+            <div className="mt-auto pt-4 border-t border-border/60 flex items-center justify-between text-xs text-muted-foreground">
+              <span className="font-medium">Total Monthly Commitment</span>
+              <span className="font-extrabold text-foreground tabular-nums">
+                {money(totalMonthlyRecurringCommitments)}/mo
+              </span>
+            </div>
           </div>
         </div>
 
@@ -643,6 +889,122 @@ export function Dashboard({
           </div>
         </div>
       </div>
+
+      {/* Quick Deposit Modal for Sinking Funds on Dashboard */}
+      {depositFund && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xs p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 wt-shadow space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-border">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{depositFund.icon || "💰"}</span>
+                <div>
+                  <h3 className="font-bold text-sm">Deposit to {depositFund.name}</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Target: {money(depositFund.targetAmount)} · Current: {money(depositFund.currentAmount)}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDepositFund(null)}
+                className="text-muted-foreground hover:text-foreground text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (depositFund && Number(depositAmount)) {
+                  onQuickDepositFund?.(depositFund.id, Number(depositAmount), depositSourceAccountId || undefined);
+                  setDepositFund(null);
+                  setDepositAmount("");
+                }
+              }}
+              className="space-y-3.5"
+            >
+              <div>
+                <label className="wt-label">From Savings / Bank Account</label>
+                <select
+                  className="wt-field h-9 text-xs"
+                  value={depositSourceAccountId}
+                  onChange={(e) => setDepositSourceAccountId(e.target.value)}
+                >
+                  {data.accounts
+                    .filter((a) => !a.archived && a.kind !== "Credit card")
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({money(getAccountBalance(a, data.transactions))})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Amount Quick Presets */}
+              <div>
+                <label className="wt-label">Quick Amount Presets</label>
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  {depositFund.monthlyContribution ? (
+                    <button
+                      type="button"
+                      onClick={() => setDepositAmount(String(depositFund.monthlyContribution))}
+                      className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5"
+                    >
+                      Monthly: {money(depositFund.monthlyContribution)}
+                    </button>
+                  ) : null}
+                  {depositFund.targetAmount > depositFund.currentAmount ? (
+                    <button
+                      type="button"
+                      onClick={() => setDepositAmount(String(depositFund.targetAmount - depositFund.currentAmount))}
+                      className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5"
+                    >
+                      Remaining: {money(depositFund.targetAmount - depositFund.currentAmount)}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setDepositAmount("5000")}
+                    className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/50"
+                  >
+                    ₹5,000
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="wt-label">Custom Deposit Amount (₹)</label>
+                <input
+                  type="number"
+                  placeholder="5000"
+                  className="wt-field h-9 text-sm"
+                  value={depositAmount}
+                  onChange={(e) => setDepositAmount(e.target.value)}
+                  autoFocus
+                  required
+                  min="1"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDepositFund(null)}
+                  className="text-xs"
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" size="sm" className="text-xs font-semibold">
+                  Confirm Deposit
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

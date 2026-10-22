@@ -73,11 +73,16 @@ export function DateRangeFilter({
   onChange: (value: DateRangeValue) => void;
   className?: string;
 }) {
-  const currentYear = value.year ?? 2026;
+  const now = new Date();
+  const maxYear = now.getFullYear() >= 2026 ? now.getFullYear() : 2026;
+  const maxMonth = now.getFullYear() >= 2026 && now.getMonth() >= 9 ? now.getMonth() + 1 : 10;
+
+  const currentYear = Math.min(maxYear, value.year ?? 2026);
   const activeMonth = value.month ?? (value.preset === "1m" || value.preset === "month" ? 10 : undefined);
 
   const handleMonthSelect = (monthIndex: number) => {
     const m = monthIndex + 1;
+    if (currentYear === maxYear && m > maxMonth) return; // Prevent selecting future months
     onChange({
       preset: "month",
       year: currentYear,
@@ -107,19 +112,22 @@ export function DateRangeFilter({
         year: currentYear,
         month: activeMonth,
         customFrom: value.customFrom || `${currentYear}-01-01`,
-        customTo: value.customTo || `${currentYear}-12-31`,
+        customTo: value.customTo || `${currentYear}-${String(maxMonth).padStart(2, "0")}-22`,
       });
     }
   };
 
   const changeYear = (delta: number) => {
     const newYear = currentYear + delta;
+    if (newYear > maxYear) return; // Future year disabled
     if (value.preset === "month") {
+      const clampedMonth = newYear === maxYear && (activeMonth || 10) > maxMonth ? maxMonth : (activeMonth || 10);
       onChange({
         ...value,
         year: newYear,
-        customFrom: `${newYear}-${String(activeMonth || 10).padStart(2, "0")}-01`,
-        customTo: `${newYear}-${String(activeMonth || 10).padStart(2, "0")}-31`,
+        month: clampedMonth,
+        customFrom: `${newYear}-${String(clampedMonth).padStart(2, "0")}-01`,
+        customTo: `${newYear}-${String(clampedMonth).padStart(2, "0")}-31`,
       });
     } else if (value.preset === "year") {
       onChange({
@@ -148,6 +156,8 @@ export function DateRangeFilter({
     return `${FULL_MONTH_NAMES[m - 1]} ${currentYear}`;
   }, [value, currentYear, activeMonth]);
 
+  const canGoNextYear = currentYear < maxYear;
+
   return (
     <div className={`flex flex-col gap-2 ${className}`}>
       <div className="flex flex-wrap items-center gap-2">
@@ -156,7 +166,7 @@ export function DateRangeFilter({
           <button
             type="button"
             onClick={() => changeYear(-1)}
-            className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             title="Previous Year"
           >
             <ChevronLeft size={14} />
@@ -166,9 +176,14 @@ export function DateRangeFilter({
           </span>
           <button
             type="button"
+            disabled={!canGoNextYear}
             onClick={() => changeYear(1)}
-            className="flex size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            title="Next Year"
+            className={`flex size-7 items-center justify-center rounded-lg transition-colors ${
+              canGoNextYear
+                ? "text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+                : "opacity-30 cursor-not-allowed pointer-events-none text-muted-foreground/40"
+            }`}
+            title={canGoNextYear ? "Next Year" : "Future years cannot be selected"}
           >
             <ChevronRight size={14} />
           </button>
@@ -181,16 +196,21 @@ export function DateRangeFilter({
             const isSelected =
               (value.preset === "month" || value.preset === "1m") &&
               (activeMonth === m);
+            const isFutureMonth = currentYear === maxYear && m > maxMonth;
 
             return (
               <button
                 key={name}
                 type="button"
+                disabled={isFutureMonth}
                 onClick={() => handleMonthSelect(idx)}
+                title={isFutureMonth ? "Future month is not yet available" : `${name} ${currentYear}`}
                 className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all shrink-0 ${
-                  isSelected
-                    ? "bg-card text-foreground shadow-xs border border-border/60"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                  isFutureMonth
+                    ? "opacity-35 cursor-not-allowed pointer-events-none text-muted-foreground/50"
+                    : isSelected
+                    ? "bg-card text-foreground shadow-xs border border-border/60 cursor-pointer"
+                    : "text-muted-foreground hover:text-foreground hover:bg-background/40 cursor-pointer"
                 }`}
               >
                 {name}

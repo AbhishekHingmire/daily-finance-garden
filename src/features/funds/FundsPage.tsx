@@ -47,7 +47,7 @@ export function FundsPage({
   onDeleteFund: (fundId: string) => void;
   onSavePlan: (plan: PurchasePlan) => void;
   onDeletePlan: (planId: string) => void;
-  onQuickDepositFund: (fundId: string, amount: number) => void;
+  onQuickDepositFund: (fundId: string, amount: number, sourceAccountId?: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"funds" | "simulator">("funds");
   const [fundModalOpen, setFundModalOpen] = useState(false);
@@ -59,6 +59,7 @@ export function FundsPage({
   // Quick Deposit Dialog state
   const [depositFund, setDepositFund] = useState<CustomFund | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
+  const [depositSourceAccountId, setDepositSourceAccountId] = useState(data.accounts[0]?.id || "");
 
   const funds = data.funds ?? [];
   const plans = data.plans ?? [];
@@ -95,7 +96,7 @@ export function FundsPage({
   const handleDepositSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (depositFund && Number(depositAmount)) {
-      onQuickDepositFund(depositFund.id, Number(depositAmount));
+      onQuickDepositFund(depositFund.id, Number(depositAmount), depositSourceAccountId || undefined);
       setDepositFund(null);
       setDepositAmount("");
     }
@@ -104,7 +105,7 @@ export function FundsPage({
   return (
     <div className="space-y-6">
       <PageHeading
-        title="Funds & Planning"
+        title="Fund Planner"
         description="Manage your emergency safety runway, custom sinking funds, and AI-powered purchase simulations."
         actions={
           <div className="flex flex-wrap items-center gap-2">
@@ -213,22 +214,57 @@ export function FundsPage({
                   </span>
                 </div>
 
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => {
-                    const em = funds.find((f) => f.type === "Emergency");
-                    if (em) {
-                      setDepositFund(em);
-                    } else {
-                      setEditingFund(null);
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      const em = funds.find((f) => f.type === "Emergency") || {
+                        id: "fund-emergency",
+                        name: "Emergency Reserve",
+                        targetAmount: emergencySummary.target,
+                        currentAmount: emergencySummary.current,
+                        type: "Emergency" as const,
+                        icon: "🛡️",
+                        status: "Active" as const,
+                        updatedAt: new Date().toISOString().slice(0, 10),
+                      };
+                      setEditingFund(em);
                       setFundModalOpen(true);
-                    }
-                  }}
-                  className="h-8 gap-1.5 text-xs font-semibold"
-                >
-                  <Plus size={13} /> Allocate Cash to Buffer
-                </Button>
+                    }}
+                    className="h-8 gap-1.5 text-xs font-semibold"
+                  >
+                    <Pencil size={13} /> Edit Emergency Fund
+                  </Button>
+
+                  {emergencySummary.percent < 100 ? (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        const em = funds.find((f) => f.type === "Emergency") || {
+                          id: "fund-emergency",
+                          name: "Emergency Reserve",
+                          targetAmount: emergencySummary.target,
+                          currentAmount: emergencySummary.current,
+                          type: "Emergency" as const,
+                          icon: "🛡️",
+                          status: "Active" as const,
+                          updatedAt: new Date().toISOString().slice(0, 10),
+                        };
+                        setDepositFund(em);
+                        setDepositAmount(em.monthlyContribution ? String(em.monthlyContribution) : "10000");
+                        setDepositSourceAccountId(em.linkedAccountId || data.accounts[0]?.id || "");
+                      }}
+                      className="h-8 gap-1.5 text-xs font-semibold"
+                    >
+                      <Plus size={13} /> Allocate Cash
+                    </Button>
+                  ) : (
+                    <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                      🎉 100% Protected
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -257,12 +293,17 @@ export function FundsPage({
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {funds.map((fund) => {
               const pct = fund.targetAmount > 0 ? Math.min(100, Math.round((fund.currentAmount / fund.targetAmount) * 100)) : 0;
+              const isFulfilled = fund.targetAmount > 0 && fund.currentAmount >= fund.targetAmount;
               const remaining = Math.max(0, fund.targetAmount - fund.currentAmount);
 
               return (
                 <div
                   key={fund.id}
-                  className="flex flex-col justify-between rounded-2xl border border-border/80 bg-card p-5 wt-shadow hover:border-primary/40 transition-all"
+                  className={`flex flex-col justify-between rounded-2xl border p-5 wt-shadow transition-all ${
+                    isFulfilled
+                      ? "border-emerald-500/40 bg-linear-to-br from-card via-card to-emerald-500/5"
+                      : "border-border/80 bg-card hover:border-primary/40"
+                  }`}
                 >
                   <div>
                     {/* Card Header with Icon & Actions */}
@@ -281,10 +322,18 @@ export function FundsPage({
 
                       <ActionMenu
                         items={[
-                          {
-                            label: "Deposit / Add Money",
-                            onClick: () => setDepositFund(fund),
-                          },
+                          ...(!isFulfilled
+                            ? [
+                                {
+                                  label: "Deposit / Add Money",
+                                  onClick: () => {
+                                    setDepositFund(fund);
+                                    setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
+                                    setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
+                                  },
+                                },
+                              ]
+                            : []),
                           {
                             label: "Edit Fund Details",
                             onClick: () => {
@@ -316,7 +365,7 @@ export function FundsPage({
                         <div
                           style={{ width: `${pct}%` }}
                           className={`h-full rounded-full transition-all duration-300 ${
-                            pct >= 100 ? "bg-emerald-500" : "bg-primary"
+                            isFulfilled ? "bg-emerald-500" : "bg-primary"
                           }`}
                         />
                       </div>
@@ -345,31 +394,42 @@ export function FundsPage({
                         </div>
                       ) : null}
 
-                      {remaining > 0 ? (
+                      {isFulfilled ? (
+                        <div className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                          <CheckCircle2 size={14} className="text-emerald-500 shrink-0" />
+                          <span>🎉 Ready for this! Goal 100% Achieved</span>
+                        </div>
+                      ) : remaining > 0 ? (
                         <div className="flex items-center justify-between">
                           <span>Remaining:</span>
                           <span className="font-bold text-primary tabular-nums">
                             {money(remaining)}
                           </span>
                         </div>
-                      ) : (
-                        <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-bold">
-                          <CheckCircle2 size={13} /> Target Fully Funded!
-                        </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
 
-                  {/* Bottom Quick Deposit Button */}
+                  {/* Bottom Quick Action: Only show deposit if not fulfilled */}
                   <div className="mt-4 pt-3 border-t border-border/60">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setDepositFund(fund)}
-                      className="w-full text-xs font-semibold h-8 gap-1.5"
-                    >
-                      <Plus size={13} /> Deposit to Fund
-                    </Button>
+                    {!isFulfilled ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setDepositFund(fund);
+                          setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
+                          setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
+                        }}
+                        className="w-full text-xs font-semibold h-8 gap-1.5"
+                      >
+                        <Plus size={13} /> Deposit to Fund
+                      </Button>
+                    ) : (
+                      <div className="w-full text-center py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-xl">
+                        ✨ Ready for this · Goal Achieved
+                      </div>
+                    )}
                   </div>
                 </div>
               );
@@ -537,7 +597,12 @@ export function FundsPage({
             <div className="flex items-center justify-between pb-2 border-b border-border">
               <div className="flex items-center gap-2">
                 <span className="text-xl">{depositFund.icon || "💰"}</span>
-                <h3 className="font-bold text-sm">Deposit to {depositFund.name}</h3>
+                <div>
+                  <h3 className="font-bold text-sm">Deposit to {depositFund.name}</h3>
+                  <p className="text-[11px] text-muted-foreground">
+                    Target: {money(depositFund.targetAmount)} · Current: {money(depositFund.currentAmount)}
+                  </p>
+                </div>
               </div>
               <button
                 type="button"
@@ -548,7 +613,63 @@ export function FundsPage({
               </button>
             </div>
 
-            <form onSubmit={handleDepositSubmit} className="space-y-3">
+            <form onSubmit={handleDepositSubmit} className="space-y-3.5">
+              <div>
+                <label className="wt-label">From Savings / Bank Account</label>
+                <select
+                  className="wt-field h-9 text-xs"
+                  value={depositSourceAccountId}
+                  onChange={(e) => setDepositSourceAccountId(e.target.value)}
+                >
+                  {data.accounts
+                    .filter((a) => !a.archived && a.kind !== "Credit card")
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({money(getAccountBalance(a, data.transactions))})
+                      </option>
+                    ))}
+                </select>
+              </div>
+
+              {/* Amount Quick Presets */}
+              <div>
+                <label className="wt-label">Quick Amount Presets</label>
+                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                  {depositFund.monthlyContribution ? (
+                    <button
+                      type="button"
+                      onClick={() => setDepositAmount(String(depositFund.monthlyContribution))}
+                      className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5"
+                    >
+                      Monthly: {money(depositFund.monthlyContribution)}
+                    </button>
+                  ) : null}
+                  {depositFund.targetAmount > depositFund.currentAmount ? (
+                    <button
+                      type="button"
+                      onClick={() => setDepositAmount(String(depositFund.targetAmount - depositFund.currentAmount))}
+                      className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5"
+                    >
+                      Remaining: {money(depositFund.targetAmount - depositFund.currentAmount)}
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setDepositAmount("5000")}
+                    className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/50"
+                  >
+                    ₹5,000
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDepositAmount("10000")}
+                    className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/50"
+                  >
+                    ₹10,000
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="wt-label">Deposit Amount (₹)</label>
                 <input
@@ -559,6 +680,7 @@ export function FundsPage({
                   onChange={(e) => setDepositAmount(e.target.value)}
                   autoFocus
                   required
+                  min="1"
                 />
               </div>
 

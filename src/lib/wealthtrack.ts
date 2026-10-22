@@ -38,6 +38,7 @@ export type Section =
   | "Investments"
   | "Loans"
   | "Funds"
+  | "Fund Planner"
   | "Categories"
   | "Reports"
   | "Recurring"
@@ -66,6 +67,8 @@ export interface InvestmentHolding {
   assetType: AssetType;
   investedAmount: number;
   currentAmount: number;
+  startMonthYear?: string; // YYYY-MM (e.g. "2024-05") - Mandatory on creation
+  endMonthYear?: string;   // YYYY-MM (e.g. "2029-12") - Optional
   institution?: string;
   notes?: string;
   updatedAt: string;
@@ -132,6 +135,7 @@ export interface CustomFund {
   color?: string;
   status: "Active" | "Completed" | "Paused";
   updatedAt: string;
+  skippedMonths?: string[];
 }
 
 export type PlanCategory = "Real Estate" | "Vehicle" | "Asset" | "Gadget" | "Life Event" | "Custom";
@@ -402,6 +406,7 @@ export function createInitialState(): WealthState {
         assetType: "Mutual fund",
         investedAmount: 120000,
         currentAmount: 154800,
+        startMonthYear: "2024-04",
         institution: "Groww",
         notes: "Monthly SIP of ₹10,000 active",
         updatedAt: "2026-10-22",
@@ -412,6 +417,7 @@ export function createInitialState(): WealthState {
         assetType: "ETF",
         investedAmount: 90000,
         currentAmount: 108200,
+        startMonthYear: "2024-06",
         institution: "Zerodha Coin",
         notes: "Passive core index holding",
         updatedAt: "2026-10-21",
@@ -422,6 +428,7 @@ export function createInitialState(): WealthState {
         assetType: "Stocks & Equity",
         investedAmount: 65000,
         currentAmount: 84500,
+        startMonthYear: "2025-01",
         institution: "Zerodha Kite",
         notes: "Long-term EV growth bet",
         updatedAt: "2026-10-22",
@@ -432,6 +439,8 @@ export function createInitialState(): WealthState {
         assetType: "Gold & Commodities",
         investedAmount: 50000,
         currentAmount: 62000,
+        startMonthYear: "2023-11",
+        endMonthYear: "2028-11",
         institution: "RBI / HDFC Sec",
         notes: "2.5% semi-annual interest + capital appreciation",
         updatedAt: "2026-10-15",
@@ -442,6 +451,8 @@ export function createInitialState(): WealthState {
         assetType: "Fixed deposit",
         investedAmount: 70000,
         currentAmount: 73000,
+        startMonthYear: "2024-10",
+        endMonthYear: "2027-10",
         institution: "HDFC Bank",
         notes: "7.10% compounded quarterly",
         updatedAt: "2026-10-01",

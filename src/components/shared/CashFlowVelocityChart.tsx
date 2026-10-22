@@ -76,16 +76,18 @@ export function CashFlowVelocityChart({
         today.getFullYear() === targetYear && today.getMonth() + 1 === targetMonth;
       const todayDay = isCurrentMonth ? today.getDate() : -1;
 
+      // Fill width completely up to today for ongoing month; full month for past months
+      const maxDayToShow = isCurrentMonth ? Math.max(1, todayDay) : daysInMonth;
+
       const monthPrefix = `${targetYear}-${String(targetMonth).padStart(2, "0")}`;
       const monthShort = MONTH_NAMES[targetMonth - 1] ?? "Mo";
 
       const dailyItems: VelocityItem[] = [];
 
-      for (let day = 1; day <= daysInMonth; day++) {
+      for (let day = 1; day <= maxDayToShow; day++) {
         const dayStr = String(day).padStart(2, "0");
         const iso = `${monthPrefix}-${dayStr}`;
         const isToday = day === todayDay;
-        const isFuture = isCurrentMonth && day > todayDay;
 
         const dayTxs = transactions.filter((t) => t.date.slice(0, 10) === iso);
 
@@ -102,11 +104,11 @@ export function CashFlowVelocityChart({
           label: `${monthShort} ${day}`,
           shortLabel: String(day),
           fullDateLabel: `${day} ${FULL_MONTH_NAMES[targetMonth - 1]} ${targetYear}${
-            isToday ? " · Today" : isFuture ? " · Upcoming" : ""
+            isToday ? " · Today" : ""
           }`,
           isToday,
           isOngoing: isToday,
-          isFuture,
+          isFuture: false,
           income,
           expense,
           dayNumber: day,
@@ -116,9 +118,10 @@ export function CashFlowVelocityChart({
       return dailyItems;
     }
 
-    // Year or multi-month selection: 12 months evenly distributed
+    // Year or multi-month selection: months up to current month for current year
     if (dateRange.preset === "year") {
-      return MONTH_NAMES.map((mName, idx) => {
+      const maxMonthIdx = targetYear === today.getFullYear() ? today.getMonth() : 11;
+      return MONTH_NAMES.slice(0, maxMonthIdx + 1).map((mName, idx) => {
         const mNum = idx + 1;
         const prefix = `${targetYear}-${String(mNum).padStart(2, "0")}`;
         const mTransactions = transactions.filter((t) => t.date.startsWith(prefix));

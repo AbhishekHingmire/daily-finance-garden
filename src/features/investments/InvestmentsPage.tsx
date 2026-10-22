@@ -322,12 +322,7 @@ export function InvestmentsPage({
                     <ActionMenu
                       items={[
                         {
-                          label: "Update Valuation",
-                          icon: <RefreshCw size={14} />,
-                          onClick: () => onEditHolding(h),
-                        },
-                        {
-                          label: "Edit Details",
+                          label: "Edit Holding",
                           icon: <Pencil size={14} />,
                           onClick: () => onEditHolding(h),
                         },
@@ -404,18 +399,17 @@ export function InvestmentsPage({
                     </div>
                   </div>
 
-                  {/* Footer: Portfolio Share & Quick Update Button */}
+                  {/* Footer: Portfolio Share & Tenure */}
                   <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
                     <span>
                       Portfolio share: <strong className="text-foreground">{allocationPct.toFixed(1)}%</strong>
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => onEditHolding(h)}
-                      className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-                    >
-                      <RefreshCw size={11} /> Update
-                    </button>
+                    {h.startMonthYear && (
+                      <span className="font-semibold text-muted-foreground">
+                        Since {new Date(`${h.startMonthYear}-01`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+                        {h.endMonthYear && ` · Till ${new Date(`${h.endMonthYear}-01`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}`}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

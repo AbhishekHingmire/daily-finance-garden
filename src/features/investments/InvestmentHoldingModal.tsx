@@ -38,6 +38,10 @@ export function InvestmentHoldingModal({
   const [name, setName] = useState(existing?.name ?? "");
   const [assetType, setAssetType] = useState<AssetType>(existing?.assetType ?? "Mutual fund");
   const [institution, setInstitution] = useState(existing?.institution ?? "");
+  const [startMonthYear, setStartMonthYear] = useState(
+    existing?.startMonthYear ?? new Date().toISOString().slice(0, 7)
+  );
+  const [endMonthYear, setEndMonthYear] = useState(existing?.endMonthYear ?? "");
   const [investedAmount, setInvestedAmount] = useState<number | "">(
     existing?.investedAmount !== undefined ? existing.investedAmount : ""
   );
@@ -68,6 +72,7 @@ export function InvestmentHoldingModal({
     if (e) e.preventDefault();
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = "Enter the name of the holding.";
+    if (!startMonthYear) errs.startMonthYear = "Start Month & Year is mandatory.";
     if (investedAmount === "" || investedNum < 0) errs.investedAmount = "Enter a valid invested amount.";
     if (currentAmount === "" || currentNum < 0) errs.currentAmount = "Enter a valid current valuation.";
     if (isRecurring && (!sipAmount || Number(sipAmount) <= 0)) {
@@ -82,6 +87,8 @@ export function InvestmentHoldingModal({
       name: name.trim(),
       assetType,
       institution: institution.trim() || undefined,
+      startMonthYear,
+      endMonthYear: endMonthYear || undefined,
       investedAmount: investedNum,
       currentAmount: currentNum,
       isRecurring,
@@ -127,6 +134,36 @@ export function InvestmentHoldingModal({
             value={institution}
             onChange={setInstitution}
           />
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="wt-label">
+              Start Date (Month & Year) <span className="text-destructive">*</span>
+            </span>
+            <input
+              type="month"
+              className="wt-field font-semibold text-xs"
+              value={startMonthYear}
+              onChange={(e) => setStartMonthYear(e.target.value)}
+              required
+            />
+            {errors.startMonthYear && (
+              <span className="mt-1 block text-xs text-destructive">{errors.startMonthYear}</span>
+            )}
+          </label>
+
+          <label className="block">
+            <span className="wt-label">
+              End / Target Date (Month & Year) <span className="text-muted-foreground text-[10px] font-normal">(optional)</span>
+            </span>
+            <input
+              type="month"
+              className="wt-field font-semibold text-xs"
+              value={endMonthYear}
+              onChange={(e) => setEndMonthYear(e.target.value)}
+            />
+          </label>
         </div>
 
         <div className="grid gap-3 sm:grid-cols-2">

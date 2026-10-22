@@ -91,7 +91,7 @@ const navItems: { label: Section; path: string; icon: typeof LayoutDashboard }[]
   { label: "Accounts", path: "/accounts", icon: Wallet },
   { label: "Investments", path: "/investments", icon: TrendingUp },
   { label: "Loans", path: "/loans", icon: Landmark },
-  { label: "Funds", path: "/funds", icon: ShieldCheck },
+  { label: "Fund Planner", path: "/funds", icon: ShieldCheck },
   { label: "Recurring", path: "/recurring", icon: CalendarDays },
   { label: "Categories", path: "/categories", icon: Tag },
   { label: "Reports", path: "/reports", icon: Activity },
@@ -114,7 +114,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       if (path === "accounts") return "Accounts";
       if (path === "investments") return "Investments";
       if (path === "loans") return "Loans";
-      if (path === "funds") return "Funds";
+      if (path === "funds" || path === "fund-planner") return "Fund Planner";
       if (path === "categories") return "Categories";
       if (path === "reports") return "Reports";
       if (path === "recurring") return "Recurring";
@@ -568,16 +568,81 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     });
   };
 
-  const handleQuickDepositFund = (fundId: string, amount: number) => {
+  const handleQuickDepositFund = (fundId: string, amount: number, sourceAccountId?: string) => {
+    let goalFulfilledName: string | null = null;
     setData((current) => {
-      const updated = (current.funds ?? []).map((f) =>
-        f.id === fundId ? { ...f, currentAmount: f.currentAmount + amount } : f
-      );
+      let newTransactions = current.transactions;
+      const targetFund = (current.funds ?? []).find((f) => f.id === fundId);
+      if (sourceAccountId && targetFund) {
+        const acc = current.accounts.find((a) => a.id === sourceAccountId);
+        if (acc) {
+          const tx: Transaction = {
+            id: `tx-fund-${Date.now()}`,
+            date: new Date().toISOString().slice(0, 10),
+            amount,
+            type: "Transfer",
+            description: `Savings Allocation to ${targetFund.name}`,
+            accountId: sourceAccountId,
+            destinationAccountId: targetFund.linkedAccountId || sourceAccountId,
+            categoryId: current.categories[0]?.id || "cat-savings",
+            paymentMethod: "NetBanking",
+            need: "Need",
+            merchant: targetFund.name,
+            tags: ["Savings", "Fund", targetFund.name],
+            notes: `Automated sinking fund deposit from ${acc.name}`,
+            recurring: false,
+            customValues: {},
+          };
+          newTransactions = [tx, ...newTransactions];
+        }
+      }
+      const updated = (current.funds ?? []).map((f) => {
+        if (f.id === fundId) {
+          const newAmt = f.currentAmount + amount;
+          if (f.targetAmount > 0 && newAmt >= f.targetAmount && f.currentAmount < f.targetAmount) {
+            goalFulfilledName = f.name;
+          }
+          return { ...f, currentAmount: newAmt };
+        }
+        return f;
+      });
+      return { ...current, transactions: newTransactions, funds: updated };
+    });
+
+    if (goalFulfilledName) {
+      toast.success("Goal 100% Achieved! 🎉", {
+        description: `${goalFulfilledName} has reached its target! Ready for this milestone.`,
+      });
+    } else {
+      toast.success("Deposit recorded", {
+        description: `Allocated ${money(amount)} to fund balance.`,
+      });
+    }
+  };
+
+  const handleSkipFundMonth = (fundId: string, monthStr: string) => {
+    let wasSkipped = false;
+    setData((current) => {
+      const updated = (current.funds ?? []).map((f) => {
+        if (f.id === fundId) {
+          const list = f.skippedMonths ?? [];
+          wasSkipped = list.includes(monthStr);
+          const newList = wasSkipped ? list.filter((m) => m !== monthStr) : [...list, monthStr];
+          return { ...f, skippedMonths: newList };
+        }
+        return f;
+      });
       return { ...current, funds: updated };
     });
-    toast.success("Deposit recorded", {
-      description: `Allocated ${money(amount)} to fund balance.`,
-    });
+    if (wasSkipped) {
+      toast.success("Allocation resumed", {
+        description: `Monthly contribution restored for ${monthStr}.`,
+      });
+    } else {
+      toast.info("Contribution skipped", {
+        description: `Monthly allocation skipped for ${monthStr}.`,
+      });
+    }
   };
 
   const handleSavePlan = (plan: PurchasePlan) => {
@@ -625,7 +690,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setSelectedTransaction(null);
     setSelectedAccount(null);
     if (typeof window !== "undefined") {
-      const targetPath = section === "Overview" ? "/" : `/${section.toLowerCase()}`;
+      const targetPath =
+        section === "Overview"
+          ? "/"
+          : section === "Fund Planner" || (section as string) === "Funds"
+          ? "/funds"
+          : `/${section.toLowerCase()}`;
       if (window.location.pathname !== targetPath) {
         window.history.pushState(null, "", targetPath);
       }
@@ -1882,6 +1952,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   setTxCategory(id);
                   goSection("Transactions");
                 }}
+                onQuickDepositFund={handleQuickDepositFund}
+                onSkipFundMonth={handleSkipFundMonth}
               />
             )}
 
@@ -1965,7 +2037,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {active === "Funds" && (
+            {(active === "Fund Planner" || (active as string) === "Funds") && (
               <FundsPage
                 data={data}
                 money={money}

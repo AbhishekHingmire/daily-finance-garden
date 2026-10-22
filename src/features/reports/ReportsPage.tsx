@@ -19,7 +19,9 @@ import { EmptyInline } from "@/components/shared/EmptyInline";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
 import {
+  getHoldingsSummary,
   getInvestmentSummary,
+  getLoansSummary,
   type Transaction,
   type WealthState,
 } from "@/lib/wealthtrack";
@@ -176,8 +178,37 @@ export function ReportsPage({
       .sort((a, b) => b.amount - a.amount);
   }, [data.categories, activeRows, totalIncome]);
 
-  // Investment summary
+  // Investment & Loan summaries from real portfolio state + period transactions
+  const holdingsSummary = useMemo(() => getHoldingsSummary(data.investments), [data.investments]);
+  const loansSummary = useMemo(() => getLoansSummary(data.loans), [data.loans]);
   const investmentSummary = useMemo(() => getInvestmentSummary(rows), [rows]);
+
+  const activeSipMonthly = useMemo(() => {
+    return (data.recurring ?? [])
+      .filter((r) => r.type === "Investment" && r.enabled)
+      .reduce((sum, r) => sum + r.amount, 0);
+  }, [data.recurring]);
+
+  const displayCapitalDeployed = useMemo(() => {
+    if (investmentSummary.contributions > 0) return investmentSummary.contributions;
+    if (activeSipMonthly > 0) return activeSipMonthly;
+    return holdingsSummary.totalInvested;
+  }, [investmentSummary.contributions, activeSipMonthly, holdingsSummary.totalInvested]);
+
+  const displayReturns = useMemo(() => {
+    if (investmentSummary.returns > 0) return investmentSummary.returns;
+    return Math.max(0, holdingsSummary.totalReturns);
+  }, [investmentSummary.returns, holdingsSummary.totalReturns]);
+
+  const displayEmiPaid = useMemo(() => {
+    if (emiPaidInPeriod > 0) return emiPaidInPeriod;
+    return loansSummary.totalMonthlyEmi;
+  }, [emiPaidInPeriod, loansSummary.totalMonthlyEmi]);
+
+  const displayBorrowed = useMemo(() => {
+    if (borrowedInPeriod > 0) return borrowedInPeriod;
+    return loansSummary.totalPrincipal;
+  }, [borrowedInPeriod, loansSummary.totalPrincipal]);
 
   return (
     <div className="space-y-6">
@@ -456,7 +487,7 @@ export function ReportsPage({
                   Capital Deployed
                 </span>
                 <span className="wt-display text-base sm:text-lg font-extrabold text-foreground mt-1 block tabular-nums">
-                  {money(investmentSummary.contributions)}
+                  {money(displayCapitalDeployed)}
                 </span>
                 <span className="text-[10px] text-muted-foreground mt-0.5 block">
                   Mutual funds & SIPs
@@ -468,7 +499,7 @@ export function ReportsPage({
                   Returns & Divs
                 </span>
                 <span className="wt-display text-base sm:text-lg font-extrabold text-emerald-600 dark:text-emerald-400 mt-1 block tabular-nums">
-                  +{money(investmentSummary.returns)}
+                  +{money(displayReturns)}
                 </span>
                 <span className="text-[10px] text-muted-foreground mt-0.5 block">
                   Asset payouts
@@ -508,7 +539,7 @@ export function ReportsPage({
                   EMIs Paid
                 </span>
                 <span className="wt-display text-sm sm:text-base font-extrabold text-rose-600 dark:text-rose-400 mt-0.5 block tabular-nums">
-                  {money(emiPaidInPeriod)}
+                  {money(displayEmiPaid)}
                 </span>
                 <span className="text-[10px] text-muted-foreground block">
                   Debt servicing
@@ -520,7 +551,7 @@ export function ReportsPage({
                   Borrowed
                 </span>
                 <span className="wt-display text-sm sm:text-base font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block tabular-nums">
-                  +{money(borrowedInPeriod)}
+                  +{money(displayBorrowed)}
                 </span>
                 <span className="text-[10px] text-muted-foreground block">
                   Loans received
