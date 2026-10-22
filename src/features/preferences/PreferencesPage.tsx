@@ -47,29 +47,28 @@ export function PreferencesPage({
   onImport: () => void;
   onReset: () => void;
   onSignout: () => void;
-  onFieldAdd: (field: Partial<CustomField>) => void;
-  onFieldDelete: (id: string) => void;
-  fieldForm: Partial<CustomField>;
-  setFieldForm: (form: Partial<CustomField>) => void;
-  tagDraft: string;
-  setTagDraft: (tag: string) => void;
-  onTagAdd: () => void;
-  onTagDelete: (tag: string) => void;
+  onFieldAdd?: (field: Partial<CustomField>) => void;
+  onFieldDelete?: (id: string) => void;
+  fieldForm?: Partial<CustomField>;
+  setFieldForm?: (form: Partial<CustomField>) => void;
+  tagDraft?: string;
+  setTagDraft?: (tag: string) => void;
+  onTagAdd?: () => void;
+  onTagDelete?: (tag: string) => void;
 }) {
   const tabs = [
     "General & Regional",
-    "Defaults & Fast Entry",
-    "Alerts & Reminders",
-    "Tags & Custom Fields",
-    "Backup & Reset",
+    "Alerts & Notifications",
+    "Data & Storage",
   ];
+
+  const currentTab = tabs.includes(preferencesTab) ? preferencesTab : "General & Regional";
 
   return (
     <div className="space-y-6">
       <PageHeading
-        eyebrow="APPLICATION PREFERENCES"
         title="Preferences"
-        description="Configure your currency display, visual theme, default accounts, metadata tags, and offline backups."
+        description="Configure your currency display, visual theme, default accounts, smart reminders, and offline backups."
       />
 
       <div className="flex flex-wrap gap-2 border-b border-border pb-3">
@@ -77,7 +76,7 @@ export function PreferencesPage({
           <Button
             key={tab}
             size="sm"
-            variant={preferencesTab === tab ? "default" : "outline"}
+            variant={currentTab === tab ? "default" : "outline"}
             className="text-xs font-semibold"
             onClick={() => setPreferencesTab(tab)}
           >
@@ -87,110 +86,109 @@ export function PreferencesPage({
       </div>
 
       {/* Tab 1: General & Regional */}
-      {preferencesTab === "General & Regional" && (
-        <div className="max-w-xl space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-          <div className="flex items-center gap-2 border-b border-border pb-3">
-            <Globe className="size-4 text-primary" />
-            <h3 className="text-sm font-bold text-foreground">Regional & Display Settings</h3>
+      {currentTab === "General & Regional" && (
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
+            <div className="flex items-center gap-2 border-b border-border pb-3">
+              <Globe className="size-4 text-primary" />
+              <h3 className="text-sm font-bold text-foreground">Regional & Display Settings</h3>
+            </div>
+
+            <SelectField
+              label="Base Currency"
+              value={data.preferences.currency}
+              onChange={(value) =>
+                updatePreferences({ currency: value as WealthPreferences["currency"] })
+              }
+              options={[
+                { value: "INR", label: "INR · Indian Rupee (₹)" },
+                { value: "USD", label: "USD · US Dollar ($)" },
+                { value: "GBP", label: "GBP · Pound Sterling (£)" },
+                { value: "EUR", label: "EUR · Euro (€)" },
+              ]}
+            />
+
+            <SelectField
+              label="Theme Appearance"
+              value={data.preferences.theme}
+              onChange={(value) => updatePreferences({ theme: value as WealthPreferences["theme"] })}
+              options={[
+                { value: "light", label: "Light Mode (Clean crisp surfaces)" },
+                { value: "dark", label: "Dark Mode (Deep obsidian slate)" },
+              ]}
+            />
+
+            <SelectField
+              label="Date Format"
+              value={data.preferences.dateFormat}
+              onChange={(value) =>
+                updatePreferences({ dateFormat: value as WealthPreferences["dateFormat"] })
+              }
+              options={["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"].map((v) => ({
+                value: v,
+                label: v,
+              }))}
+            />
+
+            <SelectField
+              label="Week Starts On"
+              value={data.preferences.weekStart}
+              onChange={(value) =>
+                updatePreferences({ weekStart: value as WealthPreferences["weekStart"] })
+              }
+              options={[
+                { value: "Monday", label: "Monday (Standard financial cycle)" },
+                { value: "Sunday", label: "Sunday" },
+              ]}
+            />
           </div>
 
-          <SelectField
-            label="Base Currency"
-            value={data.preferences.currency}
-            onChange={(value) =>
-              updatePreferences({ currency: value as WealthPreferences["currency"] })
-            }
-            options={[
-              { value: "INR", label: "INR · Indian Rupee (₹)" },
-              { value: "USD", label: "USD · US Dollar ($)" },
-              { value: "GBP", label: "GBP · Pound Sterling (£)" },
-              { value: "EUR", label: "EUR · Euro (€)" },
-            ]}
-          />
+          <div className="space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
+            <div className="flex items-center gap-2 border-b border-border pb-3">
+              <SlidersHorizontal className="size-4 text-primary" />
+              <h3 className="text-sm font-bold text-foreground">Fast Entry Defaults</h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              These default presets automatically populate the Quick Add modal so you can log
+              transactions in just 2 clicks.
+            </p>
 
-          <SelectField
-            label="Theme Appearance"
-            value={data.preferences.theme}
-            onChange={(value) => updatePreferences({ theme: value as WealthPreferences["theme"] })}
-            options={[
-              { value: "light", label: "Light Mode (Clean crisp surfaces)" },
-              { value: "dark", label: "Dark Mode (Deep obsidian slate)" },
-            ]}
-          />
+            <SelectField
+              label="Default Transaction Type"
+              value={data.preferences.defaultType}
+              onChange={(value) =>
+                updatePreferences({ defaultType: value as "Expense" | "Income" })
+              }
+              options={[
+                { value: "Expense", label: "Expense" },
+                { value: "Income", label: "Income" },
+              ]}
+            />
 
-          <SelectField
-            label="Date Format"
-            value={data.preferences.dateFormat}
-            onChange={(value) =>
-              updatePreferences({ dateFormat: value as WealthPreferences["dateFormat"] })
-            }
-            options={["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"].map((v) => ({
-              value: v,
-              label: v,
-            }))}
-          />
+            <SelectField
+              label="Default Primary Account"
+              value={data.preferences.defaultAccount}
+              onChange={(defaultAccount) => updatePreferences({ defaultAccount })}
+              options={data.accounts
+                .filter((a) => !a.archived)
+                .map((a) => ({ value: a.id, label: `${a.name} (${a.kind})` }))}
+            />
 
-          <SelectField
-            label="Week Starts On"
-            value={data.preferences.weekStart}
-            onChange={(value) =>
-              updatePreferences({ weekStart: value as WealthPreferences["weekStart"] })
-            }
-            options={[
-              { value: "Monday", label: "Monday (Standard financial cycle)" },
-              { value: "Sunday", label: "Sunday" },
-            ]}
-          />
+            <SelectField
+              label="Default Payment Method"
+              value={data.preferences.defaultPaymentMethod}
+              onChange={(defaultPaymentMethod) => updatePreferences({ defaultPaymentMethod })}
+              options={["UPI", "Card", "Cash", "Bank transfer", "Wallet", "Other"].map((m) => ({
+                value: m,
+                label: m,
+              }))}
+            />
+          </div>
         </div>
       )}
 
-      {/* Tab 2: Defaults & Fast Entry */}
-      {preferencesTab === "Defaults & Fast Entry" && (
-        <div className="max-w-xl space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-          <div className="flex items-center gap-2 border-b border-border pb-3">
-            <SlidersHorizontal className="size-4 text-primary" />
-            <h3 className="text-sm font-bold text-foreground">Fast Entry Defaults</h3>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            These default presets automatically populate the Quick Add modal so you can log
-            transactions in just 2 clicks.
-          </p>
-
-          <SelectField
-            label="Default Transaction Type"
-            value={data.preferences.defaultType}
-            onChange={(value) =>
-              updatePreferences({ defaultType: value as "Expense" | "Income" })
-            }
-            options={[
-              { value: "Expense", label: "Expense" },
-              { value: "Income", label: "Income" },
-            ]}
-          />
-
-          <SelectField
-            label="Default Primary Account"
-            value={data.preferences.defaultAccount}
-            onChange={(defaultAccount) => updatePreferences({ defaultAccount })}
-            options={data.accounts
-              .filter((a) => !a.archived)
-              .map((a) => ({ value: a.id, label: `${a.name} (${a.kind})` }))}
-          />
-
-          <SelectField
-            label="Default Payment Method"
-            value={data.preferences.defaultPaymentMethod}
-            onChange={(defaultPaymentMethod) => updatePreferences({ defaultPaymentMethod })}
-            options={["UPI", "Card", "Cash", "Bank transfer", "Wallet", "Other"].map((m) => ({
-              value: m,
-              label: m,
-            }))}
-          />
-        </div>
-      )}
-
-      {/* Tab 3: Alerts & Reminders */}
-      {preferencesTab === "Alerts & Reminders" && (
+      {/* Tab 2: Alerts & Notifications */}
+      {currentTab === "Alerts & Notifications" && (
         <div className="max-w-xl space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
           <div className="flex items-center gap-2 border-b border-border pb-3">
             <Bell className="size-4 text-primary" />
@@ -252,8 +250,8 @@ export function PreferencesPage({
         </div>
       )}
 
-      {/* Tab 4: Tags & Custom Fields */}
-      {preferencesTab === "Tags & Custom Fields" && (
+      {/* Tab 3: Data & Storage */}
+      {currentTab === "Data & Storage" && (
         <div className="grid gap-6 md:grid-cols-2">
           {/* Tags */}
           <div className="space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
@@ -262,22 +260,24 @@ export function PreferencesPage({
               <h3 className="text-sm font-bold text-foreground">Transaction Tags</h3>
             </div>
             <p className="text-xs text-muted-foreground">
-              Tags help cross-reference transactions across multiple categories.
+              Tags help cross-reference transactions across multiple categories and reports.
             </p>
-            <div className="flex gap-2">
-              <input
-                className="wt-field"
-                placeholder="Add tag (e.g. vacation, tax)"
-                value={tagDraft}
-                onChange={(e) => setTagDraft(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") onTagAdd();
-                }}
-              />
-              <Button size="sm" onClick={onTagAdd} className="h-10 text-xs font-semibold gap-1.5">
-                <Plus size={15} /> Add
-              </Button>
-            </div>
+            {onTagAdd && (
+              <div className="flex gap-2">
+                <input
+                  className="wt-field"
+                  placeholder="Add tag (e.g. vacation, tax)"
+                  value={tagDraft ?? ""}
+                  onChange={(e) => setTagDraft?.(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") onTagAdd();
+                  }}
+                />
+                <Button size="sm" onClick={onTagAdd} className="h-10 text-xs font-semibold gap-1.5">
+                  <Plus size={15} /> Add
+                </Button>
+              </div>
+            )}
             <div className="flex flex-wrap gap-2 pt-2">
               {data.tags.map((tag) => (
                 <span
@@ -285,121 +285,66 @@ export function PreferencesPage({
                   className="flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-foreground"
                 >
                   #{tag}
-                  <button
-                    type="button"
-                    aria-label={`Delete tag ${tag}`}
-                    onClick={() => onTagDelete(tag)}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
-                    <X size={12} />
-                  </button>
+                  {onTagDelete && (
+                    <button
+                      type="button"
+                      aria-label={`Delete tag ${tag}`}
+                      onClick={() => onTagDelete(tag)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <X size={12} />
+                    </button>
+                  )}
                 </span>
               ))}
             </div>
           </div>
 
-          {/* Custom Fields */}
+          {/* Backup & Reset */}
           <div className="space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-            <h3 className="text-sm font-bold text-foreground border-b border-border pb-3">
-              Custom Fields
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              Add bespoke fields to track extra metadata on transactions (e.g. invoice ID).
+            <div className="flex items-center gap-2 border-b border-border pb-3">
+              <RotateCcw className="size-4 text-primary" />
+              <h3 className="text-sm font-bold text-foreground">Data Management & Privacy</h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              WealthTrack operates 100% locally in your browser storage. No financial records are
+              transmitted to any external server.
             </p>
-            <div className="space-y-3 pt-1">
-              <InputField
-                label="Field Name"
-                value={fieldForm.name ?? ""}
-                onChange={(name) => setFieldForm({ ...fieldForm, name })}
-                placeholder="e.g. Invoice ID, Tax Deductible"
-              />
-              <SelectField
-                label="Field Type"
-                value={fieldForm.type ?? "Text"}
-                onChange={(type) =>
-                  setFieldForm({ ...fieldForm, type: type as CustomField["type"] })
-                }
-                options={["Text", "Number", "Date", "Checkbox"].map((v) => ({
-                  value: v,
-                  label: v,
-                }))}
-              />
+
+            <div className="flex flex-col gap-2.5 pt-2">
               <Button
+                variant="outline"
                 size="sm"
-                onClick={() => onFieldAdd(fieldForm)}
-                className="h-9 gap-1.5 text-xs font-semibold"
+                className="justify-start gap-2 h-10 text-xs font-semibold"
+                onClick={onExport}
               >
-                <Plus size={14} /> Add Field
+                <Download size={15} /> Export All Transactions (CSV)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="justify-start gap-2 h-10 text-xs font-semibold"
+                onClick={onImport}
+              >
+                <FileUp size={15} /> Import Transactions (CSV / Excel)
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="justify-start gap-2 h-10 text-xs font-semibold text-destructive border-destructive/30 hover:bg-destructive/10"
+                onClick={onReset}
+              >
+                <Trash2 size={15} /> Reset All Data to Original Demo Dataset
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="justify-start gap-2 h-10 text-xs font-semibold text-destructive"
+                onClick={onSignout}
+              >
+                <LogOut size={15} /> Sign Out
               </Button>
             </div>
-
-            <div className="mt-3 divide-y divide-border">
-              {data.customFields.map((f) => (
-                <div key={f.id} className="flex items-center justify-between py-2 text-xs">
-                  <div>
-                    <span className="font-semibold text-foreground">{f.name}</span>
-                    <span className="ml-1.5 text-muted-foreground">({f.type})</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 text-xs text-destructive hover:bg-destructive/10"
-                    onClick={() => onFieldDelete(f.id)}
-                  >
-                    <Trash2 size={13} />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tab 5: Backup & Reset */}
-      {preferencesTab === "Backup & Reset" && (
-        <div className="max-w-xl space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-          <div className="flex items-center gap-2 border-b border-border pb-3">
-            <RotateCcw className="size-4 text-primary" />
-            <h3 className="text-sm font-bold text-foreground">Data Management & Privacy</h3>
-          </div>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            WealthTrack operates 100% locally in your browser storage. No financial records are
-            transmitted to any external server.
-          </p>
-
-          <div className="flex flex-col gap-2.5 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="justify-start gap-2 h-10 text-xs font-semibold"
-              onClick={onExport}
-            >
-              <Download size={15} /> Export All Transactions (CSV)
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="justify-start gap-2 h-10 text-xs font-semibold"
-              onClick={onImport}
-            >
-              <FileUp size={15} /> Import Transactions (CSV / Excel)
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="justify-start gap-2 h-10 text-xs font-semibold text-destructive border-destructive/30 hover:bg-destructive/10"
-              onClick={onReset}
-            >
-              <Trash2 size={15} /> Reset All Data to Original Demo Dataset
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="justify-start gap-2 h-10 text-xs font-semibold text-destructive"
-              onClick={onSignout}
-            >
-              <LogOut size={15} /> Sign Out
-            </Button>
           </div>
         </div>
       )}

@@ -42,12 +42,14 @@ export function InvestmentsPage({
   onAddHolding,
   onEditHolding,
   onDeleteHolding,
+  onToggleSip,
 }: {
   data: WealthState;
   money: (val: number) => string;
   onAddHolding: () => void;
   onEditHolding: (holding: InvestmentHolding) => void;
   onDeleteHolding: (holding: InvestmentHolding) => void;
+  onToggleSip?: (holding: InvestmentHolding) => void;
 }) {
   const holdings = data.investments ?? [];
   const [search, setSearch] = useState("");
@@ -97,7 +99,6 @@ export function InvestmentsPage({
   return (
     <div className="space-y-6">
       <PageHeading
-        eyebrow="PORTFOLIO & CAPITAL WEALTH"
         title="Investments"
         description="Track your portfolio holdings, asset allocation, invested amount, and real-time earned returns."
         actions={
@@ -290,12 +291,23 @@ export function InvestmentsPage({
                 <div>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-1.5">
                         <span
                           className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ${colors.bg} ${colors.text}`}
                         >
                           {h.assetType}
                         </span>
+                        {h.isRecurring && (
+                          <span
+                            className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold ${
+                              h.status === "Paused"
+                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                : "bg-primary/10 text-primary"
+                            }`}
+                          >
+                            SIP: {money(h.sipAmount || 0)}/mo · {h.status === "Paused" ? "Paused" : "Active"}
+                          </span>
+                        )}
                         {h.institution && (
                           <span className="text-[11px] font-medium text-muted-foreground truncate">
                             {h.institution}
@@ -319,6 +331,15 @@ export function InvestmentsPage({
                           icon: <Pencil size={14} />,
                           onClick: () => onEditHolding(h),
                         },
+                        ...(h.isRecurring && onToggleSip
+                          ? [
+                              {
+                                label: h.status === "Paused" ? "Resume SIP Schedule" : "Pause SIP Schedule",
+                                icon: <RefreshCw size={14} />,
+                                onClick: () => onToggleSip(h),
+                              },
+                            ]
+                          : []),
                         {
                           label: "Delete Holding",
                           icon: <Trash2 size={14} />,

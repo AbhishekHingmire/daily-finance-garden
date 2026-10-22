@@ -69,6 +69,12 @@ export interface InvestmentHolding {
   institution?: string;
   notes?: string;
   updatedAt: string;
+  isRecurring?: boolean;
+  recurringId?: string;
+  sipAmount?: number;
+  sipFrequency?: string;
+  sipAccountId?: string;
+  status?: "Active" | "Paused";
 }
 
 export interface UserProfile {
@@ -193,7 +199,7 @@ export interface Transaction {
 export interface RecurringItem {
   id: string;
   name: string;
-  type: "Expense" | "Income";
+  type: "Expense" | "Income" | "Investment";
   amount: number;
   categoryId: string;
   accountId: string;
@@ -204,6 +210,10 @@ export interface RecurringItem {
   nextDate: string;
   need?: "Need" | "Want";
   enabled: boolean;
+  investmentId?: string;
+  instrumentType?: InvestmentInstrument;
+  units?: number;
+  pricePerUnit?: number;
 }
 
 export interface CustomField {
@@ -706,6 +716,7 @@ export function processDueRecurringTransactions(
   let hasChanges = false;
   const newTransactions: Transaction[] = [];
   const processedItems: { name: string; amount: number; date: string }[] = [];
+  let updatedInvestments = [...(state.investments || [])];
 
   const updatedRecurring = state.recurring.map((item) => {
     if (!item.enabled) return item;
@@ -714,6 +725,7 @@ export function processDueRecurringTransactions(
       hasChanges = true;
       const cat = state.categories.find((c) => c.id === item.categoryId);
 
+      const isInv = item.type === "Investment";
       const tx: Transaction = {
         id: createTransactionId(),
         date: item.nextDate,
@@ -726,13 +738,33 @@ export function processDueRecurringTransactions(
         paymentMethod: "Auto-debit",
         need: item.need || (cat?.name === "Shopping" || cat?.name === "Entertainment" ? "Want" : "Need"),
         merchant: item.name,
-        tags: ["Recurring", "Auto-debit"],
-        notes: `Automatically recorded recurring ${item.frequency.toLowerCase()} schedule.`,
+        tags: isInv ? ["Recurring", "Auto-debit", "SIP", "Investment"] : ["Recurring", "Auto-debit"],
+        notes: isInv
+          ? `Automated recurring SIP installment for ${item.name}.`
+          : `Automatically recorded recurring ${item.frequency.toLowerCase()} schedule.`,
         recurring: true,
         customValues: {},
+        investmentAction: isInv ? "Contribution" : undefined,
+        instrumentType: isInv ? item.instrumentType || "Mutual fund" : undefined,
       };
       newTransactions.push(tx);
       processedItems.push({ name: item.name, amount: item.amount, date: item.nextDate });
+
+      // If recurring item is an Investment, auto-increment investedAmount & currentAmount in holdings
+      if (isInv) {
+        const targetInvIdx = updatedInvestments.findIndex(
+          (inv) => (item.investmentId && inv.id === item.investmentId) || inv.name.toLowerCase() === item.name.toLowerCase()
+        );
+        if (targetInvIdx >= 0) {
+          const inv = updatedInvestments[targetInvIdx];
+          updatedInvestments[targetInvIdx] = {
+            ...inv,
+            investedAmount: inv.investedAmount + item.amount,
+            currentAmount: inv.currentAmount + item.amount,
+            updatedAt: item.nextDate.slice(0, 10),
+          };
+        }
+      }
 
       const advancedDate = getNextRecurringDate(item.nextDate, item.frequency, item.intervalDays);
       return {
@@ -753,6 +785,7 @@ export function processDueRecurringTransactions(
       ...state,
       recurring: updatedRecurring,
       transactions: [...newTransactions, ...state.transactions],
+      investments: updatedInvestments,
     },
     processedCount: newTransactions.length,
     processedItems,

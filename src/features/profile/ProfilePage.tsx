@@ -75,7 +75,6 @@ export function ProfilePage({
   return (
     <div className="space-y-6">
       <PageHeading
-        eyebrow="PERSONAL PROFILE & FINANCIAL IDENTITY"
         title="My Profile"
         description="Manage your identity, monthly income targets, emergency fund security, and investor risk profile."
       />

@@ -419,7 +419,7 @@ export function Dashboard({
         />
 
         {/* Top Spending Categories Matrix */}
-        <div className="rounded-2xl border border-border/80 bg-card p-6 wt-shadow flex flex-col justify-between">
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div>
@@ -437,6 +437,16 @@ export function Dashboard({
               >
                 All Reports →
               </button>
+            </div>
+
+            {/* Symmetrical Top Banner Matching Cash Flow Chart */}
+            <div className="mt-3.5 flex items-center justify-between rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2 text-xs">
+              <span className="font-bold text-foreground">
+                {topCategories.length ? `${topCategories.length} Categories Ranked` : "Spending Concentration"}
+              </span>
+              <span className="font-extrabold text-foreground tabular-nums">
+                Total: {money(monthExpenses)}
+              </span>
             </div>
           </div>
 

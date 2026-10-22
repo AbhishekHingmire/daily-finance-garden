@@ -104,7 +104,6 @@ export function FundsPage({
   return (
     <div className="space-y-6">
       <PageHeading
-        eyebrow="RESERVES, SINKING FUNDS & LIFE GOALS"
         title="Funds & Planning"
         description="Manage your emergency safety runway, custom sinking funds, and AI-powered purchase simulations."
         actions={

@@ -46,7 +46,7 @@ export function RecurringModal({
     const newCat: Category = {
       id: `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       name: catForm.name.trim(),
-      kind: catForm.kind ?? (form.type ?? "Expense"),
+      kind: catForm.kind ?? (form.type === "Investment" ? "Expense" : (form.type ?? "Expense")),
       icon: catForm.icon ?? matchCategoryIcon(catForm.name.trim(), "📁"),
       color: catForm.color ?? "blue",
       monthlyLimit: Number(catForm.monthlyLimit) || 0,
@@ -84,21 +84,46 @@ export function RecurringModal({
           <SelectField
             label="Type"
             value={form.type ?? "Expense"}
-            onChange={(type) => setForm((f) => ({ ...f, type: type as "Expense" | "Income" }))}
+            onChange={(type) => {
+              const newType = type as RecurringItem["type"];
+              setForm((f) => ({
+                ...f,
+                type: newType,
+                instrumentType: newType === "Investment" ? f.instrumentType || "Mutual fund" : undefined,
+              }));
+            }}
             options={[
               { value: "Expense", label: "Expense (Outflow)" },
               { value: "Income", label: "Income (Inflow)" },
+              { value: "Investment", label: "Investment (SIP / Recurring)" },
             ]}
           />
-          <SelectField
-            label="Priority Classification"
-            value={form.need ?? "Need"}
-            onChange={(need) => setForm((f) => ({ ...f, need: need as "Need" | "Want" }))}
-            options={[
-              { value: "Need", label: "Need (Essential)" },
-              { value: "Want", label: "Want (Discretionary)" },
-            ]}
-          />
+          {form.type === "Investment" ? (
+            <SelectField
+              label="Asset / Instrument Type"
+              value={form.instrumentType ?? "Mutual fund"}
+              onChange={(instrumentType) =>
+                setForm((f) => ({ ...f, instrumentType: instrumentType as any }))
+              }
+              options={[
+                { value: "Mutual fund", label: "Mutual Fund (MF)" },
+                { value: "ETF", label: "Exchange Traded Fund (ETF)" },
+                { value: "Stocks", label: "Stocks & Equity" },
+                { value: "Fixed deposit", label: "Fixed Deposit / RD" },
+                { value: "Other", label: "Other Asset" },
+              ]}
+            />
+          ) : (
+            <SelectField
+              label="Priority Classification"
+              value={form.need ?? "Need"}
+              onChange={(need) => setForm((f) => ({ ...f, need: need as "Need" | "Want" }))}
+              options={[
+                { value: "Need", label: "Need (Essential)" },
+                { value: "Want", label: "Want (Discretionary)" },
+              ]}
+            />
+          )}
           <InputField
             label="Amount"
             type="number"
@@ -109,6 +134,39 @@ export function RecurringModal({
             required
           />
         </div>
+
+        {form.type === "Investment" && (
+          <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2">
+            <span className="block text-xs font-bold text-foreground">
+              Link to Investment Holding (Auto-increments Portfolio)
+            </span>
+            <p className="text-[11px] text-muted-foreground">
+              Every time this recurring SIP advances, the linked holding's invested capital and current valuation will automatically increment.
+            </p>
+            <select
+              className="wt-field text-xs font-semibold"
+              value={form.investmentId ?? ""}
+              onChange={(e) => {
+                const invId = e.target.value;
+                const holding = data.investments?.find((h) => h.id === invId);
+                setForm((f) => ({
+                  ...f,
+                  investmentId: invId || undefined,
+                  name: holding ? `${holding.name} (SIP)` : f.name,
+                  instrumentType: holding ? (holding.assetType as any) : f.instrumentType,
+                }));
+              }}
+            >
+              <option value="">＋ Link or create holding with name above…</option>
+              {data.investments?.map((h) => (
+                <option key={h.id} value={h.id}>
+                  {h.name} ({h.assetType}) · Current: ₹{h.currentAmount.toLocaleString("en-IN")}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
             <div className="flex items-center justify-between mb-1">
@@ -127,7 +185,7 @@ export function RecurringModal({
               onChange={handleCategoryChange}
               options={[
                 ...data.categories
-                  .filter((c) => !c.archived && c.kind === (form.type ?? "Expense"))
+                  .filter((c) => !c.archived && (form.type === "Investment" ? true : c.kind === (form.type ?? "Expense")))
                   .map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` })),
                 { value: "__new_category__", label: "＋ Create new category…" },
               ]}
@@ -207,7 +265,7 @@ export function RecurringModal({
       {isCreatingCategory && (
         <CategoryModal
           category={null}
-          kind={form.type ?? "Expense"}
+          kind={form.type === "Investment" ? "Expense" : (form.type ?? "Expense")}
           onClose={() => setIsCreatingCategory(false)}
           onSave={handleQuickCreateCategory}
         />

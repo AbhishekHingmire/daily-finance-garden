@@ -2,10 +2,10 @@ import { useState } from "react";
 import {
   ArrowDownLeft,
   CalendarDays,
-  MoreHorizontal,
   Pencil,
   Plus,
   Trash2,
+  TrendingUp,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActionMenu } from "@/components/shared/ActionMenu";
@@ -51,13 +51,15 @@ export function RecurringPage({
   const totalMonthlyInflow = activeSchedules
     .filter((r) => r.type === "Income")
     .reduce((sum, r) => sum + r.amount, 0);
+  const totalMonthlySip = activeSchedules
+    .filter((r) => r.type === "Investment")
+    .reduce((sum, r) => sum + r.amount, 0);
 
   return (
     <div className="space-y-6">
       <PageHeading
-        eyebrow="AUTOMATED RECURRING FLOWS"
         title="Recurring"
-        description="Scheduled bills, loan EMIs, subscriptions, and recurring income schedules."
+        description="Scheduled bills, loan EMIs, automated SIP investments, and income schedules."
         actions={
           <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-xs">
             <Plus size={15} /> Add Schedule
@@ -66,16 +68,28 @@ export function RecurringPage({
       />
 
       {/* Standardized Summary Metric Cards */}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <div className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow">
           <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Monthly Outflows
+            Monthly Expenses & EMIs
           </span>
           <span className="wt-display mt-2 block text-2xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">
             −{money(totalMonthlyOutflow)}
           </span>
           <span className="mt-1 block text-xs text-muted-foreground">
-            Bills, subscriptions & EMIs
+            Bills, subscriptions & loans
+          </span>
+        </div>
+
+        <div className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow">
+          <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Monthly SIP Investments
+          </span>
+          <span className="wt-display mt-2 block text-2xl font-extrabold text-blue-600 dark:text-blue-400 tabular-nums">
+            {money(totalMonthlySip)}
+          </span>
+          <span className="mt-1 block text-xs text-muted-foreground">
+            Automated wealth accumulation
           </span>
         </div>
 
@@ -99,7 +113,7 @@ export function RecurringPage({
             {activeSchedules.length} of {data.recurring.length}
           </span>
           <span className="mt-1 block text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-            Net: +{money(Math.max(0, totalMonthlyInflow - totalMonthlyOutflow))}
+            Net Surplus: +{money(Math.max(0, totalMonthlyInflow - (totalMonthlyOutflow + totalMonthlySip)))}
           </span>
         </div>
       </div>
@@ -132,7 +146,11 @@ export function RecurringPage({
           {filtered.map((item) => {
             const cat = data.categories.find((c) => c.id === item.categoryId);
             const acc = data.accounts.find((a) => a.id === item.accountId);
+            const linkedHolding = data.investments?.find(
+              (h) => (item.investmentId && h.id === item.investmentId) || h.name.toLowerCase() === item.name.toLowerCase()
+            );
             const isIncome = item.type === "Income";
+            const isInv = item.type === "Investment";
 
             return (
               <div
@@ -147,17 +165,30 @@ export function RecurringPage({
                     className={`grid size-10 shrink-0 place-items-center rounded-xl text-sm ${
                       isIncome
                         ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                        : isInv
+                        ? "bg-blue-500/10 text-blue-600 dark:text-blue-400"
                         : "bg-muted text-foreground"
                     }`}
                   >
-                    {isIncome ? <ArrowDownLeft size={18} /> : <CalendarDays size={18} />}
+                    {isIncome ? (
+                      <ArrowDownLeft size={18} />
+                    ) : isInv ? (
+                      <TrendingUp size={18} />
+                    ) : (
+                      <CalendarDays size={18} />
+                    )}
                   </span>
                   <div className="min-w-0">
                     <div className="flex items-center gap-2">
                       <h3 className="font-semibold text-foreground text-sm truncate">
                         {item.name}
                       </h3>
-                      {item.need && !isIncome && (
+                      {isInv && (
+                        <span className="rounded-md bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
+                          SIP · {item.instrumentType || "Investment"}
+                        </span>
+                      )}
+                      {item.need && !isIncome && !isInv && (
                         <span
                           className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${
                             item.need === "Want"
@@ -170,7 +201,9 @@ export function RecurringPage({
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {cat?.name ?? item.type} · {acc?.name ?? "Account"}
+                      {isInv && linkedHolding
+                        ? `Portfolio Asset: ${linkedHolding.name} · ${acc?.name ?? "Account"}`
+                        : `${cat?.name ?? item.type} · ${acc?.name ?? "Account"}`}
                     </p>
                   </div>
                 </div>
@@ -185,6 +218,8 @@ export function RecurringPage({
                       className={`text-sm font-bold tabular-nums block mt-0.5 ${
                         isIncome
                           ? "text-emerald-600 dark:text-emerald-400"
+                          : isInv
+                          ? "text-blue-600 dark:text-blue-400"
                           : "text-foreground"
                       }`}
                     >

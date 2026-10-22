@@ -299,6 +299,67 @@ describe("Financial Engine & Calculations", () => {
     expect(updatedRec3?.nextDate).toBe("2026-10-15");
   });
 
+  it("auto-increments linked investment holding value when recurring SIP installment runs", () => {
+    const dummyState: WealthState = {
+      ...createInitialState(),
+      investments: [
+        {
+          id: "inv-sip-1",
+          name: "Parag Parikh Flexi Cap",
+          assetType: "Mutual fund",
+          investedAmount: 50000,
+          currentAmount: 58000,
+          isRecurring: true,
+          sipAmount: 5000,
+          status: "Active",
+          updatedAt: "2026-09-10",
+        },
+      ],
+      transactions: [],
+      recurring: [
+        {
+          id: "rec-sip-1",
+          name: "Parag Parikh Flexi Cap (SIP)",
+          type: "Investment",
+          amount: 5000,
+          frequency: "Monthly",
+          intervalDays: 30,
+          startDate: "2026-05-10",
+          endDate: "",
+          accountId: "acc-hdfc",
+          categoryId: "cat-investments",
+          nextDate: "2026-10-10", // Due before 2026-10-22
+          enabled: true,
+          need: "Need",
+          investmentId: "inv-sip-1",
+          instrumentType: "Mutual fund",
+        },
+      ],
+    };
+
+    const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(
+      dummyState,
+      "2026-10-22"
+    );
+
+    expect(processedCount).toBe(1);
+    expect(processedItems[0]?.name).toBe("Parag Parikh Flexi Cap (SIP)");
+    expect(processedItems[0]?.amount).toBe(5000);
+
+    // Verify transaction created
+    expect(updatedState.transactions.length).toBe(1);
+    const tx = updatedState.transactions[0];
+    expect(tx?.type).toBe("Investment");
+    expect(tx?.investmentAction).toBe("Contribution");
+    expect(tx?.amount).toBe(5000);
+
+    // Verify linked holding investedAmount and currentAmount were both auto-incremented by 5000
+    const holding = updatedState.investments?.find((i) => i.id === "inv-sip-1");
+    expect(holding?.investedAmount).toBe(55000); // 50,000 + 5,000
+    expect(holding?.currentAmount).toBe(63000); // 58,000 + 5,000
+    expect(holding?.updatedAt).toBe("2026-10-10");
+  });
+
   it("filters date ranges strictly according to 1M, 6M, 12M, and Custom Range", () => {
     const ref = new Date(2026, 9, 22); // 2026-10-22
 

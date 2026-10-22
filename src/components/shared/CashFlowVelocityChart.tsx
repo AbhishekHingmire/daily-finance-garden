@@ -213,7 +213,7 @@ export function CashFlowVelocityChart({
 
   return (
     <div
-      className={`rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between ${className}`}
+      className={`rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow ${className}`}
     >
       <div>
         {/* Header with Title and Optional All Reports Link */}

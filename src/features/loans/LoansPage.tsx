@@ -75,7 +75,6 @@ export function LoansPage({
   return (
     <div className="space-y-6">
       <PageHeading
-        eyebrow="LIABILITIES & DEBT FREEDOM"
         title="Loans & Debt"
         description="Manage borrowings, mortgages, debt payoff progress, and linked auto-recurring bank EMIs."
         actions={

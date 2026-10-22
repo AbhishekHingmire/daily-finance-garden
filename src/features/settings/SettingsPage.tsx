@@ -46,7 +46,6 @@ export function SettingsPage({
   return (
     <>
       <PageHeading
-        eyebrow="SYSTEM CONFIGURATION"
         title="Settings"
         description="Customize your WealthTrack experience, regional formats, metadata tags, and local data."
       />

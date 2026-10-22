@@ -66,6 +66,7 @@ import {
   safeAmount,
   STORAGE_KEY,
   type Account,
+  type AssetType,
   type Category,
   type CategoryKind,
   type CustomField,
@@ -326,32 +327,114 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setHoldingModalOpen(true);
   };
 
-  const handleSaveHolding = (holding: InvestmentHolding) => {
+  const handleSaveHolding = (incomingHolding: InvestmentHolding) => {
     setData((current) => {
-      const holdings = current.investments ?? [];
-      const idx = holdings.findIndex((h) => h.id === holding.id);
-      let nextHoldings: InvestmentHolding[];
+      let holding = { ...incomingHolding };
+      let nextHoldings = current.investments ?? [];
+      let nextRecurring = [...current.recurring];
+      const recurringSipId = holding.recurringId || `rec-inv-${holding.id}`;
+
+      // 100% Correlation: If holding is recurring (SIP), ensure a matching Recurring Item exists
+      if (holding.isRecurring && (holding.sipAmount || holding.investedAmount)) {
+        const existingRecIdx = nextRecurring.findIndex(
+          (r) => r.id === recurringSipId || (holding.id && r.investmentId === holding.id)
+        );
+        const catInvestments =
+          current.categories.find(
+            (c) =>
+              c.name.toLowerCase().includes("invest") ||
+              c.name.toLowerCase().includes("saving") ||
+              c.name.toLowerCase().includes("wealth")
+          )?.id ?? current.categories[0]?.id;
+
+        const sipItem: RecurringItem = {
+          id: recurringSipId,
+          name: `${holding.name} (SIP)`,
+          type: "Investment",
+          amount: Number(holding.sipAmount) || Number(holding.investedAmount) || 0,
+          categoryId: catInvestments,
+          accountId: holding.sipAccountId || current.accounts[0]?.id || "",
+          frequency: (holding.sipFrequency as any) || "Monthly",
+          intervalDays: 30,
+          startDate: new Date().toISOString().slice(0, 10),
+          endDate: "",
+          nextDate: "2026-11-10",
+          need: "Need",
+          enabled: holding.status !== "Paused",
+          investmentId: holding.id,
+          instrumentType:
+            holding.assetType === "ETF"
+              ? "ETF"
+              : holding.assetType === "Stocks & Equity"
+              ? "Stocks"
+              : holding.assetType === "Fixed deposit"
+              ? "Fixed deposit"
+              : "Mutual fund",
+        };
+
+        if (existingRecIdx >= 0) {
+          nextRecurring[existingRecIdx] = sipItem;
+        } else {
+          nextRecurring = [sipItem, ...nextRecurring];
+        }
+        holding = { ...holding, recurringId: recurringSipId };
+      } else {
+        // If not recurring, remove any linked recurring item
+        nextRecurring = nextRecurring.filter(
+          (r) => r.id !== recurringSipId && r.investmentId !== holding.id
+        );
+        holding = { ...holding, recurringId: undefined, isRecurring: false };
+      }
+
+      const idx = nextHoldings.findIndex((h) => h.id === holding.id);
       if (idx >= 0) {
-        nextHoldings = [...holdings];
+        nextHoldings = [...nextHoldings];
         nextHoldings[idx] = holding;
       } else {
-        nextHoldings = [holding, ...holdings];
+        nextHoldings = [holding, ...nextHoldings];
       }
-      return { ...current, investments: nextHoldings };
+
+      return { ...current, investments: nextHoldings, recurring: nextRecurring };
     });
     setHoldingModalOpen(false);
     toast.success(editingHolding ? "Investment holding updated" : "Investment holding added", {
-      description: `${holding.name} · ${money(holding.currentAmount)}`,
+      description: `${incomingHolding.name} · ${money(incomingHolding.currentAmount)}${
+        incomingHolding.isRecurring ? " (SIP active)" : ""
+      }`,
     });
+  };
+
+  const handleToggleHoldingSip = (holding: InvestmentHolding) => {
+    setData((current) => {
+      const nextStatus: "Active" | "Paused" = holding.status === "Paused" ? "Active" : "Paused";
+      const nextHoldings: InvestmentHolding[] = (current.investments ?? []).map((h) =>
+        h.id === holding.id ? { ...h, status: nextStatus } : h
+      );
+      const nextRecurring = current.recurring.map((r) =>
+        r.investmentId === holding.id || r.id === holding.recurringId
+          ? { ...r, enabled: nextStatus === "Active" }
+          : r
+      );
+      return { ...current, investments: nextHoldings, recurring: nextRecurring };
+    });
+    toast.success(
+      holding.status === "Paused" ? "SIP Resumed" : "SIP Paused",
+      {
+        description: `${holding.name} monthly schedule updated.`,
+      }
+    );
   };
 
   const handleDeleteHolding = (holding: InvestmentHolding) => {
     setData((current) => ({
       ...current,
       investments: (current.investments ?? []).filter((h) => h.id !== holding.id),
+      recurring: current.recurring.filter(
+        (r) => r.investmentId !== holding.id && r.id !== holding.recurringId
+      ),
     }));
     toast.success("Holding removed", {
-      description: `${holding.name} was removed from your investments.`,
+      description: `${holding.name} was removed from your investments and recurring schedules.`,
     });
   };
 
@@ -904,13 +987,57 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       nextDate: form.nextDate ?? new Date().toISOString().slice(0, 10),
       need: form.need ?? "Need",
       enabled: form.enabled ?? true,
+      investmentId: form.investmentId,
+      instrumentType: form.instrumentType,
     };
-    setData((current) => ({
-      ...current,
-      recurring: editingRecurring
-        ? current.recurring.map((row) => (row.id === item.id ? item : row))
-        : [...current.recurring, item],
-    }));
+    setData((current) => {
+      let nextInvestments = [...(current.investments ?? [])];
+      if (item.type === "Investment") {
+        const invIdx = nextInvestments.findIndex(
+          (inv) =>
+            (item.investmentId && inv.id === item.investmentId) ||
+            inv.recurringId === item.id ||
+            inv.name.toLowerCase() === item.name.toLowerCase()
+        );
+        if (invIdx >= 0) {
+          nextInvestments[invIdx] = {
+            ...nextInvestments[invIdx],
+            isRecurring: true,
+            recurringId: item.id,
+            sipAmount: item.amount,
+            sipFrequency: item.frequency,
+            sipAccountId: item.accountId,
+            status: item.enabled ? "Active" : "Paused",
+          };
+          item.investmentId = nextInvestments[invIdx].id;
+        } else {
+          const newHolding: InvestmentHolding = {
+            id: `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            name: item.name.replace(/\s*\(SIP\)\s*/i, ""),
+            assetType: (item.instrumentType as AssetType) || "Mutual fund",
+            investedAmount: 0,
+            currentAmount: 0,
+            isRecurring: true,
+            recurringId: item.id,
+            sipAmount: item.amount,
+            sipFrequency: item.frequency,
+            sipAccountId: item.accountId,
+            status: item.enabled ? "Active" : "Paused",
+            updatedAt: new Date().toISOString().slice(0, 10),
+          };
+          item.investmentId = newHolding.id;
+          nextInvestments = [newHolding, ...nextInvestments];
+        }
+      }
+
+      return {
+        ...current,
+        recurring: editingRecurring
+          ? current.recurring.map((row) => (row.id === item.id ? item : row))
+          : [...current.recurring, item],
+        investments: nextInvestments,
+      };
+    });
     setModal(null);
     toast.success(editingRecurring ? "Schedule updated" : "Recurring schedule added");
   };
@@ -1474,11 +1601,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 >
                   <Icon size={17} />
                   {label}
-                  {label === "Recurring" && (
-                    <span className="ml-auto rounded-full bg-accent px-2 py-0.5 text-[10px] font-bold text-accent-foreground">
-                      {data.recurring.filter((item) => item.enabled).length}
-                    </span>
-                  )}
                 </Button>
               ))}
             </nav>
@@ -1828,6 +1950,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 onAddHolding={handleAddHolding}
                 onEditHolding={handleEditHolding}
                 onDeleteHolding={handleDeleteHolding}
+                onToggleSip={handleToggleHoldingSip}
               />
             )}
 
@@ -1895,12 +2018,27 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 }}
                 onDelete={(item) => requestDelete("recurring", item.id, item.name, item.amount)}
                 onToggle={(item) =>
-                  setData((current) => ({
-                    ...current,
-                    recurring: current.recurring.map((row) =>
-                      row.id === item.id ? { ...row, enabled: !row.enabled } : row
-                    ),
-                  }))
+                  setData((current) => {
+                    const nextEnabled = !item.enabled;
+                    const nextRecurring = current.recurring.map((row) =>
+                      row.id === item.id ? { ...row, enabled: nextEnabled } : row
+                    );
+                    let nextInvestments = current.investments;
+                    if (item.type === "Investment" || item.investmentId) {
+                      nextInvestments = (current.investments ?? []).map((inv) =>
+                        inv.id === item.investmentId ||
+                        inv.recurringId === item.id ||
+                        inv.name.toLowerCase() === item.name.toLowerCase()
+                          ? { ...inv, status: nextEnabled ? "Active" : "Paused" }
+                          : inv
+                      );
+                    }
+                    return {
+                      ...current,
+                      recurring: nextRecurring,
+                      investments: nextInvestments,
+                    };
+                  })
                 }
               />
             )}

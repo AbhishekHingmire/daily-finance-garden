@@ -44,7 +44,6 @@ export function CategoriesPage({
   return (
     <>
       <PageHeading
-        eyebrow="SPENDING & REVENUE STRUCTURE"
         title="Categories"
         description="Organize your spending into smart 50/30/20 Need vs. Want classifications with monthly budget caps."
         actions={
