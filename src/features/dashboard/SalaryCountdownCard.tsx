@@ -126,54 +126,54 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/[0.08] via-card to-card p-4 sm:p-5 wt-shadow">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/[0.08] via-card to-card p-3 sm:p-5 wt-shadow">
+        <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
           {/* Left section: Icon + Payday details */}
-          <div className="flex items-center gap-3.5">
+          <div className="flex items-center gap-3">
             <div className="relative shrink-0">
-              <span className="grid size-12 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                <CalendarDays size={22} />
+              <span className="grid size-10 sm:size-12 place-items-center rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <CalendarDays className="size-5 sm:size-6" />
               </span>
-              <span className="absolute -bottom-1 -right-1 grid size-5 place-items-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+              <span className="absolute -bottom-1 -right-1 grid size-4 sm:size-5 place-items-center rounded-full bg-primary text-primary-foreground text-[9px] sm:text-[10px] font-bold">
                 ₹
               </span>
             </div>
 
-            <div>
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Monthly Payroll & Payday
                 </span>
                 {isToday ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 animate-pulse">
-                    <Sparkles size={11} /> Today is Payday!
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 animate-pulse">
+                    <Sparkles size={10} /> Today is Payday!
                   </span>
                 ) : daysRemaining === 1 ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                    <Clock size={11} /> Tomorrow is Payday
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                    <Clock size={10} /> Tomorrow is Payday
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300">
-                    <Clock size={11} /> {daysRemaining} Days Remaining
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] sm:text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300">
+                    <Clock size={10} /> {daysRemaining} Days Remaining
                   </span>
                 )}
               </div>
 
-              <div className="mt-1 flex flex-wrap items-baseline gap-2.5">
-                <span className="wt-display text-lg sm:text-xl font-black text-foreground tabular-nums">
+              <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                <span className="wt-display text-base sm:text-xl font-black text-foreground tabular-nums whitespace-nowrap">
                   {money(currentSalaryAmount)}
                 </span>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[11px] sm:text-xs text-muted-foreground">
                   expected on <strong className="text-foreground">{formatDisplayDate(nextDate)}</strong>
                 </span>
               </div>
 
               {/* Receiving account pill */}
-              <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                <span>Credit account:</span>
+              <div className="mt-1 flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="hidden sm:inline">Credit account:</span>
                 <div className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-card px-2 py-0.5 text-foreground font-semibold">
                   <InstitutionLogo name={receivingAccount?.institution || receivingAccount?.name} size="xs" />
-                  <span>{receivingAccount?.name}</span>
+                  <span className="truncate max-w-[140px] sm:max-w-none">{receivingAccount?.name}</span>
                   {receivingAccount?.identifier && (
                     <span className="text-muted-foreground font-normal">{receivingAccount.identifier}</span>
                   )}

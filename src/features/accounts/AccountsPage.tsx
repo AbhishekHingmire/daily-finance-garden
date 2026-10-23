@@ -144,38 +144,49 @@ export function AccountsPage({
       />
 
       {/* Net Worth & Assets/Liabilities Overview Card */}
-      <div className="grid gap-4 rounded-xl border border-border bg-card p-5 wt-shadow sm:grid-cols-3">
-        <div>
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Total Liquid Net Worth
-          </p>
-          <p className="wt-display mt-1 text-3xl font-extrabold text-primary tabular-nums">
+      <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-5 wt-shadow divide-y divide-border/60 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
+        {/* Section 1: Total Liquid Net Worth */}
+        <div className="pb-2.5 sm:pb-0 flex items-center justify-between gap-3 sm:block">
+          <div className="min-w-0">
+            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Total Liquid Net Worth
+            </p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+              Across {activeAccounts.length} active financial accounts
+            </p>
+          </div>
+          <p className="wt-display text-base sm:text-3xl font-extrabold text-primary tabular-nums whitespace-nowrap shrink-0 sm:mt-1">
             {money(totalBalance)}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Across {activeAccounts.length} active financial accounts
-          </p>
         </div>
-        <div className="border-t border-border pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Liquid Assets
-          </p>
-          <p className="wt-display mt-1 text-xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+
+        {/* Section 2: Liquid Assets */}
+        <div className="py-2.5 sm:py-0 sm:border-l sm:border-border/60 sm:pl-4 flex items-center justify-between gap-3 sm:block">
+          <div className="min-w-0">
+            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Liquid Assets
+            </p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+              {assetAccounts.length} Bank, Cash & Wallet accounts
+            </p>
+          </div>
+          <p className="wt-display text-base sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-1">
             {money(totalAssets)}
           </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {assetAccounts.length} Bank, Cash & Wallet accounts
-          </p>
         </div>
-        <div className="border-t border-border pt-3 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Liabilities & Credit Outstandings
-          </p>
-          <p className="wt-display mt-1 text-xl font-bold text-amber-600 dark:text-amber-400 tabular-nums">
+
+        {/* Section 3: Liabilities */}
+        <div className="pt-2.5 sm:pt-0 sm:border-l sm:border-border/60 sm:pl-4 flex items-center justify-between gap-3 sm:block">
+          <div className="min-w-0">
+            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Liabilities & Debt
+            </p>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+              {liabilityAccounts.length} Credit Card & liability accounts
+            </p>
+          </div>
+          <p className="wt-display text-base sm:text-xl font-bold text-amber-600 dark:text-amber-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-1">
             {money(totalLiabilities)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {liabilityAccounts.length} Credit Card & liability accounts
           </p>
         </div>
       </div>

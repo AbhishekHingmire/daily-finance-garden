@@ -246,60 +246,64 @@ export function ReportsPage({
       </div>
 
       {/* Hero Financial Performance Metric Cards */}
-      <div className="grid gap-4 rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow sm:grid-cols-3">
+      <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-6 wt-shadow divide-y divide-border/60 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
         {/* Net Surplus */}
-        <div className="flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div className="pb-2.5 sm:pb-0 flex items-center justify-between gap-3 sm:block">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 Net Surplus Retained
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                <Sparkles size={11} /> {savingsRate}% Saved
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                <Sparkles size={10} /> {savingsRate}% Saved
               </span>
             </div>
-            <p className="wt-display mt-2 text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums">
-              {money(netSavings)}
-            </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
               {netSavings >= 0 ? "Surplus capital retained" : "Net spending deficit"}
             </p>
           </div>
+          <p className="wt-display text-base sm:text-3xl font-extrabold text-foreground tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
+            {money(netSavings)}
+          </p>
         </div>
 
         {/* Total Inflow */}
-        <div className="border-t border-border/60 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Period Inflows
-            </span>
-            <span className="grid size-7 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <ArrowDownLeft size={15} />
-            </span>
+        <div className="py-2.5 sm:py-0 sm:border-l sm:border-border/60 sm:pl-5 flex items-center justify-between gap-3 sm:block">
+          <div className="min-w-0">
+            <div className="flex items-center justify-between sm:w-full">
+              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Period Inflows
+              </span>
+              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <ArrowDownLeft size={15} />
+              </span>
+            </div>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+              All salary, dividends & cash inflows
+            </p>
           </div>
-          <p className="wt-display mt-2 text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+          <p className="wt-display text-base sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
             +{money(totalIncome)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            All salary, dividends, and cash inflows
           </p>
         </div>
 
         {/* Total Outflow */}
-        <div className="border-t border-border/60 pt-3 sm:border-l sm:border-t-0 sm:pl-5 sm:pt-0">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Period Outflows
-            </span>
-            <span className="grid size-7 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-              <ArrowUpRight size={15} />
-            </span>
+        <div className="pt-2.5 sm:pt-0 sm:border-l sm:border-border/60 sm:pl-5 flex items-center justify-between gap-3 sm:block">
+          <div className="min-w-0">
+            <div className="flex items-center justify-between sm:w-full">
+              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Period Outflows
+              </span>
+              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                <ArrowUpRight size={15} />
+              </span>
+            </div>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+              All expenses, EMIs & outflows
+            </p>
           </div>
-          <p className="wt-display mt-2 text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">
+          <p className="wt-display text-base sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
             −{money(totalExpenses)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            All expenses, EMIs, and capital outflows
           </p>
         </div>
       </div>

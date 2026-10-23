@@ -112,59 +112,59 @@ export function InvestmentsPage({
       />
 
       {/* Top Portfolio Hero Card (Groww Aesthetic) */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-primary/5 p-6 wt-shadow">
-        <div className="grid gap-6 md:grid-cols-12 md:items-center">
+      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-primary/5 p-4 sm:p-6 wt-shadow">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-12 md:items-center">
           {/* Main Portfolio Value & P&L */}
-          <div className="md:col-span-7 space-y-3">
+          <div className="md:col-span-7 space-y-2.5 sm:space-y-3">
             <div className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                <LineChart className="size-4" />
+              <span className="flex size-6 sm:size-7 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                <LineChart className="size-3.5 sm:size-4" />
               </span>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Total Portfolio Valuation
               </p>
             </div>
 
-            <div className="flex flex-wrap items-baseline gap-3">
-              <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            <div className="flex flex-wrap items-baseline gap-2.5 sm:gap-3">
+              <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground tabular-nums whitespace-nowrap">
                 {money(summary.currentValue)}
               </h2>
 
               <div
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-extrabold ${
+                className={`flex items-center gap-1 sm:gap-1.5 rounded-full px-2.5 sm:px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-extrabold shrink-0 ${
                   summary.totalReturns >= 0
                     ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
                     : "bg-destructive/15 text-destructive"
                 }`}
               >
                 {summary.totalReturns >= 0 ? (
-                  <TrendingUp className="size-3.5" />
+                  <TrendingUp className="size-3 sm:size-3.5" />
                 ) : (
-                  <TrendingDown className="size-3.5" />
+                  <TrendingDown className="size-3 sm:size-3.5" />
                 )}
-                <span>
+                <span className="whitespace-nowrap">
                   {summary.totalReturns >= 0 ? "+" : ""}
                   {money(summary.totalReturns)}
                 </span>
-                <span>
+                <span className="whitespace-nowrap">
                   ({summary.totalReturns >= 0 ? "+" : ""}
                   {summary.returnPercentage.toFixed(2)}%)
                 </span>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-6 pt-2 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-1 text-xs text-muted-foreground">
               <div>
-                <span className="block text-[11px] font-medium">Invested Capital</span>
-                <span className="font-bold text-foreground text-sm">
+                <span className="block text-[10px] sm:text-[11px] font-medium">Invested Capital</span>
+                <span className="font-bold text-foreground text-xs sm:text-sm whitespace-nowrap">
                   {money(summary.totalInvested)}
                 </span>
               </div>
-              <div className="h-6 w-px bg-border" />
+              <div className="h-5 sm:h-6 w-px bg-border" />
               <div>
-                <span className="block text-[11px] font-medium">Total Earned Gain</span>
+                <span className="block text-[10px] sm:text-[11px] font-medium">Total Earned Gain</span>
                 <span
-                  className={`font-bold text-sm ${
+                  className={`font-bold text-xs sm:text-sm whitespace-nowrap ${
                     summary.totalReturns >= 0
                       ? "text-emerald-600 dark:text-emerald-400"
                       : "text-destructive"
@@ -174,10 +174,10 @@ export function InvestmentsPage({
                   {money(summary.totalReturns)}
                 </span>
               </div>
-              <div className="h-6 w-px bg-border" />
+              <div className="h-5 sm:h-6 w-px bg-border" />
               <div>
-                <span className="block text-[11px] font-medium">Active Holdings</span>
-                <span className="font-bold text-foreground text-sm">{holdings.length} assets</span>
+                <span className="block text-[10px] sm:text-[11px] font-medium">Active Holdings</span>
+                <span className="font-bold text-foreground text-xs sm:text-sm whitespace-nowrap">{holdings.length} assets</span>
               </div>
             </div>
           </div>

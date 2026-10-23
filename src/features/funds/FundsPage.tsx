@@ -203,18 +203,18 @@ export function FundsPage({
       {activeTab === "funds" && (
         <div className="space-y-6">
           {/* Emergency Fund Resilience Cockpit Card */}
-          <div className="rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-emerald-500/5 p-6 wt-shadow">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-              <div className="space-y-2 max-w-xl">
+          <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-emerald-500/5 p-4 sm:p-6 wt-shadow">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
+              <div className="space-y-1.5 sm:space-y-2 max-w-xl">
                 <div className="flex items-center gap-2">
-                  <span className="grid size-7 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                    <ShieldCheck size={16} />
+                  <span className="grid size-6 sm:size-7 place-items-center rounded-lg sm:rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <ShieldCheck className="size-3.5 sm:size-4" />
                   </span>
-                  <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Emergency Safety Net Resilience
                   </span>
                   <span
-                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                    className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold shrink-0 ${
                       emergencySummary.runwayMonths >= 6
                         ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
                         : "bg-blue-500/15 text-blue-700 dark:text-blue-300"
@@ -224,14 +224,14 @@ export function FundsPage({
                   </span>
                 </div>
 
-                <div className="pt-1">
-                  <h2 className="wt-display text-2xl sm:text-3xl font-extrabold text-foreground tabular-nums">
+                <div className="pt-0.5 sm:pt-1">
+                  <h2 className="wt-display text-xl sm:text-3xl font-extrabold text-foreground tabular-nums whitespace-nowrap">
                     {money(emergencySummary.current)}
-                    <span className="text-sm font-semibold text-muted-foreground ml-2">
+                    <span className="text-xs sm:text-sm font-semibold text-muted-foreground ml-2">
                       / {money(emergencySummary.target)} Target
                     </span>
                   </h2>
-                  <p className="text-xs text-muted-foreground mt-1">
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-1">
                     Based on your average burn rate of {money(monthlyExpenses)}/mo, your liquid reserves provide{" "}
                     <strong className="text-foreground">{emergencySummary.runwayMonths} months</strong> of continuous runway without any active income.
                   </p>
@@ -239,17 +239,17 @@ export function FundsPage({
               </div>
 
               {/* Visual Runway Meter */}
-              <div className="flex flex-col sm:items-end gap-2.5 shrink-0">
+              <div className="flex flex-row items-center justify-between sm:flex-col sm:items-end gap-2.5 shrink-0 pt-2 sm:pt-0 border-t border-border/60 sm:border-t-0">
                 <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <span className="text-xs font-semibold text-muted-foreground block">
+                  <div className="text-left sm:text-right">
+                    <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block">
                       Target Buffer
                     </span>
-                    <span className="wt-display text-xl font-extrabold text-foreground tabular-nums">
+                    <span className="wt-display text-base sm:text-xl font-extrabold text-foreground tabular-nums whitespace-nowrap">
                       {emergencySummary.percent}% Funded
                     </span>
                   </div>
-                  <span className="grid size-12 place-items-center rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-lg font-black">
+                  <span className="grid size-10 sm:size-12 place-items-center rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-base sm:text-lg font-black shrink-0">
                     {emergencySummary.runwayMonths}M
                   </span>
                 </div>
@@ -600,19 +600,19 @@ export function FundsPage({
       {/* Tab 2: Purchase & Life Goal Simulator */}
       {activeTab === "simulator" && (
         <div className="space-y-6">
-          <div className="rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-primary/5 p-6 wt-shadow">
+          <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-primary/5 p-4 sm:p-6 wt-shadow">
             <div className="flex items-center gap-2">
-              <span className="grid size-7 place-items-center rounded-xl bg-primary/10 text-primary">
-                <Sparkles size={16} />
+              <span className="grid size-6 sm:size-7 place-items-center rounded-lg sm:rounded-xl bg-primary/10 text-primary">
+                <Sparkles className="size-3.5 sm:size-4" />
               </span>
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 WealthTrack AI Purchase Simulator
               </span>
             </div>
-            <h2 className="wt-display mt-2 text-xl sm:text-2xl font-extrabold text-foreground">
+            <h2 className="wt-display mt-2 text-lg sm:text-2xl font-extrabold text-foreground">
               Simulate Large Purchases & Life Milestones
             </h2>
-            <p className="text-xs text-muted-foreground mt-1 max-w-2xl leading-relaxed">
+            <p className="text-[11px] sm:text-xs text-muted-foreground mt-1 max-w-2xl leading-relaxed">
               Enter any prospective acquisition—a home down payment, vehicle, luxury asset, or dream wedding. Our financial engine models where funds will be drawn from, calculates monthly savings discipline, and evaluates loan feasibility without jeopardizing your emergency safety net.
             </p>
           </div>

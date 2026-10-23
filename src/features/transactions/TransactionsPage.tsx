@@ -244,60 +244,73 @@ export function TransactionsPage({
       </div>
 
       {/* Dynamic Filtered Transactions Financial Summary */}
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow">
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+      <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-3">
+        {/* Filtered Net Total */}
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+          <div className="flex items-center justify-between sm:mb-2">
+            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Filtered Net Total
             </span>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
               {rows.length} {rows.length === 1 ? "record" : "records"}
             </span>
           </div>
-          <p
-            className={`wt-display mt-1 text-2xl sm:text-3xl font-extrabold tabular-nums ${
-              filteredNet > 0
-                ? "text-emerald-600 dark:text-emerald-400"
+          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+            <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+              {filteredNet >= 0
+                ? "Net positive cash flow"
+                : "Net cash outflow for selection"}
+            </p>
+            <p
+              className={`wt-display text-base sm:text-3xl font-extrabold tabular-nums whitespace-nowrap shrink-0 sm:order-1 ${
+                filteredNet > 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : filteredNet < 0
+                  ? "text-rose-600 dark:text-rose-400"
+                  : "text-foreground"
+              }`}
+            >
+              {filteredNet > 0
+                ? `+${money(filteredNet)}`
                 : filteredNet < 0
-                ? "text-rose-600 dark:text-rose-400"
-                : "text-foreground"
-            }`}
-          >
-            {filteredNet > 0
-              ? `+${money(filteredNet)}`
-              : filteredNet < 0
-              ? `−${money(Math.abs(filteredNet))}`
-              : money(0)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {filteredNet >= 0
-              ? "Net positive cash flow"
-              : "Net cash outflow for active selection"}
-          </p>
+                ? `−${money(Math.abs(filteredNet))}`
+                : money(0)}
+            </p>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Total Inflows
-          </span>
-          <p className="wt-display mt-1 text-2xl sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
-            +{money(filteredInflow)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Income, borrowings, debt recoveries & refunds
-          </p>
+        {/* Total Inflows */}
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+          <div className="flex items-center justify-between sm:mb-2">
+            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Total Inflows
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+            <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+              Income, borrowings & refunds
+            </p>
+            <p className="wt-display text-base sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
+              +{money(filteredInflow)}
+            </p>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow">
-          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-            Total Outflows
-          </span>
-          <p className="wt-display mt-1 text-2xl sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">
-            −{money(filteredOutflow)}
-          </p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Expenses, EMIs, loans given & investments
-          </p>
+        {/* Total Outflows */}
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+          <div className="flex items-center justify-between sm:mb-2">
+            <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              Total Outflows
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+            <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+              Expenses, EMIs & investments
+            </p>
+            <p className="wt-display text-base sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
+              −{money(filteredOutflow)}
+            </p>
+          </div>
         </div>
       </div>
 

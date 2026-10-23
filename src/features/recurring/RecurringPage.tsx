@@ -68,53 +68,79 @@ export function RecurringPage({
       />
 
       {/* Standardized Summary Metric Cards */}
-      <div className="grid gap-4 sm:grid-cols-4">
-        <div className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow">
-          <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Monthly Expenses & EMIs
-          </span>
-          <span className="wt-display mt-2 block text-2xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums">
-            −{money(totalMonthlyOutflow)}
-          </span>
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Bills, subscriptions & loans
-          </span>
+      <div className="grid gap-2.5 sm:gap-4 sm:grid-cols-4">
+        {/* Card 1: Monthly Expenses & EMIs */}
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+          <div className="flex items-center justify-between sm:mb-2">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Monthly Expenses & EMIs
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+            <span className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+              Bills, subscriptions & loans
+            </span>
+            <span className="wt-display text-base sm:text-2xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
+              −{money(totalMonthlyOutflow)}
+            </span>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow">
-          <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Monthly SIP Investments
-          </span>
-          <span className="wt-display mt-2 block text-2xl font-extrabold text-blue-600 dark:text-blue-400 tabular-nums">
-            {money(totalMonthlySip)}
-          </span>
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Automated wealth accumulation
-          </span>
+        {/* Card 2: Monthly SIP Investments */}
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+          <div className="flex items-center justify-between sm:mb-2">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Monthly SIP Investments
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+            <span className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+              Automated investments
+            </span>
+            <span className="wt-display text-base sm:text-2xl font-extrabold text-blue-600 dark:text-blue-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
+              {money(totalMonthlySip)}
+            </span>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow">
-          <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Monthly Inflows
-          </span>
-          <span className="wt-display mt-2 block text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
-            +{money(totalMonthlyInflow)}
-          </span>
-          <span className="mt-1 block text-xs text-muted-foreground">
-            Salary & guaranteed inflows
-          </span>
+        {/* Card 3: Monthly Inflows */}
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+          <div className="flex items-center justify-between sm:mb-2">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Monthly Inflows
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+            <span className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+              Salary & guaranteed inflows
+            </span>
+            <span className="wt-display text-base sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
+              +{money(totalMonthlyInflow)}
+            </span>
+          </div>
         </div>
 
-        <div className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow">
-          <span className="block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            Active Schedules
-          </span>
-          <span className="wt-display mt-2 block text-2xl font-extrabold text-foreground tabular-nums">
-            {activeSchedules.length} of {data.recurring.length}
-          </span>
-          <span className="mt-1 block text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-            Net Surplus: +{money(Math.max(0, totalMonthlyInflow - (totalMonthlyOutflow + totalMonthlySip)))}
-          </span>
+        {/* Card 4: Active Schedules */}
+        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+          <div className="flex items-center justify-between sm:mb-2">
+            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Active Schedules
+            </span>
+            <span className="inline-flex sm:hidden items-center text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
+              +{money(Math.max(0, totalMonthlyInflow - (totalMonthlyOutflow + totalMonthlySip)))}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+            <span className="hidden sm:block text-xs font-semibold text-emerald-600 dark:text-emerald-400 sm:order-2 sm:mt-1 truncate">
+              Net Surplus: +{money(Math.max(0, totalMonthlyInflow - (totalMonthlyOutflow + totalMonthlySip)))}
+            </span>
+            <span className="sm:hidden text-[11px] text-muted-foreground truncate">
+              Net monthly surplus
+            </span>
+            <span className="wt-display text-base sm:text-2xl font-extrabold text-foreground tabular-nums whitespace-nowrap shrink-0 sm:order-1">
+              {activeSchedules.length} of {data.recurring.length}
+            </span>
+          </div>
         </div>
       </div>
 

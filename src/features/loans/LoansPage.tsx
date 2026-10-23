@@ -88,72 +88,72 @@ export function LoansPage({
       />
 
       {/* Top Liabilities Hero Card */}
-      <div className="relative overflow-hidden rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-rose-500/5 p-6 wt-shadow">
-        <div className="grid gap-6 md:grid-cols-12 md:items-center">
+      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-rose-500/5 p-4 sm:p-6 wt-shadow">
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-12 md:items-center">
           {/* Main Debt & Payoff Metric */}
-          <div className="md:col-span-7 space-y-3">
+          <div className="md:col-span-7 space-y-2.5 sm:space-y-3">
             <div className="flex items-center gap-2">
-              <span className="flex size-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                <Landmark className="size-4" />
+              <span className="flex size-6 sm:size-7 items-center justify-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                <Landmark className="size-3.5 sm:size-4" />
               </span>
-              <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+              <p className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Total Outstanding Debt
               </p>
             </div>
 
-            <div className="flex flex-wrap items-baseline gap-3">
-              <h2 className="text-3xl font-extrabold tracking-tight text-foreground sm:text-4xl">
+            <div className="flex flex-wrap items-baseline gap-2.5 sm:gap-3">
+              <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground tabular-nums whitespace-nowrap">
                 {money(summary.totalOutstanding)}
               </h2>
 
-              <div className="flex items-center gap-1.5 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-extrabold text-emerald-600 dark:text-emerald-400">
-                <PiggyBank className="size-3.5" />
-                <span>{summary.payoffPercentage.toFixed(1)}% Repaid</span>
+              <div className="flex items-center gap-1 sm:gap-1.5 rounded-full bg-emerald-500/15 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0">
+                <PiggyBank className="size-3 sm:size-3.5" />
+                <span className="whitespace-nowrap">{summary.payoffPercentage.toFixed(1)}% Repaid</span>
               </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-6 pt-2 text-xs text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-3 sm:gap-6 pt-1 text-xs text-muted-foreground">
               <div>
-                <span className="block text-[11px] font-medium">Monthly EMI Outflow</span>
-                <span className="font-bold text-destructive text-sm">
+                <span className="block text-[10px] sm:text-[11px] font-medium">Monthly EMI Outflow</span>
+                <span className="font-bold text-destructive text-xs sm:text-sm whitespace-nowrap">
                   {money(summary.totalMonthlyEmi)}/mo
                 </span>
               </div>
-              <div className="h-6 w-px bg-border" />
+              <div className="h-5 sm:h-6 w-px bg-border" />
               <div>
-                <span className="block text-[11px] font-medium">Principal Repaid</span>
-                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                <span className="block text-[10px] sm:text-[11px] font-medium">Principal Repaid</span>
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 text-xs sm:text-sm whitespace-nowrap">
                   {money(summary.totalPaid)}
                 </span>
               </div>
-              <div className="h-6 w-px bg-border" />
+              <div className="h-5 sm:h-6 w-px bg-border" />
               <div>
-                <span className="block text-[11px] font-medium">Active Loans</span>
-                <span className="font-bold text-foreground text-sm">{loans.length} debts</span>
+                <span className="block text-[10px] sm:text-[11px] font-medium">Active Loans</span>
+                <span className="font-bold text-foreground text-xs sm:text-sm whitespace-nowrap">{loans.length} debts</span>
               </div>
             </div>
           </div>
 
           {/* Payoff Visual Progress Container */}
-          <div className="md:col-span-5 rounded-xl border border-border/60 bg-muted/30 p-4 space-y-3">
+          <div className="md:col-span-5 rounded-xl border border-border/60 bg-muted/30 p-3 sm:p-4 space-y-2.5 sm:space-y-3">
             <div className="flex items-center justify-between text-xs font-bold">
               <span className="text-foreground">Debt Freedom Progress</span>
-              <span className="text-emerald-600 dark:text-emerald-400">
+              <span className="text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
                 {money(summary.totalPaid)} Paid
               </span>
             </div>
 
             {/* Payoff Bar */}
-            <div className="h-3 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-2.5 sm:h-3 w-full overflow-hidden rounded-full bg-muted">
               <div
                 className="h-full rounded-full bg-linear-to-r from-emerald-500 to-teal-400 transition-all duration-500"
                 style={{ width: `${Math.min(summary.payoffPercentage, 100)}%` }}
               />
             </div>
 
-            <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
-              <span>Sanctioned: {money(summary.totalPrincipal)}</span>
-              <span>Remaining: {money(summary.totalOutstanding)}</span>
+            <div className="flex items-center justify-between text-[10px] sm:text-[11px] text-muted-foreground pt-0.5">
+              <span className="whitespace-nowrap">Sanctioned: {money(summary.totalPrincipal)}</span>
+              <span className="whitespace-nowrap">Remaining: {money(summary.totalOutstanding)}</span>
             </div>
           </div>
         </div>
