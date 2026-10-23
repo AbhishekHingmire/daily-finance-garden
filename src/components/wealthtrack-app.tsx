@@ -10,6 +10,7 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  MoreHorizontal,
   Plus,
   Search,
   Settings2,
@@ -2332,7 +2333,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               }`}
               onClick={() => goSection(section as Section)}
             >
-              <Icon size={20} />
+              <Icon size={16} />
               {section === "Overview" ? "Home" : section}
             </button>
           );
@@ -2346,7 +2347,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           }`}
           onClick={() => setMobileNav(true)}
         >
-          <Menu size={22} />
+          <MoreHorizontal size={16} />
           More
         </button>
       </nav>
