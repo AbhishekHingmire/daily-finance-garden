@@ -203,8 +203,53 @@ export function FundsPage({
       {activeTab === "funds" && (
         <div className="space-y-6">
           {/* Emergency Fund Resilience Cockpit Card */}
-          <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-emerald-500/5 p-4 sm:p-6 wt-shadow">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6">
+          <div className="relative rounded-xl sm:rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-emerald-500/5 p-4 sm:p-6 wt-shadow">
+            {/* Top Right Action Menu */}
+            <div className="absolute top-3.5 right-3.5 sm:top-5 sm:right-5 z-10">
+              <ActionMenu
+                items={[
+                  {
+                    label: "Allocate cash to emergency fund",
+                    icon: <Plus size={13} />,
+                    onClick: () => {
+                      const em = funds.find((f) => f.type === "Emergency") || {
+                        id: "fund-emergency",
+                        name: "Emergency Reserve",
+                        targetAmount: emergencySummary.target,
+                        currentAmount: emergencySummary.current,
+                        type: "Emergency" as const,
+                        icon: "🛡️",
+                        status: "Active" as const,
+                        updatedAt: new Date().toISOString().slice(0, 10),
+                      };
+                      setDepositFund(em);
+                      setDepositAmount(em.monthlyContribution ? String(em.monthlyContribution) : "10000");
+                      setDepositSourceAccountId(em.linkedAccountId || data.accounts[0]?.id || "");
+                    },
+                  },
+                  {
+                    label: "Edit emergency fund details",
+                    icon: <Pencil size={13} />,
+                    onClick: () => {
+                      const em = funds.find((f) => f.type === "Emergency") || {
+                        id: "fund-emergency",
+                        name: "Emergency Reserve",
+                        targetAmount: emergencySummary.target,
+                        currentAmount: emergencySummary.current,
+                        type: "Emergency" as const,
+                        icon: "🛡️",
+                        status: "Active" as const,
+                        updatedAt: new Date().toISOString().slice(0, 10),
+                      };
+                      setEditingFund(em);
+                      setFundModalOpen(true);
+                    },
+                  },
+                ]}
+              />
+            </div>
+
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 sm:gap-6 pr-8 sm:pr-10">
               <div className="space-y-1.5 sm:space-y-2 max-w-xl">
                 <div className="flex items-center gap-2">
                   <span className="grid size-6 sm:size-7 place-items-center rounded-lg sm:rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
@@ -248,50 +293,11 @@ export function FundsPage({
                     {emergencySummary.percent}% Funded
                   </span>
                 </div>
-                <span className="grid size-10 sm:size-12 mx-1.5 sm:mx-2.5 place-items-center rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 text-sm sm:text-base font-black shrink-0 px-2 shadow-2xs">
-                  {emergencySummary.runwayMonths}M
-                </span>
-                <ActionMenu
-                  items={[
-                    {
-                      label: "Allocate cash to emergency fund",
-                      icon: <Plus size={13} />,
-                      onClick: () => {
-                        const em = funds.find((f) => f.type === "Emergency") || {
-                          id: "fund-emergency",
-                          name: "Emergency Reserve",
-                          targetAmount: emergencySummary.target,
-                          currentAmount: emergencySummary.current,
-                          type: "Emergency" as const,
-                          icon: "🛡️",
-                          status: "Active" as const,
-                          updatedAt: new Date().toISOString().slice(0, 10),
-                        };
-                        setDepositFund(em);
-                        setDepositAmount(em.monthlyContribution ? String(em.monthlyContribution) : "10000");
-                        setDepositSourceAccountId(em.linkedAccountId || data.accounts[0]?.id || "");
-                      },
-                    },
-                    {
-                      label: "Edit emergency fund details",
-                      icon: <Pencil size={13} />,
-                      onClick: () => {
-                        const em = funds.find((f) => f.type === "Emergency") || {
-                          id: "fund-emergency",
-                          name: "Emergency Reserve",
-                          targetAmount: emergencySummary.target,
-                          currentAmount: emergencySummary.current,
-                          type: "Emergency" as const,
-                          icon: "🛡️",
-                          status: "Active" as const,
-                          updatedAt: new Date().toISOString().slice(0, 10),
-                        };
-                        setEditingFund(em);
-                        setFundModalOpen(true);
-                      },
-                    },
-                  ]}
-                />
+                <div className="mx-3 sm:mx-4 flex items-center justify-center rounded-lg bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 px-3.5 py-1.5 shadow-2xs shrink-0">
+                  <span className="text-sm sm:text-base font-black tracking-tight tabular-nums">
+                    {emergencySummary.runwayMonths}M
+                  </span>
+                </div>
               </div>
             </div>
 
