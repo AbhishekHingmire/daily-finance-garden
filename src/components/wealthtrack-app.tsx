@@ -2320,35 +2320,41 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-card/95 px-1 pb-[env(safe-area-inset-bottom)] pt-0.5 backdrop-blur-xs lg:hidden shadow-xs">
+      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-card/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1 backdrop-blur-xs lg:hidden shadow-xs">
         {["Overview", "Transactions", "Accounts", "Investments"].map((section) => {
           const item = navItems.find((nav) => nav.label === section);
           const Icon = item?.icon ?? LayoutDashboard;
+          const isItemActive = active === section;
+          const sectionLabel = section === "Overview" ? "Home" : section;
           return (
             <button
               key={section}
               type="button"
-              className={`flex min-h-12 py-1 flex-col items-center justify-center gap-0.5 text-[9.5px] transition-colors ${
-                active === section ? "font-bold text-primary" : "text-muted-foreground font-medium"
+              aria-label={sectionLabel}
+              title={sectionLabel}
+              className={`flex h-11 items-center justify-center rounded-xl transition-colors ${
+                isItemActive
+                  ? "bg-primary/10 text-primary"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               }`}
               onClick={() => goSection(section as Section)}
             >
-              <Icon size={16} />
-              {section === "Overview" ? "Home" : section}
+              <Icon size={18} />
             </button>
           );
         })}
         <button
           type="button"
-          className={`flex min-h-12 py-1 flex-col items-center justify-center gap-0.5 text-[9.5px] transition-colors ${
+          aria-label="More sections"
+          title="More"
+          className={`flex h-11 items-center justify-center rounded-xl transition-colors ${
             !["Overview", "Transactions", "Accounts", "Investments"].includes(active)
-              ? "font-bold text-primary"
-              : "text-muted-foreground font-medium hover:text-foreground"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
           }`}
           onClick={() => setMobileNav(true)}
         >
-          <MoreHorizontal size={16} />
-          More
+          <MoreHorizontal size={18} />
         </button>
       </nav>
 
