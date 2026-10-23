@@ -39,6 +39,8 @@ export function TransactionTable({
   onDuplicate,
   onBulkReassignPriority,
   onBulkDelete,
+  selectedIds: propSelectedIds,
+  onSelectedIdsChange,
   showAccountColumn = true,
   searchPlaceholder = "Search description, merchant, notes…",
   headerActions,
@@ -52,13 +54,24 @@ export function TransactionTable({
   onDuplicate?: (transaction: Transaction) => void;
   onBulkReassignPriority?: (priority: "Need" | "Want") => void;
   onBulkDelete?: (ids: string[]) => void;
+  selectedIds?: string[];
+  onSelectedIdsChange?: (ids: string[]) => void;
   showAccountColumn?: boolean;
   searchPlaceholder?: string;
   headerActions?: React.ReactNode;
 }) {
   const [search, setSearch] = useState("");
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest" | "lowest">("newest");
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>([]);
+  const selectedIds = propSelectedIds !== undefined ? propSelectedIds : internalSelectedIds;
+
+  const updateSelectedIds = (next: string[] | ((prev: string[]) => string[])) => {
+    const nextVal = typeof next === "function" ? next(selectedIds) : next;
+    if (onSelectedIdsChange) {
+      onSelectedIdsChange(nextVal);
+    }
+    setInternalSelectedIds(nextVal);
+  };
 
   // Pre-indexed category & account maps for O(1) high-speed search lookups
   const categoryMap = useMemo(() => {
@@ -170,22 +183,28 @@ export function TransactionTable({
   }, [sortedTransactions, startIndex, endIndex, pageSize]);
 
   const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
+    updateSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
     );
   };
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === paginatedTransactions.length) {
-      setSelectedIds([]);
+    const pageIds = paginatedTransactions.map((t) => t.id);
+    const allPageSelected = pageIds.length > 0 && pageIds.every((id) => selectedIds.includes(id));
+    if (allPageSelected) {
+      updateSelectedIds((prev) => prev.filter((id) => !pageIds.includes(id)));
     } else {
-      setSelectedIds(paginatedTransactions.map((t) => t.id));
+      updateSelectedIds((prev) => [...new Set([...prev, ...pageIds])]);
     }
+  };
+
+  const clearSelection = () => {
+    updateSelectedIds([]);
   };
 
   const isAllSelected =
     paginatedTransactions.length > 0 &&
-    selectedIds.length === paginatedTransactions.length;
+    paginatedTransactions.every((t) => selectedIds.includes(t.id));
 
   return (
     <div className="rounded-xl border border-border/70 bg-card overflow-hidden wt-shadow hover:border-border transition-colors">
@@ -258,11 +277,13 @@ export function TransactionTable({
 
       {/* Floating Bulk Action Bar when items selected */}
       {selectedIds.length > 0 && (
-        <div className="flex items-center justify-between gap-3 bg-primary/10 border-b border-primary/20 px-4 py-2.5 text-xs animate-in fade-in-50 duration-150">
-          <span className="font-bold text-primary">
-            {selectedIds.length} transaction{selectedIds.length > 1 ? "s" : ""} selected
-          </span>
+        <div className="flex flex-wrap items-center justify-between gap-2.5 bg-primary/10 border-b border-primary/20 px-4 py-2 text-xs animate-in fade-in-50 duration-150">
           <div className="flex items-center gap-2">
+            <span className="font-bold text-primary">
+              {selectedIds.length} transaction{selectedIds.length > 1 ? "s" : ""} selected
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 flex-wrap">
             {onBulkReassignPriority && (
               <div className="flex items-center gap-1">
                 <Button
@@ -271,7 +292,7 @@ export function TransactionTable({
                   className="h-7 text-xs font-semibold bg-card"
                   onClick={() => {
                     onBulkReassignPriority("Need");
-                    setSelectedIds([]);
+                    clearSelection();
                   }}
                 >
                   Mark Need
@@ -282,7 +303,7 @@ export function TransactionTable({
                   className="h-7 text-xs font-semibold bg-card"
                   onClick={() => {
                     onBulkReassignPriority("Want");
-                    setSelectedIds([]);
+                    clearSelection();
                   }}
                 >
                   Mark Want
@@ -293,22 +314,23 @@ export function TransactionTable({
               <Button
                 size="sm"
                 variant="destructive"
-                className="h-7 text-xs font-semibold gap-1"
+                className="h-7 text-xs font-semibold gap-1.5 shadow-2xs"
                 onClick={() => {
                   onBulkDelete(selectedIds);
-                  setSelectedIds([]);
+                  clearSelection();
                 }}
               >
-                <Trash2 size={12} /> Delete
+                <Trash2 size={13} />
+                Delete {selectedIds.length > 1 ? `(${selectedIds.length})` : "selected"}
               </Button>
             )}
             <Button
               size="sm"
               variant="ghost"
-              className="h-7 text-xs text-muted-foreground"
-              onClick={() => setSelectedIds([])}
+              className="h-7 text-xs text-muted-foreground hover:text-foreground"
+              onClick={clearSelection}
             >
-              Clear
+              Cancel
             </Button>
           </div>
         </div>
@@ -318,8 +340,8 @@ export function TransactionTable({
       <div
         className={`hidden md:grid items-center gap-3 bg-muted/30 px-4 py-1.5 text-[9.5px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80 border-b border-border/70 select-none ${
           showAccountColumn
-            ? "grid-cols-[36px_minmax(0,1.2fr)_150px_130px_105px_120px_48px]"
-            : "grid-cols-[36px_minmax(0,1.4fr)_160px_110px_120px_48px]"
+            ? "grid-cols-[36px_minmax(0,1.2fr)_150px_130px_105px_120px_60px]"
+            : "grid-cols-[36px_minmax(0,1.4fr)_160px_110px_120px_60px]"
         }`}
       >
         <div className="flex items-center justify-center">
@@ -370,7 +392,7 @@ export function TransactionTable({
             return (
               <div
                 key={tx.id}
-                className={`transition-colors hover:bg-muted/30 ${
+                className={`group/row transition-colors hover:bg-muted/30 ${
                   isSelected ? "bg-primary/[0.04]" : ""
                 }`}
               >
@@ -378,8 +400,8 @@ export function TransactionTable({
                 <div
                   className={`hidden md:grid items-center gap-3 px-4 py-2.5 text-xs ${
                     showAccountColumn
-                      ? "grid-cols-[36px_minmax(0,1.2fr)_150px_130px_105px_120px_48px]"
-                      : "grid-cols-[36px_minmax(0,1.4fr)_160px_110px_120px_48px]"
+                      ? "grid-cols-[36px_minmax(0,1.2fr)_150px_130px_105px_120px_60px]"
+                      : "grid-cols-[36px_minmax(0,1.4fr)_160px_110px_120px_60px]"
                   }`}
                 >
                   <div className="flex items-center justify-center">
@@ -482,7 +504,16 @@ export function TransactionTable({
                   </div>
 
                   {/* Actions Menu */}
-                  <div className="flex items-center justify-center">
+                  <div className="flex items-center justify-center gap-0.5">
+                    <button
+                      type="button"
+                      onClick={() => onDelete(tx)}
+                      title={`Delete "${tx.description}"`}
+                      aria-label={`Delete transaction ${tx.description}`}
+                      className="grid size-7 place-items-center rounded-md text-muted-foreground/50 opacity-0 group-hover/row:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                     <ActionMenu
                       items={[
                         {
@@ -555,7 +586,7 @@ export function TransactionTable({
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <span
                       className={`whitespace-nowrap text-sm font-bold tabular-nums ${
                         isPositive
@@ -568,6 +599,15 @@ export function TransactionTable({
                       {isPositive ? "+" : isOutflow ? "−" : ""}
                       {money(tx.amount)}
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => onDelete(tx)}
+                      title={`Delete "${tx.description}"`}
+                      aria-label={`Delete transaction ${tx.description}`}
+                      className="grid size-7.5 place-items-center rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                     <ActionMenu
                       items={[
                         {

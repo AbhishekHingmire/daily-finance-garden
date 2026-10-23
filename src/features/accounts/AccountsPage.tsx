@@ -38,6 +38,7 @@ export function AccountsPage({
   onAddTransaction,
   onEditTransaction,
   onDeleteTransaction,
+  onBulkDeleteTransactions,
 }: {
   data: WealthState;
   money: (amount: number) => string;
@@ -52,6 +53,7 @@ export function AccountsPage({
   onAddTransaction: (accountId: string) => void;
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (transaction: Transaction) => void;
+  onBulkDeleteTransactions?: (ids?: string[]) => void;
 }) {
   const [reconcilingAccount, setReconcilingAccount] = useState<Account | null>(null);
 
@@ -300,6 +302,7 @@ export function AccountsPage({
           onSelectTransaction={onSelectTransaction}
           onEditTransaction={onEditTransaction}
           onDeleteTransaction={onDeleteTransaction}
+          onBulkDeleteTransactions={onBulkDeleteTransactions}
         />
       )}
 

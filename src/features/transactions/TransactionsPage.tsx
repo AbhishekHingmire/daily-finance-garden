@@ -35,6 +35,7 @@ export function TransactionsPage({
   onExport,
   onImport,
   selectedIds,
+  setSelectedIds,
   toggleSelected,
   toggleAll,
   onDelete,
@@ -64,11 +65,12 @@ export function TransactionsPage({
   onView: (transaction: Transaction) => void;
   onExport: () => void;
   onImport: () => void;
-  selectedIds: string[];
-  toggleSelected: (id: string) => void;
-  toggleAll: () => void;
+  selectedIds?: string[];
+  setSelectedIds?: (ids: string[]) => void;
+  toggleSelected?: (id: string) => void;
+  toggleAll?: () => void;
   onDelete: (transaction: Transaction) => void;
-  onBulkDelete: () => void;
+  onBulkDelete: (ids?: string[]) => void;
   onBulkReassign: (categoryId: string) => void;
   onBulkReassignPriority: (priority: "Need" | "Want") => void;
 }) {
@@ -323,7 +325,9 @@ export function TransactionsPage({
         onEdit={onEdit}
         onDelete={onDelete}
         onBulkReassignPriority={onBulkReassignPriority}
-        onBulkDelete={() => onBulkDelete()}
+        onBulkDelete={(ids) => onBulkDelete(ids)}
+        selectedIds={selectedIds}
+        onSelectedIdsChange={setSelectedIds}
         searchPlaceholder="Search description, merchant, tags, notes…"
       />
     </div>

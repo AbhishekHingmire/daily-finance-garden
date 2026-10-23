@@ -184,6 +184,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const [pendingDelete, setPendingDelete] = useState<{
     kind: string;
     id?: string;
+    ids?: string[];
     label: string;
     amount?: number;
   } | null>(null);
@@ -1028,13 +1029,28 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const confirmDelete = () => {
     if (!pendingDelete) return;
     const { kind, id } = pendingDelete;
-    if (kind === "transaction") setData((current) => ({ ...current, transactions: current.transactions.filter((item) => item.id !== id) }));
+    if (kind === "transaction") {
+      setData((current) => ({
+        ...current,
+        transactions: current.transactions.filter((item) => item.id !== id),
+      }));
+      setSelectedIds((current) => current.filter((item) => item !== id));
+      toast.success("Transaction removed");
+    }
     if (kind === "account") setData((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === id ? { ...item, archived: true } : item) }));
     if (kind === "category") setData((current) => ({ ...current, categories: current.categories.map((item) => item.id === id ? { ...item, archived: true } : item) }));
     if (kind === "recurring") setData((current) => ({ ...current, recurring: current.recurring.filter((item) => item.id !== id) }));
     if (kind === "reset") { const initial = createInitialState(); setData(initial); setActive("Overview"); }
     if (kind === "signout") { updateData({ session: false }); setAuthView("signin"); setPassword(""); }
-    if (kind === "bulk") { setData((current) => ({ ...current, transactions: current.transactions.filter((item) => !selectedIds.includes(item.id)) })); setSelectedIds([]); }
+    if (kind === "bulk") {
+      const targetIds = pendingDelete.ids && pendingDelete.ids.length > 0 ? pendingDelete.ids : selectedIds;
+      setData((current) => ({
+        ...current,
+        transactions: current.transactions.filter((item) => !targetIds.includes(item.id)),
+      }));
+      setSelectedIds([]);
+      toast.success(`Deleted ${targetIds.length} transaction${targetIds.length > 1 ? "s" : ""}`);
+    }
     toast.success(kind === "reset" ? "Demo data reset" : kind === "signout" ? "Signed out" : "Removed");
     setModal(null);
     setPendingDelete(null);
@@ -2107,13 +2123,20 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 onExport={() => exportCsv(filteredTransactions)}
                 onImport={openImport}
                 selectedIds={selectedIds}
+                setSelectedIds={setSelectedIds}
                 toggleSelected={toggleSelected}
                 toggleAll={toggleAll}
                 onDelete={(item) => requestDelete("transaction", item.id, item.description, item.amount)}
-                onBulkDelete={() => {
+                onBulkDelete={(ids?: string[]) => {
+                  const targetIds = ids && ids.length > 0 ? ids : selectedIds;
+                  if (!targetIds.length) {
+                    toast.error("No transactions selected to delete");
+                    return;
+                  }
                   setPendingDelete({
                     kind: "bulk",
-                    label: `Delete ${selectedIds.length} selected transactions?`,
+                    ids: targetIds,
+                    label: `Delete ${targetIds.length} selected transaction${targetIds.length > 1 ? "s" : ""}?`,
                   });
                   setModal("confirm");
                 }}
@@ -2137,6 +2160,16 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 onAddTransaction={(accountId) => beginTransaction({ accountId })}
                 onEditTransaction={(item) => beginTransaction(undefined, item)}
                 onDeleteTransaction={(item) => requestDelete("transaction", item.id, item.description, item.amount)}
+                onBulkDeleteTransactions={(ids?: string[]) => {
+                  const targetIds = ids && ids.length > 0 ? ids : selectedIds;
+                  if (!targetIds.length) return;
+                  setPendingDelete({
+                    kind: "bulk",
+                    ids: targetIds,
+                    label: `Delete ${targetIds.length} selected transaction${targetIds.length > 1 ? "s" : ""}?`,
+                  });
+                  setModal("confirm");
+                }}
               />
             )}
 
@@ -2493,7 +2526,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               ? "Archive Account"
               : pendingDelete.kind === "category"
               ? "Archive Category"
-              : pendingDelete.kind === "transaction" || pendingDelete.kind === "bulk"
+              : pendingDelete.kind === "bulk"
+              ? "Delete Multiple Transactions"
+              : pendingDelete.kind === "transaction"
               ? "Delete Transaction"
               : "Delete Recurring Item"
           }
@@ -2504,6 +2539,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               ? "This account will be archived. All linked historical transactions are preserved."
               : pendingDelete.kind === "category"
               ? "This category will be archived. Historical records remain untouched."
+              : pendingDelete.kind === "bulk"
+              ? "Selected transactions will be permanently deleted from your records."
               : undefined
           }
           onClose={() => {
@@ -2543,6 +2580,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 ? "Reset demo"
                 : pendingDelete.kind === "account" || pendingDelete.kind === "category"
                 ? "Archive"
+                : pendingDelete.kind === "bulk"
+                ? `Delete ${pendingDelete.ids?.length ? `(${pendingDelete.ids.length})` : "selected"}`
                 : "Delete"}
             </Button>
           </div>

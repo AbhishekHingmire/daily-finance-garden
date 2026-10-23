@@ -28,6 +28,7 @@ export function AccountActivityPartialView({
   onSelectTransaction,
   onEditTransaction,
   onDeleteTransaction,
+  onBulkDeleteTransactions,
 }: {
   account: Account;
   data: WealthState;
@@ -38,6 +39,7 @@ export function AccountActivityPartialView({
   onSelectTransaction: (transaction: Transaction) => void;
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (transaction: Transaction) => void;
+  onBulkDeleteTransactions?: (ids?: string[]) => void;
 }) {
   const [filterType, setFilterType] = useState("All");
   const [filterPriority, setFilterPriority] = useState("All");
@@ -180,6 +182,7 @@ export function AccountActivityPartialView({
           onView={onSelectTransaction}
           onEdit={onEditTransaction}
           onDelete={onDeleteTransaction}
+          onBulkDelete={onBulkDeleteTransactions}
           showAccountColumn={false}
           searchPlaceholder="Search this account's transactions…"
           headerActions={
