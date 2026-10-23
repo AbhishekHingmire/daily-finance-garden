@@ -164,8 +164,8 @@ export function TransactionsPage({
       />
 
       {/* Top Filter Bar: Compact Responsive Date Range Filter & Dropdown Filters */}
-      <div className="rounded-2xl border border-border/80 bg-card p-3 sm:p-4 wt-shadow space-y-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 pb-2.5">
+      <div className="rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 wt-shadow hover:border-border transition-colors space-y-2.5">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2.5">
           <div className="flex-1 min-w-0">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
           </div>
@@ -246,7 +246,7 @@ export function TransactionsPage({
       {/* Dynamic Filtered Transactions Financial Summary */}
       <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-3">
         {/* Filtered Net Total */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+        <div className="rounded-xl sm:rounded-2xl border border-border/60 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-colors">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Filtered Net Total
@@ -280,7 +280,7 @@ export function TransactionsPage({
         </div>
 
         {/* Total Inflows */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+        <div className="rounded-xl sm:rounded-2xl border border-border/60 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-colors">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Total Inflows
@@ -297,7 +297,7 @@ export function TransactionsPage({
         </div>
 
         {/* Total Outflows */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+        <div className="rounded-xl sm:rounded-2xl border border-border/60 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-colors">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
               Total Outflows

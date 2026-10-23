@@ -246,7 +246,7 @@ export function ReportsPage({
       </div>
 
       {/* Hero Financial Performance Metric Cards */}
-      <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-6 wt-shadow divide-y divide-border/60 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
+      <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-3 sm:p-6 wt-shadow hover:border-border transition-all divide-y divide-border/60 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
         {/* Net Surplus */}
         <div className="pb-2.5 sm:pb-0 flex items-center justify-between gap-3 sm:block">
           <div className="min-w-0">
@@ -319,7 +319,7 @@ export function ReportsPage({
       {/* Two Column Visual Analytics: Allocation Donut & 50/30/20 Diagnostic */}
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Interactive Category Pie / Donut Chart */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between">
+        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div>
@@ -347,7 +347,7 @@ export function ReportsPage({
         </div>
 
         {/* 50 / 30 / 20 Budget Diagnostic & Allocations */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between">
+        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div>
@@ -469,7 +469,7 @@ export function ReportsPage({
         </div>
 
         {/* Investment & Wealth Deployment */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow flex flex-col justify-between">
+        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div>

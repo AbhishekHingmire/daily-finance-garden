@@ -1,15 +1,12 @@
-import { useState } from "react";
 import {
   Bell,
   Download,
   FileUp,
   Globe,
   LogOut,
-  Moon,
   Plus,
   RotateCcw,
   SlidersHorizontal,
-  Sun,
   Tag,
   Trash2,
   X,
@@ -24,15 +21,15 @@ export function PreferencesPage({
   preferencesTab,
   setPreferencesTab,
   updatePreferences,
-  money,
+  money: _money,
   onExport,
   onImport,
   onReset,
   onSignout,
-  onFieldAdd,
-  onFieldDelete,
-  fieldForm,
-  setFieldForm,
+  onFieldAdd: _onFieldAdd,
+  onFieldDelete: _onFieldDelete,
+  fieldForm: _fieldForm,
+  setFieldForm: _setFieldForm,
   tagDraft,
   setTagDraft,
   onTagAdd,
@@ -71,13 +68,13 @@ export function PreferencesPage({
         description="Configure your currency display, visual theme, default accounts, smart reminders, and offline backups."
       />
 
-      <div className="flex flex-wrap gap-2 border-b border-border pb-3">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 border-b border-border/60 pb-3">
         {tabs.map((tab) => (
           <Button
             key={tab}
             size="sm"
             variant={currentTab === tab ? "default" : "outline"}
-            className="text-xs font-semibold"
+            className="h-8 text-xs font-medium"
             onClick={() => setPreferencesTab(tab)}
           >
             {tab}
@@ -88,10 +85,10 @@ export function PreferencesPage({
       {/* Tab 1: General & Regional */}
       {currentTab === "General & Regional" && (
         <div className="grid gap-6 md:grid-cols-2">
-          <div className="space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-            <div className="flex items-center gap-2 border-b border-border pb-3">
+          <div className="space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-3">
               <Globe className="size-4 text-primary" />
-              <h3 className="text-sm font-bold text-foreground">Regional & Display Settings</h3>
+              <h3 className="text-sm font-semibold text-foreground">Regional & Display Settings</h3>
             </div>
 
             <SelectField
@@ -143,10 +140,10 @@ export function PreferencesPage({
             />
           </div>
 
-          <div className="space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-            <div className="flex items-center gap-2 border-b border-border pb-3">
+          <div className="space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-3">
               <SlidersHorizontal className="size-4 text-primary" />
-              <h3 className="text-sm font-bold text-foreground">Fast Entry Defaults</h3>
+              <h3 className="text-sm font-semibold text-foreground">Fast Entry Defaults</h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               These default presets automatically populate the Quick Add modal so you can log
@@ -189,16 +186,16 @@ export function PreferencesPage({
 
       {/* Tab 2: Alerts & Notifications */}
       {currentTab === "Alerts & Notifications" && (
-        <div className="max-w-xl space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-          <div className="flex items-center gap-2 border-b border-border pb-3">
+        <div className="max-w-xl space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+          <div className="flex items-center gap-2 border-b border-border/50 pb-3">
             <Bell className="size-4 text-primary" />
-            <h3 className="text-sm font-bold text-foreground">Smart Reminders & Alerts</h3>
+            <h3 className="text-sm font-semibold text-foreground">Smart Reminders & Alerts</h3>
           </div>
 
           <div className="space-y-3">
-            <label className="flex items-center justify-between rounded-lg border border-border/80 p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+            <label className="flex items-center justify-between rounded-lg border border-border/60 p-3 hover:bg-muted/30 transition-colors cursor-pointer">
               <div>
-                <span className="block text-xs font-bold text-foreground">
+                <span className="block text-xs font-semibold text-foreground">
                   Recurring Bill Reminders
                 </span>
                 <span className="block text-[11px] text-muted-foreground">
@@ -213,9 +210,9 @@ export function PreferencesPage({
               />
             </label>
 
-            <label className="flex items-center justify-between rounded-lg border border-border/80 p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+            <label className="flex items-center justify-between rounded-lg border border-border/60 p-3 hover:bg-muted/30 transition-colors cursor-pointer">
               <div>
-                <span className="block text-xs font-bold text-foreground">
+                <span className="block text-xs font-semibold text-foreground">
                   Monthly Budget Threshold Warnings
                 </span>
                 <span className="block text-[11px] text-muted-foreground">
@@ -230,9 +227,9 @@ export function PreferencesPage({
               />
             </label>
 
-            <label className="flex items-center justify-between rounded-lg border border-border/80 p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+            <label className="flex items-center justify-between rounded-lg border border-border/60 p-3 hover:bg-muted/30 transition-colors cursor-pointer">
               <div>
-                <span className="block text-xs font-bold text-foreground">
+                <span className="block text-xs font-semibold text-foreground">
                   Salary Credit Expectation
                 </span>
                 <span className="block text-[11px] text-muted-foreground">
@@ -254,10 +251,10 @@ export function PreferencesPage({
       {currentTab === "Data & Storage" && (
         <div className="grid gap-6 md:grid-cols-2">
           {/* Tags */}
-          <div className="space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-            <div className="flex items-center gap-2 border-b border-border pb-3">
+          <div className="space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-3">
               <Tag className="size-4 text-primary" />
-              <h3 className="text-sm font-bold text-foreground">Transaction Tags</h3>
+              <h3 className="text-sm font-semibold text-foreground">Transaction Tags</h3>
             </div>
             <p className="text-xs text-muted-foreground">
               Tags help cross-reference transactions across multiple categories and reports.
@@ -282,7 +279,7 @@ export function PreferencesPage({
               {data.tags.map((tag) => (
                 <span
                   key={tag}
-                  className="flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-foreground"
+                  className="flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground"
                 >
                   #{tag}
                   {onTagDelete && (
@@ -290,7 +287,7 @@ export function PreferencesPage({
                       type="button"
                       aria-label={`Delete tag ${tag}`}
                       onClick={() => onTagDelete(tag)}
-                      className="text-muted-foreground hover:text-destructive"
+                      className="text-muted-foreground hover:text-destructive transition-colors"
                     >
                       <X size={12} />
                     </button>
@@ -301,10 +298,10 @@ export function PreferencesPage({
           </div>
 
           {/* Backup & Reset */}
-          <div className="space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-            <div className="flex items-center gap-2 border-b border-border pb-3">
+          <div className="space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-3">
               <RotateCcw className="size-4 text-primary" />
-              <h3 className="text-sm font-bold text-foreground">Data Management & Privacy</h3>
+              <h3 className="text-sm font-semibold text-foreground">Data Management & Privacy</h3>
             </div>
             <p className="text-xs text-muted-foreground leading-relaxed">
               WealthTrack operates 100% locally in your browser storage. No financial records are

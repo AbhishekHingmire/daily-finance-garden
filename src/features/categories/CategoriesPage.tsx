@@ -53,12 +53,13 @@ export function CategoriesPage({
         }
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-4">
-        <div className="flex flex-wrap gap-2">
+      {/* Filter and Switcher Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3 sm:pb-4">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
           <Button
             variant={kind === "All" ? "default" : "outline"}
             size="sm"
-            className="text-xs font-semibold"
+            className="h-8 text-xs font-medium"
             onClick={() => setKind("All")}
           >
             All Categories ({data.categories.filter((c) => !c.archived).length})
@@ -66,37 +67,39 @@ export function CategoriesPage({
           <Button
             variant={kind === "Expense" ? "default" : "outline"}
             size="sm"
-            className="text-xs font-semibold"
+            className="h-8 text-xs font-medium"
             onClick={() => setKind("Expense")}
           >
-            Expense Categories ({data.categories.filter((c) => !c.archived && c.kind === "Expense").length})
+            Expense ({data.categories.filter((c) => !c.archived && c.kind === "Expense").length})
           </Button>
           <Button
             variant={kind === "Income" ? "default" : "outline"}
             size="sm"
-            className="text-xs font-semibold"
+            className="h-8 text-xs font-medium"
             onClick={() => setKind("Income")}
           >
-            Income Categories ({data.categories.filter((c) => !c.archived && c.kind === "Income").length})
+            Income ({data.categories.filter((c) => !c.archived && c.kind === "Income").length})
           </Button>
         </div>
+
         <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            Priority Filter:
+          <span className="text-[11px] font-medium text-muted-foreground">
+            Classification:
           </span>
           <select
-            className="wt-field h-8 w-36 text-xs py-0"
+            className="wt-field h-8 w-32 text-xs py-0 bg-background"
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
             aria-label="Priority Classification Filter"
           >
             <option value="All">All Priorities</option>
-            <option value="Need">Need</option>
-            <option value="Want">Want</option>
+            <option value="Need">Need (50%)</option>
+            <option value="Want">Want (30%)</option>
           </select>
         </div>
       </div>
 
+      {/* Categories Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category) => {
           const spent = getCategorySpend(category.id, monthlyTransactions);
@@ -109,89 +112,89 @@ export function CategoriesPage({
           return (
             <div
               key={category.id}
-              className="rounded-xl border border-border bg-card p-5 wt-shadow transition-all hover:border-primary/40"
+              className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-border hover:shadow-xs"
             >
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="grid size-11 place-items-center rounded-xl bg-muted text-xl">
-                    {category.icon}
-                  </span>
-                  <div>
-                    <h3 className="font-bold text-foreground">{category.name}</h3>
-                    <div className="mt-0.5 flex items-center gap-1.5">
-                      <span
-                        className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${
-                          category.kind === "Income"
-                            ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                            : "bg-rose-500/15 text-rose-700 dark:text-rose-300"
-                        }`}
-                      >
-                        {category.kind}
-                      </span>
-                      {category.kind === "Expense" && (
+              <div>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted/60 text-lg">
+                      {category.icon}
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="truncate font-semibold text-foreground text-sm sm:text-base">
+                        {category.name}
+                      </h3>
+                      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
                         <span
-                          className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-                            category.defaultNeed === "Want"
-                              ? "border border-amber-500/25 bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                              : "border border-emerald-500/25 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                          className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-wider ${
+                            category.kind === "Income"
+                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
+                              : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20"
                           }`}
                         >
-                          {category.defaultNeed || "Need"}
+                          {category.kind}
                         </span>
-                      )}
+                        {category.kind === "Expense" && (
+                          <span
+                            className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-wider ${
+                              category.defaultNeed === "Want"
+                                ? "border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                                : "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                            }`}
+                          >
+                            {category.defaultNeed || "Need"}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="mt-4 border-t border-border pt-3">
-                <div className="flex items-baseline justify-between text-sm">
-                  <span className="text-xs text-muted-foreground">
-                    {category.kind === "Income" ? "Deposited this month" : "Spent this month"}
-                  </span>
-                  <span className="font-bold text-foreground tabular-nums">{money(spent)}</span>
+                  <ActionMenu
+                    items={[
+                      {
+                        label: "Edit category",
+                        icon: <Pencil size={13} />,
+                        onClick: () => onEdit(category),
+                      },
+                      {
+                        label: "Delete category",
+                        icon: <Trash2 size={13} />,
+                        destructive: true,
+                        onClick: () => onDelete(category),
+                      },
+                    ]}
+                  />
                 </div>
 
-                {hasBudget && category.kind === "Expense" && (
-                  <div className="mt-2.5">
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Monthly Cap: {money(category.monthlyLimit)}</span>
-                      <span className={overBudget ? "font-bold text-destructive" : ""}>
-                        {percent}%
-                      </span>
-                    </div>
-                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-muted">
-                      <div
-                        className={`h-full rounded-full transition-all ${
-                          overBudget ? "bg-destructive" : "bg-primary"
-                        }`}
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
+                <div className="mt-4 pt-3 border-t border-border/40">
+                  <div className="flex items-baseline justify-between text-sm">
+                    <span className="text-xs text-muted-foreground">
+                      {category.kind === "Income" ? "Deposited this month" : "Spent this month"}
+                    </span>
+                    <span className="font-semibold text-foreground tabular-nums">
+                      {money(spent)}
+                    </span>
                   </div>
-                )}
-              </div>
 
-              {/* Explicit Actions Row with 3-Dots Dropdown */}
-              <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Actions
-                </span>
-                <ActionMenu
-                  items={[
-                    {
-                      label: "Edit category",
-                      icon: <Pencil size={13} />,
-                      onClick: () => onEdit(category),
-                    },
-                    {
-                      label: "Delete category",
-                      icon: <Trash2 size={13} />,
-                      destructive: true,
-                      onClick: () => onDelete(category),
-                    },
-                  ]}
-                />
+                  {hasBudget && category.kind === "Expense" && (
+                    <div className="mt-2.5">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Cap: {money(category.monthlyLimit)}</span>
+                        <span className={overBudget ? "font-semibold text-destructive" : ""}>
+                          {percent}%
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/60">
+                        <div
+                          className={`h-full rounded-full transition-all duration-300 ${
+                            overBudget ? "bg-destructive" : "bg-primary"
+                          }`}
+                          style={{ width: `${percent}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );

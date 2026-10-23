@@ -201,54 +201,56 @@ export function AccountsPage({
           return (
             <div
               key={account.id}
-              className={`rounded-xl border p-5 transition-all wt-shadow bg-card ${
+              className={`rounded-xl border p-4 sm:p-5 transition-all wt-shadow bg-card hover:border-border hover:shadow-xs flex flex-col justify-between ${
                 isSelected
-                  ? "border-primary ring-2 ring-primary/25 shadow-md bg-accent/5"
-                  : "border-border hover:border-primary/40"
+                  ? "border-primary ring-2 ring-primary/20 bg-primary/[0.02]"
+                  : "border-border/70"
               }`}
             >
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                      {account.kind}
-                    </span>
-                    {isCard && (
-                      <span className="inline-block rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider">
-                        Liability
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+                        {account.kind}
                       </span>
-                    )}
+                      {isCard && (
+                        <span className="inline-block rounded-md bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 px-1.5 py-0.2 text-[9px] font-bold uppercase tracking-wider">
+                          Liability
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="mt-2 text-base font-bold text-foreground truncate">{account.name}</h3>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {account.institution || "Local account"}{" "}
+                      {account.identifier ? `· ${account.identifier}` : ""}
+                    </p>
                   </div>
-                  <h3 className="mt-2 text-lg font-bold text-foreground">{account.name}</h3>
-                  <p className="text-xs text-muted-foreground">
-                    {account.institution || "Local account"}{" "}
-                    {account.identifier ? `· ${account.identifier}` : ""}
+                  <InstitutionLogo
+                    name={account.institution || account.name}
+                    size="md"
+                    className={`shrink-0 ${isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+                  />
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-border/50">
+                  <span className="text-[11px] font-medium text-muted-foreground">
+                    {isCard ? "Outstanding Balance" : "Current Balance"}
+                  </span>
+                  <p className="wt-display mt-0.5 text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+                    {money(balance)}
                   </p>
                 </div>
-                <InstitutionLogo
-                  name={account.institution || account.name}
-                  size="md"
-                  className={isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}
-                />
               </div>
 
-              <div className="mt-5 border-t border-border pt-4">
-                <p className="text-xs text-muted-foreground">
-                  {isCard ? "Outstanding Balance" : "Current Balance"}
-                </p>
-                <p className="wt-display mt-0.5 text-2xl font-extrabold text-foreground tabular-nums">
-                  {money(balance)}
-                </p>
-              </div>
-
-              <div className="mt-4 flex items-center justify-between border-t border-border pt-3">
+              <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
                 <Button
                   size="sm"
                   variant={isSelected ? "default" : "outline"}
-                  className="h-8 gap-1.5 text-xs font-semibold"
+                  className="h-7.5 px-3 gap-1.5 text-xs font-semibold rounded-lg"
                   onClick={() => setSelected(isSelected ? null : account)}
                 >
-                  <Eye size={13} /> {isSelected ? "Hide Activity" : "View Activity"}
+                  <Eye size={12} /> {isSelected ? "Hide Activity" : "View Activity"}
                 </Button>
                 <ActionMenu
                   items={[

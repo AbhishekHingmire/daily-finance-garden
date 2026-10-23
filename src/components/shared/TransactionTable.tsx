@@ -188,16 +188,16 @@ export function TransactionTable({
     selectedIds.length === paginatedTransactions.length;
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-card overflow-hidden wt-shadow">
+    <div className="rounded-xl border border-border/70 bg-card overflow-hidden wt-shadow hover:border-border transition-colors">
       {/* Integrated Top Search & Controls Bar Inside the Table */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-muted/20 px-4 py-3">
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 bg-muted/15 px-4 py-2.5">
         <div className="flex items-center gap-3 flex-1 min-w-[240px]">
           {/* Integrated Search Input */}
           <div className="relative flex-1 max-w-sm">
             <Search size={14} className="absolute left-3 top-2.5 text-muted-foreground" />
             <input
               type="text"
-              className="wt-field h-9 pl-9 pr-8 text-xs font-medium bg-background"
+              className="wt-field h-8.5 pl-9 pr-8 text-xs font-medium bg-background"
               placeholder={searchPlaceholder}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -206,7 +206,7 @@ export function TransactionTable({
               <button
                 type="button"
                 onClick={() => setSearch("")}
-                className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground"
               >
                 <X size={14} />
               </button>
@@ -214,12 +214,12 @@ export function TransactionTable({
           </div>
 
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
               {sortedTransactions.length} transaction{sortedTransactions.length !== 1 ? "s" : ""}
             </span>
             <span className="text-muted-foreground/40 hidden sm:inline">·</span>
             <div
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold tabular-nums border ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold tabular-nums border ${
                 totalNet > 0
                   ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
                   : totalNet < 0
@@ -227,7 +227,7 @@ export function TransactionTable({
                   : "bg-muted text-muted-foreground border-border"
               }`}
             >
-              <span className="text-[10px] uppercase font-semibold text-muted-foreground">Total:</span>
+              <span className="text-[10px] uppercase font-medium text-muted-foreground">Total:</span>
               <span>
                 {totalNet > 0
                   ? `+${money(totalNet)}`
@@ -243,7 +243,7 @@ export function TransactionTable({
         <div className="flex items-center gap-1.5">
           {headerActions}
           <select
-            className="wt-field h-8 py-0 px-2.5 text-xs font-semibold bg-background rounded-xl border border-border/80 w-36 sm:w-40 cursor-pointer"
+            className="wt-field h-8 py-0 px-2.5 text-xs font-semibold bg-background rounded-lg border border-border/70 w-36 sm:w-40 cursor-pointer"
             value={sortOrder}
             onChange={(e) => setSortOrder(e.target.value as any)}
             aria-label="Sort transactions"
@@ -405,34 +405,34 @@ export function TransactionTable({
                       {/* Status Badges */}
                       {tx.type === "Expense" ? (
                         <span
-                          className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+                          className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider ${
                             tx.need === "Want"
-                              ? "border border-amber-500/25 bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                              : "border border-emerald-500/25 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                              ? "border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                              : "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                           }`}
                         >
                           {tx.need === "Want" ? "Want" : "Need"}
                         </span>
                       ) : tx.type === "EMI / Loan Payment" ? (
-                        <span className="inline-flex shrink-0 items-center rounded-full border border-rose-500/25 bg-rose-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+                        <span className="inline-flex shrink-0 items-center rounded-md border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-300">
                           EMI
                         </span>
                       ) : tx.type === "Borrow / Loan Taken" ? (
-                        <span className="inline-flex shrink-0 items-center rounded-full border border-amber-500/25 bg-amber-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+                        <span className="inline-flex shrink-0 items-center rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
                           Borrowed
                         </span>
                       ) : tx.type === "Lend / Loan Given" ? (
-                        <span className="inline-flex shrink-0 items-center rounded-full border border-violet-500/25 bg-violet-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+                        <span className="inline-flex shrink-0 items-center rounded-md border border-violet-500/20 bg-violet-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">
                           Lent
                         </span>
                       ) : tx.type === "Debt Recovery" ? (
-                        <span className="inline-flex shrink-0 items-center rounded-full border border-emerald-500/25 bg-emerald-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+                        <span className="inline-flex shrink-0 items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
                           Recovery
                         </span>
                       ) : null}
 
                       {tx.recurring && (
-                        <span className="inline-flex shrink-0 items-center rounded-md bg-primary/10 px-1.5 py-0.2 text-[8px] font-bold text-primary">
+                        <span className="inline-flex shrink-0 items-center rounded-md bg-primary/10 px-1.5 py-0.2 text-[8px] font-semibold text-primary">
                           Auto
                         </span>
                       )}

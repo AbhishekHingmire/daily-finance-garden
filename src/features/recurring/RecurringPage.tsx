@@ -70,7 +70,7 @@ export function RecurringPage({
       {/* Standardized Summary Metric Cards */}
       <div className="grid gap-2.5 sm:gap-4 sm:grid-cols-4">
         {/* Card 1: Monthly Expenses & EMIs */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Monthly Expenses & EMIs
@@ -87,7 +87,7 @@ export function RecurringPage({
         </div>
 
         {/* Card 2: Monthly SIP Investments */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Monthly SIP Investments
@@ -104,7 +104,7 @@ export function RecurringPage({
         </div>
 
         {/* Card 3: Monthly Inflows */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Monthly Inflows
@@ -121,7 +121,7 @@ export function RecurringPage({
         </div>
 
         {/* Card 4: Active Schedules */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Active Schedules

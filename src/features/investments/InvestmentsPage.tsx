@@ -285,7 +285,7 @@ export function InvestmentsPage({
             return (
               <div
                 key={h.id}
-                className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-md"
+                className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 transition-all hover:border-border hover:shadow-xs"
               >
                 {/* Header: Name, Institution, Asset Badge */}
                 <div>

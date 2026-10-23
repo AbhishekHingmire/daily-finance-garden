@@ -9,7 +9,7 @@ export function SettingsPage({
   settingsTab,
   setSettingsTab,
   updatePreferences,
-  money,
+  money: _money,
   onExport,
   onImport,
   onReset,
@@ -50,13 +50,13 @@ export function SettingsPage({
         description="Customize your WealthTrack experience, regional formats, metadata tags, and local data."
       />
 
-      <div className="flex flex-wrap gap-2 border-b border-border pb-3">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2 border-b border-border/60 pb-3">
         {tabs.map((tab) => (
           <Button
             key={tab}
             size="sm"
             variant={settingsTab === tab ? "default" : "outline"}
-            className="text-xs font-semibold"
+            className="h-8 text-xs font-medium"
             onClick={() => setSettingsTab(tab)}
           >
             {tab}
@@ -65,8 +65,8 @@ export function SettingsPage({
       </div>
 
       {settingsTab === "Profile" && (
-        <div className="max-w-xl space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-          <h2 className="text-lg font-bold text-foreground">User Profile</h2>
+        <div className="max-w-xl space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">User Profile</h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
             This is a private, client-side finance application. Your display name is saved locally in this browser.
           </p>
@@ -80,8 +80,8 @@ export function SettingsPage({
       )}
 
       {settingsTab === "General" && (
-        <div className="max-w-xl space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-          <h2 className="text-lg font-bold text-foreground">Regional & Display Preferences</h2>
+        <div className="max-w-xl space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">Regional & Display Preferences</h2>
           <SelectField
             label="Currency"
             value={data.preferences.currency}
@@ -127,8 +127,8 @@ export function SettingsPage({
       )}
 
       {settingsTab === "Tags" && (
-        <div className="max-w-xl space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-          <h2 className="text-lg font-bold text-foreground">Manage Metadata Tags</h2>
+        <div className="max-w-xl space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">Manage Metadata Tags</h2>
           <p className="text-xs text-muted-foreground">Tags help cross-reference transactions across multiple categories.</p>
           <div className="flex gap-2">
             <input
@@ -148,14 +148,14 @@ export function SettingsPage({
             {data.tags.map((tag) => (
               <span
                 key={tag}
-                className="flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold text-foreground"
+                className="flex items-center gap-1.5 rounded-md border border-border/60 bg-muted/40 px-2.5 py-1 text-xs font-medium text-foreground"
               >
                 #{tag}
                 <button
                   type="button"
                   aria-label={`Delete tag ${tag}`}
                   onClick={() => onTagDelete(tag)}
-                  className="text-muted-foreground hover:text-destructive"
+                  className="text-muted-foreground hover:text-destructive transition-colors"
                 >
                   <X size={12} />
                 </button>
@@ -166,8 +166,8 @@ export function SettingsPage({
       )}
 
       {settingsTab === "Custom fields" && (
-        <div className="max-w-xl space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-          <h2 className="text-lg font-bold text-foreground">Transaction Custom Fields</h2>
+        <div className="max-w-xl space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">Transaction Custom Fields</h2>
           <p className="text-xs text-muted-foreground">
             Add bespoke fields to track extra metadata on transactions (e.g. tax deductible, invoice number).
           </p>
@@ -188,15 +188,15 @@ export function SettingsPage({
               <Plus size={14} /> Add Field
             </Button>
           </div>
-          <div className="mt-4 divide-y divide-border pt-4">
-            <div className="flex items-center justify-between pb-2 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          <div className="mt-4 divide-y divide-border/50 pt-4">
+            <div className="flex items-center justify-between pb-2 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               <span>Field Name & Type</span>
-              <span className="text-right font-bold text-foreground">Actions</span>
+              <span className="text-right font-medium text-foreground">Actions</span>
             </div>
             {data.customFields.map((f) => (
               <div key={f.id} className="flex items-center justify-between py-2.5">
                 <div>
-                  <span className="font-semibold text-sm text-foreground">{f.name}</span>
+                  <span className="font-medium text-sm text-foreground">{f.name}</span>
                   <span className="ml-2 text-xs text-muted-foreground">({f.type})</span>
                 </div>
                 <Button
@@ -215,8 +215,8 @@ export function SettingsPage({
       )}
 
       {settingsTab === "Data & Privacy" && (
-        <div className="max-w-xl space-y-4 rounded-xl border border-border bg-card p-6 wt-shadow">
-          <h2 className="text-lg font-bold text-foreground">Data Management & Privacy</h2>
+        <div className="max-w-xl space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+          <h2 className="text-base sm:text-lg font-semibold text-foreground">Data Management & Privacy</h2>
           <p className="text-xs text-muted-foreground leading-relaxed">
             WealthTrack operates 100% locally in your browser storage. No personal or financial records are uploaded to any external cloud server.
           </p>

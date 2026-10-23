@@ -219,7 +219,7 @@ export function LoansPage({
             return (
               <div
                 key={loan.id}
-                className="group relative flex flex-col justify-between rounded-xl border border-border bg-card p-4 transition-all hover:border-rose-500/40 hover:shadow-md"
+                className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 transition-all hover:border-border hover:shadow-xs"
               >
                 <div>
                   <div className="flex items-start justify-between gap-2">

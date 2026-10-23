@@ -365,21 +365,17 @@ export function Dashboard({
         </div>
       ))}
 
-      {/* Ultra-Premium Hero Net Worth Card with Gradient Accent & Asset Distribution */}
-      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl border border-border/80 bg-gradient-to-br from-card via-card to-emerald-500/[0.04] p-4 sm:p-7 wt-shadow">
-        {/* Subtle decorative ambient glow */}
-        <div className="pointer-events-none absolute -right-12 -top-12 size-48 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="pointer-events-none absolute right-1/3 -bottom-12 size-36 rounded-full bg-primary/10 blur-2xl" />
-
+      {/* Ultra-Premium Hero Net Worth Card */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 sm:p-6 wt-shadow hover:border-border transition-all">
         <div className="flex flex-col gap-5 sm:gap-6 lg:flex-row lg:items-center lg:justify-between relative z-10">
           <div>
             <div className="flex items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Live Portfolio Balance
               </span>
               {savingsRate > 0 && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">
                   <Sparkles size={10} /> +{savingsRate}% Saved
                 </span>
               )}
@@ -389,98 +385,98 @@ export function Dashboard({
               {money(totalBalance)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Total wealth aggregated across {activeAccounts.length} financial accounts
+              Total aggregated wealth across {activeAccounts.length} accounts
             </p>
           </div>
 
           {/* Interactive Sub-KPI Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-4 border-t border-border/60 pt-4 sm:pt-5 lg:border-t-0 lg:border-l lg:pl-7 lg:pt-0">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 border-t border-border/60 pt-4 sm:pt-5 lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0">
             <div
-              className="group flex items-center justify-between sm:block rounded-2xl border border-border/70 bg-card/80 p-3 sm:p-3.5 hover:border-emerald-500/40 hover:shadow-xs transition-all cursor-pointer"
+              className="group flex items-center justify-between sm:block rounded-xl border border-border/60 bg-muted/20 hover:bg-card hover:border-border/90 p-3 transition-all cursor-pointer"
               onClick={() => onNavigate("Accounts")}
             >
               <div className="flex items-center justify-between sm:w-full">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
                     Liquid Cash
                   </span>
                   <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block mt-0.5 sm:hidden">
                     {liquidPct}% of portfolio
                   </span>
                 </div>
-                <span className="grid size-6 place-items-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform hidden sm:grid">
+                <span className="grid size-6 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hidden sm:grid">
                   <Wallet size={12} />
                 </span>
               </div>
               <div className="flex items-center gap-2 sm:block sm:mt-1.5 shrink-0">
-                <p className="text-sm sm:text-base font-extrabold text-foreground tabular-nums whitespace-nowrap">
+                <p className="text-sm sm:text-base font-bold text-foreground tabular-nums whitespace-nowrap">
                   {money(liquidAssets)}
                 </p>
-                <span className="grid size-6 place-items-center rounded-md bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 sm:hidden">
+                <span className="grid size-6 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:hidden">
                   <Wallet size={12} />
                 </span>
               </div>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium hidden sm:block mt-0.5">
+              <span className="text-[10px] text-muted-foreground hidden sm:block mt-0.5">
                 {liquidPct}% of portfolio
               </span>
             </div>
 
             <div
-              className="group flex items-center justify-between sm:block rounded-2xl border border-border/70 bg-card/80 p-3 sm:p-3.5 hover:border-violet-500/40 hover:shadow-xs transition-all cursor-pointer"
+              className="group flex items-center justify-between sm:block rounded-xl border border-border/60 bg-muted/20 hover:bg-card hover:border-border/90 p-3 transition-all cursor-pointer"
               onClick={() => onNavigate("Investments")}
             >
               <div className="flex items-center justify-between sm:w-full">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
                     Investments
                   </span>
                   <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium block mt-0.5 sm:hidden">
                     {invPct}% of portfolio
                   </span>
                 </div>
-                <span className="grid size-6 place-items-center rounded-md bg-violet-500/15 text-violet-600 dark:text-violet-400 group-hover:scale-110 transition-transform hidden sm:grid">
+                <span className="grid size-6 place-items-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 hidden sm:grid">
                   <TrendingUp size={12} />
                 </span>
               </div>
               <div className="flex items-center gap-2 sm:block sm:mt-1.5 shrink-0">
-                <p className="text-sm sm:text-base font-extrabold text-foreground tabular-nums whitespace-nowrap">
+                <p className="text-sm sm:text-base font-bold text-foreground tabular-nums whitespace-nowrap">
                   {money(effectiveInvestmentsVal)}
                 </p>
-                <span className="grid size-6 place-items-center rounded-md bg-violet-500/15 text-violet-600 dark:text-violet-400 sm:hidden">
+                <span className="grid size-6 place-items-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 sm:hidden">
                   <TrendingUp size={12} />
                 </span>
               </div>
-              <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium hidden sm:block mt-0.5">
+              <span className="text-[10px] text-muted-foreground hidden sm:block mt-0.5">
                 {invPct}% of portfolio
               </span>
             </div>
 
             <div
-              className="group flex items-center justify-between sm:block rounded-2xl border border-border/70 bg-card/80 p-3 sm:p-3.5 hover:border-rose-500/40 hover:shadow-xs transition-all cursor-pointer"
+              className="group flex items-center justify-between sm:block rounded-xl border border-border/60 bg-muted/20 hover:bg-card hover:border-border/90 p-3 transition-all cursor-pointer"
               onClick={() => onNavigate("Loans")}
             >
               <div className="flex items-center justify-between sm:w-full">
                 <div>
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
                     Liabilities & Debt
                   </span>
                   <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium block mt-0.5 sm:hidden">
                     {(data.loans ?? []).length} loans · {liabilityPct}%
                   </span>
                 </div>
-                <span className="grid size-6 place-items-center rounded-md bg-rose-500/15 text-rose-600 dark:text-rose-400 group-hover:scale-110 transition-transform hidden sm:grid">
+                <span className="grid size-6 place-items-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hidden sm:grid">
                   <Landmark size={12} />
                 </span>
               </div>
               <div className="flex items-center gap-2 sm:block sm:mt-1.5 shrink-0">
-                <p className="text-sm sm:text-base font-extrabold text-foreground tabular-nums whitespace-nowrap">
+                <p className="text-sm sm:text-base font-bold text-foreground tabular-nums whitespace-nowrap">
                   {money(totalLiabilities)}
                 </p>
-                <span className="grid size-6 place-items-center rounded-md bg-rose-500/15 text-rose-600 dark:text-rose-400 sm:hidden">
+                <span className="grid size-6 place-items-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 sm:hidden">
                   <Landmark size={12} />
                 </span>
               </div>
-              <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium hidden sm:block mt-0.5">
+              <span className="text-[10px] text-muted-foreground hidden sm:block mt-0.5">
                 {(data.loans ?? []).length} loans · {liabilityPct}% of total
               </span>
             </div>
@@ -540,7 +536,7 @@ export function Dashboard({
       {/* Cash Flow Performance Metric Cards */}
       <div className="grid grid-cols-1 gap-2.5 sm:gap-4 sm:grid-cols-3">
         {/* Period Inflows */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Period Inflows
@@ -560,7 +556,7 @@ export function Dashboard({
         </div>
 
         {/* Period Outflows */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Period Outflows
@@ -581,7 +577,7 @@ export function Dashboard({
         </div>
 
         {/* Net Savings */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-2.5 sm:p-5 wt-shadow">
+        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Net Savings
@@ -611,7 +607,7 @@ export function Dashboard({
         />
 
         {/* Top Spending Categories Matrix */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 wt-shadow">
+        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all">
           <div>
             <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div>
@@ -632,7 +628,7 @@ export function Dashboard({
             </div>
 
             {/* Symmetrical Top Banner Matching Cash Flow Chart */}
-            <div className="mt-3.5 flex items-center justify-between rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2 text-xs">
+            <div className="mt-3.5 flex items-center justify-between rounded-xl border border-border/60 bg-muted/25 px-3.5 py-2 text-xs">
               <span className="font-bold text-foreground">
                 {topCategories.length ? `${topCategories.length} Categories Ranked` : "Spending Concentration"}
               </span>
