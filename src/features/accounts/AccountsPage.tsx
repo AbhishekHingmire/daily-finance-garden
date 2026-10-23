@@ -120,7 +120,7 @@ export function AccountsPage({
     ? holdingsValuation
     : (investmentSummary.currentValue ?? investmentSummary.contributions);
 
-  const totalNetWorth = totalBalance + effectiveInvestmentsVal - totalLiabilities;
+  const totalNetWorth = totalBalance + effectiveInvestmentsVal;
 
   const totalAssetsSum = Math.max(1, totalAssets + effectiveInvestmentsVal + totalLiabilities);
   const liquidPct = Math.round((totalAssets / totalAssetsSum) * 100);
@@ -210,11 +210,11 @@ export function AccountsPage({
               )}
             </div>
 
-            <p className="wt-display mt-2 text-2xl sm:text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight tabular-nums whitespace-nowrap">
+            <p className="wt-display mt-1.5 text-xl sm:text-2xl lg:text-3xl font-extrabold text-foreground tracking-tight tabular-nums whitespace-nowrap">
               {money(totalNetWorth)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Aggregated wealth across liquid cash, investments, and liabilities
+              Consolidated wealth across active accounts and investments
             </p>
           </div>
 

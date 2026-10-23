@@ -380,13 +380,6 @@ export function Dashboard({
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
       </div>
 
-      {/* Salary Countdown & Inflow Tracker (Fixed tracker placed right after filter card) */}
-      <SalaryCountdownCard
-        data={data}
-        money={money}
-        onUpdateSalary={onUpdateSalary}
-      />
-
       {/* Cash Flow Performance Metric Cards */}
       <div className="space-y-2.5">
         <div className="flex items-center justify-between px-0.5">
@@ -463,6 +456,13 @@ export function Dashboard({
           </div>
         </div>
       </div>
+
+      {/* Salary Countdown & Inflow Tracker (Payroll & Payday section moved right after Cash Flow Movement) */}
+      <SalaryCountdownCard
+        data={data}
+        money={money}
+        onUpdateSalary={onUpdateSalary}
+      />
 
       {/* Two Column Layout: Cash Flow Velocity Chart & Top Spending Categories */}
       <div className="grid gap-6 lg:grid-cols-2 items-start">
