@@ -23,6 +23,7 @@ import { FundModal } from "./FundModal";
 import { PlanModal } from "./PlanModal";
 import {
   getAccountBalance,
+  getAllAccountBalances,
   getEmergencyFundSummary,
   getPlanSimulation,
   safeAmount,
@@ -78,12 +79,17 @@ export function FundsPage({
 
   const displayedFunds = goalStatusFilter === "ongoing" ? ongoingFunds : completedFunds;
 
+  const accountBalances = useMemo(
+    () => getAllAccountBalances(data.accounts, data.transactions),
+    [data.accounts, data.transactions]
+  );
+
   // Calculate real liquid balances
   const liquidBalance = useMemo(() => {
     return data.accounts
       .filter((a) => !a.archived && a.kind !== "Credit card")
-      .reduce((sum, a) => sum + Math.max(0, getAccountBalance(a, data.transactions)), 0);
-  }, [data.accounts, data.transactions]);
+      .reduce((sum, a) => sum + Math.max(0, accountBalances.get(a.id) ?? (a.openingBalance || 0)), 0);
+  }, [data.accounts, accountBalances]);
 
   // Calculate average monthly expenses from transactions
   const monthlyExpenses = useMemo(() => {
@@ -778,7 +784,7 @@ export function FundsPage({
                     .filter((a) => !a.archived && a.kind !== "Credit card")
                     .map((a) => (
                       <option key={a.id} value={a.id}>
-                        {a.name} ({money(getAccountBalance(a, data.transactions))})
+                        {a.name} ({money(accountBalances.get(a.id) ?? (a.openingBalance || 0))})
                       </option>
                     ))}
                 </select>

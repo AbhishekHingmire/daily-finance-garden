@@ -26,6 +26,7 @@ import { TransactionRow } from "@/components/shared/TransactionRow";
 import { SalaryCountdownCard } from "./SalaryCountdownCard";
 import {
   getAccountBalance,
+  getAllAccountBalances,
   getCategorySpend,
   getInvestmentSummary,
   type CustomFund,
@@ -153,22 +154,27 @@ export function Dashboard({
     : (investmentSummary.currentValue ?? investmentSummary.contributions);
 
   const activeAccounts = useMemo(() => data.accounts.filter((item) => !item.archived), [data.accounts]);
-  const totalBalance = useMemo(
-    () =>
-      activeAccounts.reduce(
-        (sum, account) => sum + getAccountBalance(account, data.transactions),
-        0
-      ),
-    [activeAccounts, data.transactions]
+
+  const accountBalances = useMemo(
+    () => getAllAccountBalances(data.accounts, data.transactions),
+    [data.accounts, data.transactions]
   );
 
-  const liquidAssets = activeAccounts
-    .filter((a) => a.kind !== "Credit card")
-    .reduce((sum, a) => sum + Math.max(0, getAccountBalance(a, data.transactions)), 0);
-
-  const creditLiabilities = activeAccounts
-    .filter((a) => a.kind === "Credit card")
-    .reduce((sum, a) => sum + Math.abs(getAccountBalance(a, data.transactions)), 0);
+  const { totalBalance, liquidAssets, creditLiabilities } = useMemo(() => {
+    let balance = 0;
+    let liquid = 0;
+    let credit = 0;
+    for (const a of activeAccounts) {
+      const b = accountBalances.get(a.id) ?? (a.openingBalance || 0);
+      balance += b;
+      if (a.kind === "Credit card") {
+        credit += Math.abs(b);
+      } else {
+        liquid += Math.max(0, b);
+      }
+    }
+    return { totalBalance: balance, liquidAssets: liquid, creditLiabilities: credit };
+  }, [activeAccounts, accountBalances]);
 
   const loansOutstanding = useMemo(() => {
     return (data.loans ?? []).reduce((sum, l) => sum + (l.currentOutstanding || 0), 0);

@@ -60,23 +60,40 @@ export function TransactionTable({
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest" | "lowest">("newest");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
+  // Pre-indexed category & account maps for O(1) high-speed search lookups
+  const categoryMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const c of data.categories) {
+      map.set(c.id, c.name.toLowerCase());
+    }
+    return map;
+  }, [data.categories]);
+
+  const accountMap = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const a of data.accounts) {
+      map.set(a.id, a.name.toLowerCase());
+    }
+    return map;
+  }, [data.accounts]);
+
   // Search filtering
   const searchedTransactions = useMemo(() => {
     if (!search.trim()) return transactions;
     const q = search.toLowerCase();
     return transactions.filter((t) => {
-      const cat = data.categories.find((c) => c.id === t.categoryId);
-      const acc = data.accounts.find((a) => a.id === t.accountId);
+      const catName = categoryMap.get(t.categoryId);
+      const accName = accountMap.get(t.accountId);
       return (
         t.description.toLowerCase().includes(q) ||
         (t.merchant && t.merchant.toLowerCase().includes(q)) ||
         (t.notes && t.notes.toLowerCase().includes(q)) ||
-        (cat && cat.name.toLowerCase().includes(q)) ||
-        (acc && acc.name.toLowerCase().includes(q)) ||
+        (catName && catName.includes(q)) ||
+        (accName && accName.includes(q)) ||
         (t.tags && t.tags.some((tag) => tag.toLowerCase().includes(q)))
       );
     });
-  }, [transactions, search, data.categories, data.accounts]);
+  }, [transactions, search, categoryMap, accountMap]);
 
   // Sorting
   const sortedTransactions = useMemo(() => {

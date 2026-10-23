@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftRight,
   CreditCard,
@@ -18,6 +18,7 @@ import { AccountActivityPartialView } from "./AccountActivityPartialView";
 import { ReconcileModal } from "./ReconcileModal";
 import {
   getAccountBalance,
+  getAllAccountBalances,
   type Account,
   type Transaction,
   type WealthState,
@@ -54,23 +55,43 @@ export function AccountsPage({
 }) {
   const [reconcilingAccount, setReconcilingAccount] = useState<Account | null>(null);
 
-  const activeAccounts = data.accounts.filter((a) => !a.archived);
-  const totalBalance = activeAccounts.reduce(
-    (sum, acc) => sum + getAccountBalance(acc, data.transactions),
-    0
+  const accountBalances = useMemo(
+    () => getAllAccountBalances(data.accounts, data.transactions),
+    [data.accounts, data.transactions]
   );
 
-  // Asset accounts vs Liability accounts (Credit cards)
-  const assetAccounts = activeAccounts.filter((a) => a.kind !== "Credit card");
-  const liabilityAccounts = activeAccounts.filter((a) => a.kind === "Credit card");
-  const totalAssets = assetAccounts.reduce(
-    (sum, acc) => sum + Math.max(0, getAccountBalance(acc, data.transactions)),
-    0
+  const activeAccounts = useMemo(
+    () => data.accounts.filter((a) => !a.archived),
+    [data.accounts]
   );
-  const totalLiabilities = liabilityAccounts.reduce(
-    (sum, acc) => sum + Math.abs(getAccountBalance(acc, data.transactions)),
-    0
-  );
+
+  const { totalBalance, totalAssets, totalLiabilities, assetAccounts, liabilityAccounts } = useMemo(() => {
+    let balance = 0;
+    let assets = 0;
+    let liabilities = 0;
+    const assetsList: Account[] = [];
+    const liabilitiesList: Account[] = [];
+
+    for (const acc of activeAccounts) {
+      const b = accountBalances.get(acc.id) ?? (acc.openingBalance || 0);
+      balance += b;
+      if (acc.kind === "Credit card") {
+        liabilitiesList.push(acc);
+        liabilities += Math.abs(b);
+      } else {
+        assetsList.push(acc);
+        assets += Math.max(0, b);
+      }
+    }
+
+    return {
+      totalBalance: balance,
+      totalAssets: assets,
+      totalLiabilities: liabilities,
+      assetAccounts: assetsList,
+      liabilityAccounts: liabilitiesList,
+    };
+  }, [activeAccounts, accountBalances]);
 
   // Balanced grid class: when 4 accounts, render 2-col on tablet and 4-col on desktop
   // to avoid leaving an orphan 4th card on a second row
@@ -162,7 +183,7 @@ export function AccountsPage({
       {/* Accounts Grid */}
       <div className={gridColsClass}>
         {activeAccounts.map((account) => {
-          const balance = getAccountBalance(account, data.transactions);
+          const balance = accountBalances.get(account.id) ?? (account.openingBalance || 0);
           const isSelected = selected?.id === account.id;
           const isCard = account.kind === "Credit card";
 

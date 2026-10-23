@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import * as XLSX from "xlsx";
 import {
   Activity,
   ArrowLeftRight,
@@ -1392,7 +1391,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     toast.success("CSV downloaded", { description: `${rows.length} transactions exported.` });
   };
 
-  const downloadExcelTemplate = () => {
+  const downloadExcelTemplate = async () => {
+    const XLSX = await import("xlsx");
     const today = new Date().toISOString().slice(0, 10);
     const templateRows = [
       [
@@ -1504,6 +1504,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     try {
       const fileName = file.name.toLowerCase();
       if (fileName.endsWith(".xlsx") || fileName.endsWith(".xls")) {
+        const XLSX = await import("xlsx");
         const buffer = await file.arrayBuffer();
         const wb = XLSX.read(buffer, { type: "array" });
         const firstSheetName = wb.SheetNames[0];

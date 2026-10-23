@@ -605,6 +605,24 @@ export function applyTransactionToAccountBalance(balance: number, transaction: T
   return balance;
 }
 
+export function getAllAccountBalances(accounts: Account[], transactions: Transaction[]): Map<string, number> {
+  const balances = new Map<string, number>();
+  for (const account of accounts) {
+    balances.set(account.id, safeAmount(account.openingBalance));
+  }
+  for (const tx of transactions) {
+    if (tx.accountId && balances.has(tx.accountId)) {
+      const current = balances.get(tx.accountId)!;
+      balances.set(tx.accountId, applyTransactionToAccountBalance(current, tx, tx.accountId));
+    }
+    if (tx.destinationAccountId && balances.has(tx.destinationAccountId)) {
+      const current = balances.get(tx.destinationAccountId)!;
+      balances.set(tx.destinationAccountId, applyTransactionToAccountBalance(current, tx, tx.destinationAccountId));
+    }
+  }
+  return balances;
+}
+
 export function getAccountBalance(account: Account, transactions: Transaction[]): number {
   return transactions.reduce(
     (balance, transaction) => applyTransactionToAccountBalance(balance, transaction, account.id),
@@ -613,17 +631,32 @@ export function getAccountBalance(account: Account, transactions: Transaction[])
 }
 
 export function getMoneySummary(accounts: Account[], transactions: Transaction[]): MoneySummary {
-  // Transfers and investment movements are cash reallocations, not ordinary income/expense.
-  const income = transactions.reduce((sum, item) => sum + (item.type === "Income" ? safeAmount(item.amount) : 0), 0);
-  const expenseTotal = transactions.reduce((sum, item) => sum + (item.type === "Expense" ? safeAmount(item.amount) : 0), 0);
-  const refundTotal = transactions.reduce((sum, item) => sum + (item.type === "Refund" ? safeAmount(item.amount) : 0), 0);
+  let income = 0;
+  let expenseTotal = 0;
+  let refundTotal = 0;
+  let emiPaid = 0;
+  let borrowed = 0;
+  let lent = 0;
+
+  for (const item of transactions) {
+    const amt = safeAmount(item.amount);
+    if (item.type === "Income") income += amt;
+    else if (item.type === "Expense") expenseTotal += amt;
+    else if (item.type === "Refund") refundTotal += amt;
+    else if (item.type === "EMI / Loan Payment") emiPaid += amt;
+    else if (item.type === "Borrow / Loan Taken") borrowed += amt;
+    else if (item.type === "Lend / Loan Given") lent += amt;
+  }
+
   const expenses = Math.max(0, expenseTotal - refundTotal);
+  const accountBalances = getAllAccountBalances(accounts, transactions);
+  let balance = 0;
+  for (const account of accounts) {
+    if (!account.archived) {
+      balance += accountBalances.get(account.id) ?? safeAmount(account.openingBalance);
+    }
+  }
 
-  const emiPaid = transactions.reduce((sum, item) => sum + (item.type === "EMI / Loan Payment" ? safeAmount(item.amount) : 0), 0);
-  const borrowed = transactions.reduce((sum, item) => sum + (item.type === "Borrow / Loan Taken" ? safeAmount(item.amount) : 0), 0);
-  const lent = transactions.reduce((sum, item) => sum + (item.type === "Lend / Loan Given" ? safeAmount(item.amount) : 0), 0);
-
-  const balance = accounts.filter((account) => !account.archived).reduce((sum, account) => sum + getAccountBalance(account, transactions), 0);
   return { income, expenses, net: income - expenses, balance, emiPaid, borrowed, lent };
 }
 

@@ -3,6 +3,7 @@ import {
   calculateNextSalaryInfo,
   createInitialState,
   getAccountBalance,
+  getAllAccountBalances,
   getHoldingsSummary,
   getLoansSummary,
   getNextRecurringDate,
@@ -108,6 +109,11 @@ describe("Financial Engine & Calculations", () => {
 
     // Savings: 500 starting + 300 transfer in - 50 adjustment = 750
     expect(getAccountBalance(savings, txs)).toBe(750);
+
+    // High performance single-pass getAllAccountBalances matches individual calls
+    const allBalances = getAllAccountBalances([checking, savings], txs);
+    expect(allBalances.get("acc-chk")).toBe(1000);
+    expect(allBalances.get("acc-sav")).toBe(750);
   });
 
   it("ensures Transfer transactions do not affect net worth or double-count", () => {
