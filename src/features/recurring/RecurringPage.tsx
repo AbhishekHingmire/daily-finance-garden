@@ -154,7 +154,7 @@ export function RecurringPage({
         <div className="flex items-center gap-2">
           <span className="text-[11px] font-semibold text-muted-foreground">Priority:</span>
           <select
-            className="wt-field h-8 text-xs py-0 w-36 font-semibold"
+            className="wt-field h-8 text-xs py-0 pl-2.5 pr-8 w-auto min-w-[155px] font-semibold cursor-pointer"
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
             aria-label="Filter by priority"

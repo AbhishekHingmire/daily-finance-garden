@@ -87,7 +87,7 @@ export function CategoriesPage({
             Classification:
           </span>
           <select
-            className="wt-field h-8 w-32 text-xs py-0 bg-background"
+            className="wt-field h-8 w-auto min-w-[145px] text-xs py-0 pl-2.5 pr-8 bg-background cursor-pointer"
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
             aria-label="Priority Classification Filter"

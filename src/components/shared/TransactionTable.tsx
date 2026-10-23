@@ -61,6 +61,7 @@ export function TransactionTable({
   headerActions?: React.ReactNode;
 }) {
   const [search, setSearch] = useState("");
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "highest" | "lowest">("newest");
   const [internalSelectedIds, setInternalSelectedIds] = useState<string[]>([]);
   const selectedIds = propSelectedIds !== undefined ? propSelectedIds : internalSelectedIds;
@@ -209,70 +210,123 @@ export function TransactionTable({
   return (
     <div className="rounded-xl border border-border/70 bg-card overflow-hidden wt-shadow hover:border-border transition-colors">
       {/* Integrated Top Search & Controls Bar Inside the Table */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/50 bg-muted/15 px-4 py-2.5">
-        <div className="flex items-center gap-3 flex-1 min-w-[240px]">
-          {/* Integrated Search Input */}
-          <div className="relative flex-1 max-w-sm">
-            <Search size={14} className="absolute left-3 top-2.5 text-muted-foreground" />
-            <input
-              type="text"
-              className="wt-field h-8.5 pl-9 pr-8 text-xs font-medium bg-background"
-              placeholder={searchPlaceholder}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-            {search && (
-              <button
-                type="button"
-                onClick={() => setSearch("")}
-                className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
-              {sortedTransactions.length} transaction{sortedTransactions.length !== 1 ? "s" : ""}
-            </span>
-            <span className="text-muted-foreground/40 hidden sm:inline">·</span>
-            <div
-              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold tabular-nums border ${
-                totalNet > 0
-                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
-                  : totalNet < 0
-                  ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20"
-                  : "bg-muted text-muted-foreground border-border"
-              }`}
+      <div className="border-b border-border/50 bg-muted/15 px-3 sm:px-4 py-2.5">
+        {/* Mobile Expanded Search Bar */}
+        {isMobileSearchOpen ? (
+          <div className="flex items-center gap-2 sm:hidden animate-in fade-in-50 duration-150">
+            <div className="relative flex-1">
+              <Search size={14} className="absolute left-3 top-2.5 text-muted-foreground" />
+              <input
+                type="text"
+                autoFocus
+                className="wt-field h-8.5 pl-9 pr-8 text-xs font-medium bg-background w-full"
+                placeholder={searchPlaceholder}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch("")}
+                  className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8.5 px-2.5 text-xs text-muted-foreground hover:text-foreground shrink-0"
+              onClick={() => {
+                setIsMobileSearchOpen(false);
+                setSearch("");
+              }}
             >
-              <span className="text-[10px] uppercase font-medium text-muted-foreground">Total:</span>
-              <span>
-                {totalNet > 0
-                  ? `+${money(totalNet)}`
-                  : totalNet < 0
-                  ? `−${money(Math.abs(totalNet))}`
-                  : money(0)}
-              </span>
+              Cancel
+            </Button>
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center justify-between gap-2.5">
+            {/* Left: Mobile Search Button or Desktop Input + Record Count */}
+            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+              {/* Mobile Search Toggle Icon */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="sm:hidden size-8 p-0 shrink-0 border-border/70 bg-background"
+                onClick={() => setIsMobileSearchOpen(true)}
+                title="Search transactions"
+                aria-label="Open search input"
+              >
+                <Search size={14} className="text-muted-foreground" />
+              </Button>
+
+              {/* Desktop Search Input (Always visible on sm and up) */}
+              <div className="relative hidden sm:block w-56 lg:w-64 shrink-0">
+                <Search size={14} className="absolute left-3 top-2.5 text-muted-foreground" />
+                <input
+                  type="text"
+                  className="wt-field h-8.5 pl-9 pr-8 text-xs font-medium bg-background"
+                  placeholder={searchPlaceholder}
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+                {search && (
+                  <button
+                    type="button"
+                    onClick={() => setSearch("")}
+                    className="absolute right-2.5 top-2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Transaction count & Net Total Pill */}
+              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
+                <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
+                  {sortedTransactions.length} tx{sortedTransactions.length !== 1 ? "s" : ""}
+                </span>
+                <span className="text-muted-foreground/40 hidden sm:inline">·</span>
+                <div
+                  className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold tabular-nums border shrink-0 ${
+                    totalNet > 0
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
+                      : totalNet < 0
+                      ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20"
+                      : "bg-muted text-muted-foreground border-border"
+                  }`}
+                >
+                  <span className="text-[9.5px] uppercase font-medium text-muted-foreground hidden sm:inline">Total:</span>
+                  <span>
+                    {totalNet > 0
+                      ? `+${money(totalNet)}`
+                      : totalNet < 0
+                      ? `−${money(Math.abs(totalNet))}`
+                      : money(0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Controls: Sort & Custom Header Actions */}
+            <div className="flex items-center gap-1.5 shrink-0 ml-auto">
+              {headerActions}
+              <select
+                className="wt-field h-8 py-0 pl-2.5 pr-8 text-xs font-semibold bg-background rounded-lg border border-border/70 w-auto min-w-[165px] sm:min-w-[170px] cursor-pointer"
+                value={sortOrder}
+                onChange={(e) => setSortOrder(e.target.value as any)}
+                aria-label="Sort transactions"
+              >
+                <option value="newest">Sort: Newest first</option>
+                <option value="oldest">Sort: Oldest first</option>
+                <option value="highest">Sort: Highest amount</option>
+                <option value="lowest">Sort: Lowest amount</option>
+              </select>
             </div>
           </div>
-        </div>
-
-        {/* Right Controls: Sort & Custom Header Actions */}
-        <div className="flex items-center gap-1.5">
-          {headerActions}
-          <select
-            className="wt-field h-8 py-0 px-2.5 text-xs font-semibold bg-background rounded-lg border border-border/70 w-36 sm:w-40 cursor-pointer"
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value as any)}
-            aria-label="Sort transactions"
-          >
-            <option value="newest">Sort: Newest first</option>
-            <option value="oldest">Sort: Oldest first</option>
-            <option value="highest">Sort: Highest amount</option>
-            <option value="lowest">Sort: Lowest amount</option>
-          </select>
-        </div>
+        )}
       </div>
 
       {/* Floating Bulk Action Bar when items selected */}
@@ -665,7 +719,7 @@ export function TransactionTable({
         <div className="flex items-center gap-2">
           <span className="text-muted-foreground font-medium whitespace-nowrap">Rows per page:</span>
           <select
-            className="wt-field h-8 py-0 px-2 text-xs font-semibold bg-background w-20 cursor-pointer"
+            className="wt-field h-8 py-0 pl-2.5 pr-7 text-xs font-semibold bg-background w-18 sm:w-20 cursor-pointer"
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));

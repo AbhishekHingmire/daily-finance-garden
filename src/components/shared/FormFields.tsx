@@ -83,8 +83,8 @@ export function SelectField({
       <select
         className={
           compact
-            ? "wt-field h-8 min-h-0 text-xs px-2.5 py-0 bg-background cursor-pointer"
-            : "wt-field cursor-pointer"
+            ? "wt-field h-8 min-h-0 text-xs pl-2.5 pr-8 py-0 bg-background cursor-pointer"
+            : "wt-field pl-3 pr-8 cursor-pointer"
         }
         value={value}
         onChange={(event) => onChange(event.target.value)}

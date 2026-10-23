@@ -145,6 +145,10 @@ button, input, select, textarea { font: inherit; }
   transition: border-color 150ms ease, box-shadow 150ms ease;
   &:focus { border-color: var(--ring); box-shadow: 0 0 0 2px color-mix(in oklab, var(--ring) 14%, transparent); }
 }
+select.wt-field,
+select {
+  padding-right: 1.875rem !important;
+}
 @utility wt-label { display: block; margin-bottom: 0.3125rem; color: var(--foreground); font-size: 0.75rem; font-weight: 600; }
 
 @media (prefers-reduced-motion: reduce) {

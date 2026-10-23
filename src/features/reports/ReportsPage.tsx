@@ -233,7 +233,7 @@ export function ReportsPage({
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-muted-foreground">Priority:</span>
           <select
-            className="wt-field h-8 w-36 text-xs py-0 font-semibold"
+            className="wt-field h-8 w-auto min-w-[155px] text-xs py-0 pl-2.5 pr-8 font-semibold cursor-pointer"
             value={priorityFilter}
             onChange={(e) => setPriorityFilter(e.target.value)}
             aria-label="Priority Classification Filter"

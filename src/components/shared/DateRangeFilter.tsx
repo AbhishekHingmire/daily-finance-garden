@@ -192,7 +192,7 @@ export function DateRangeFilter({
         {/* Mobile & Tablet Compact View (< lg): Single-Row Compact Month Dropdown */}
         <div className="flex lg:hidden items-center gap-1.5 flex-1 min-w-0 max-w-full">
           <select
-            className="wt-field h-7 sm:h-8 py-0 px-2 text-xs font-bold bg-card border border-border/80 rounded-xl cursor-pointer flex-1 max-w-[220px] truncate"
+            className="wt-field h-7 sm:h-8 py-0 pl-2.5 pr-7 text-xs font-bold bg-card border border-border/80 rounded-xl cursor-pointer flex-1 max-w-[220px] truncate"
             value={
               value.preset === "year"
                 ? "year"
