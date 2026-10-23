@@ -538,6 +538,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           nextDate: "2026-11-05",
           need: "Need",
           enabled: true,
+          loanId: loan.id,
+          totalInstallments: loan.tenureMonths,
+          paidInstallments: loan.paidEmisCount || 0,
         };
 
         if (existingRecIdx >= 0) {

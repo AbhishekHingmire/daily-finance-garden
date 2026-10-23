@@ -218,6 +218,9 @@ export interface RecurringItem {
   instrumentType?: InvestmentInstrument;
   units?: number;
   pricePerUnit?: number;
+  loanId?: string;
+  totalInstallments?: number;
+  paidInstallments?: number;
 }
 
 export interface CustomField {
@@ -863,6 +866,7 @@ export function processDueRecurringTransactions(
   const newTransactions: Transaction[] = [];
   const processedItems: { name: string; amount: number; date: string }[] = [];
   let updatedInvestments = [...(state.investments || [])];
+  let updatedLoans = [...(state.loans || [])];
 
   const updatedRecurring = state.recurring.map((item) => {
     if (!item.enabled) return item;
@@ -872,11 +876,14 @@ export function processDueRecurringTransactions(
       const cat = state.categories.find((c) => c.id === item.categoryId);
 
       const isInv = item.type === "Investment";
+      const isLoanEmi = Boolean(item.loanId) || item.name.toLowerCase().includes("emi");
+      const txType: TransactionType = isInv ? "Investment" : isLoanEmi ? "EMI / Loan Payment" : item.type;
+
       const tx: Transaction = {
         id: createTransactionId(),
         date: item.nextDate,
         description: item.name,
-        type: item.type,
+        type: txType,
         amount: item.amount,
         categoryId: item.categoryId || "",
         accountId: item.accountId || state.accounts[0]?.id || "",
@@ -884,17 +891,39 @@ export function processDueRecurringTransactions(
         paymentMethod: "Auto-debit",
         need: item.need || (cat?.name === "Shopping" || cat?.name === "Entertainment" ? "Want" : "Need"),
         merchant: item.name,
-        tags: isInv ? ["Recurring", "Auto-debit", "SIP", "Investment"] : ["Recurring", "Auto-debit"],
+        tags: isInv
+          ? ["Recurring", "Auto-debit", "SIP", "Investment"]
+          : isLoanEmi
+          ? ["Recurring", "Auto-debit", "EMI", "Loan"]
+          : ["Recurring", "Auto-debit"],
         notes: isInv
           ? `Automated recurring SIP installment for ${item.name}.`
+          : isLoanEmi
+          ? `Automated loan EMI repayment for ${item.name}.`
           : `Automatically recorded recurring ${item.frequency.toLowerCase()} schedule.`,
         recurring: true,
         customValues: {},
         investmentAction: isInv ? "Contribution" : undefined,
         instrumentType: isInv ? item.instrumentType || "Mutual fund" : undefined,
+        loanId: item.loanId,
       };
       newTransactions.push(tx);
       processedItems.push({ name: item.name, amount: item.amount, date: item.nextDate });
+
+      // If recurring item is linked to a Loan, deduct from currentOutstanding and increment paidEmisCount
+      if (item.loanId) {
+        const loanIdx = updatedLoans.findIndex((l) => l.id === item.loanId);
+        if (loanIdx >= 0) {
+          const l = updatedLoans[loanIdx];
+          const newOutstanding = Math.max(0, safeAmount(l.currentOutstanding) - item.amount);
+          updatedLoans[loanIdx] = {
+            ...l,
+            currentOutstanding: newOutstanding,
+            paidEmisCount: (l.paidEmisCount || 0) + 1,
+            updatedAt: item.nextDate.slice(0, 10),
+          };
+        }
+      }
 
       // If recurring item is an Investment, auto-increment investedAmount & currentAmount in holdings
       if (isInv) {
@@ -913,10 +942,15 @@ export function processDueRecurringTransactions(
       }
 
       const advancedDate = getNextRecurringDate(item.nextDate, item.frequency, item.intervalDays);
+      const nextPaidCount = (item.paidInstallments || 0) + 1;
+      const isTenureCompleted = Boolean(item.totalInstallments && nextPaidCount >= item.totalInstallments);
+
       return {
         ...item,
         lastRun: item.nextDate,
         nextDate: advancedDate,
+        paidInstallments: item.totalInstallments ? nextPaidCount : item.paidInstallments,
+        enabled: isTenureCompleted ? false : item.enabled,
       };
     }
     return item;
@@ -932,6 +966,7 @@ export function processDueRecurringTransactions(
       recurring: updatedRecurring,
       transactions: [...newTransactions, ...state.transactions],
       investments: updatedInvestments,
+      loans: updatedLoans,
     },
     processedCount: newTransactions.length,
     processedItems,

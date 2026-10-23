@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Calculator, Landmark, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InputField, SelectField } from "@/components/shared/FormFields";
@@ -21,6 +21,15 @@ export function RecurringModal({
   onSave: (form: Partial<RecurringItem>) => void;
   onAddCategory?: (category: Category) => void;
 }) {
+  const currencySymbol =
+    data.preferences.currency === "INR"
+      ? "₹"
+      : data.preferences.currency === "USD"
+      ? "$"
+      : data.preferences.currency === "EUR"
+      ? "€"
+      : "£";
+
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
   const [form, setForm] = useState<Partial<RecurringItem>>(() =>
     item
@@ -40,6 +49,24 @@ export function RecurringModal({
           enabled: true,
         }
   );
+
+  const [isInstallmentPlan, setIsInstallmentPlan] = useState<boolean>(
+    Boolean(item?.totalInstallments || item?.loanId)
+  );
+  const [totalInstallments, setTotalInstallments] = useState<number | "">(
+    item?.totalInstallments !== undefined ? item.totalInstallments : ""
+  );
+  const [paidInstallments, setPaidInstallments] = useState<number | "">(
+    item?.paidInstallments !== undefined ? item.paidInstallments : 0
+  );
+  const [selectedLoanId, setSelectedLoanId] = useState<string>(
+    item?.loanId ?? ""
+  );
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const totalNum = Number(totalInstallments) || 0;
+  const paidNum = Number(paidInstallments) || 0;
+  const remainingInstallments = Math.max(0, totalNum - paidNum);
 
   const handleQuickCreateCategory = (catForm: Partial<Category>) => {
     if (!catForm.name?.trim()) return;
@@ -65,10 +92,61 @@ export function RecurringModal({
     }
   };
 
+  const handleLoanSelect = (loanId: string) => {
+    setSelectedLoanId(loanId);
+    if (!loanId) return;
+
+    const loan = data.loans?.find((l) => l.id === loanId);
+    if (loan) {
+      setForm((f) => ({
+        ...f,
+        name: `${loan.name} (EMI)`,
+        amount: loan.emiAmount,
+        accountId: loan.repaymentAccountId || f.accountId,
+      }));
+      setTotalInstallments(loan.tenureMonths);
+      setPaidInstallments(loan.paidEmisCount || 0);
+      setIsInstallmentPlan(true);
+    }
+  };
+
+  const handleSave = () => {
+    const errs: Record<string, string> = {};
+
+    if (!form.name?.trim()) {
+      errs.name = "Enter schedule title or description.";
+    }
+
+    if (form.amount === undefined || form.amount === null || Number(form.amount) <= 0) {
+      errs.amount = "Enter an amount greater than 0.";
+    }
+
+    if (isInstallmentPlan) {
+      if (totalInstallments === "" || totalNum <= 0) {
+        errs.totalInstallments = "Total installments must be at least 1.";
+      }
+      if (paidInstallments === "" || paidNum < 0) {
+        errs.paidInstallments = "Installments paid cannot be negative.";
+      } else if (totalNum > 0 && paidNum > totalNum) {
+        errs.paidInstallments = `Paid installments (${paidNum}) cannot exceed total installments (${totalNum}).`;
+      }
+    }
+
+    setErrors(errs);
+    if (Object.keys(errs).length > 0) return;
+
+    onSave({
+      ...form,
+      loanId: selectedLoanId || undefined,
+      totalInstallments: isInstallmentPlan ? (totalNum || undefined) : undefined,
+      paidInstallments: isInstallmentPlan ? paidNum : undefined,
+    });
+  };
+
   return (
     <Modal
       title={item ? "Edit Recurring Schedule" : "Add Recurring Schedule"}
-      description="Automate reminders for repeating bills, subscriptions, or paychecks."
+      description="Automate reminders for repeating bills, loan EMIs, subscriptions, or paychecks."
       onClose={onClose}
       wide
     >
@@ -76,10 +154,15 @@ export function RecurringModal({
         <InputField
           label="Schedule Name / Description"
           value={form.name ?? ""}
-          onChange={(name) => setForm((f) => ({ ...f, name }))}
-          placeholder="e.g. Netflix Subscription, Apartment Rent, Monthly Salary"
+          onChange={(name) => {
+            setForm((f) => ({ ...f, name }));
+            if (errors.name) setErrors((prev) => ({ ...prev, name: "" }));
+          }}
+          placeholder="e.g. Netflix Subscription, Apartment Rent, Car Loan EMI, Monthly Salary"
+          error={errors.name}
           required
         />
+
         <div className="grid gap-3 sm:grid-cols-3">
           <SelectField
             label="Type"
@@ -93,8 +176,8 @@ export function RecurringModal({
               }));
             }}
             options={[
-              { value: "Expense", label: "Expense (Outflow)" },
-              { value: "Income", label: "Income (Inflow)" },
+              { value: "Expense", label: "Expense (Outflow / Bill / EMI)" },
+              { value: "Income", label: "Income (Inflow / Salary)" },
               { value: "Investment", label: "Investment (SIP / Recurring)" },
             ]}
           />
@@ -124,17 +207,31 @@ export function RecurringModal({
               ]}
             />
           )}
-          <InputField
-            label="Amount"
-            type="number"
-            step="0.01"
-            value={form.amount ?? ""}
-            onChange={(amount) => setForm((f) => ({ ...f, amount: Number(amount) }))}
-            placeholder="0.00"
-            required
-          />
+
+          <label className="block">
+            <span className="wt-label">
+              Amount ({currencySymbol}) <span className="text-destructive">*</span>
+            </span>
+            <input
+              className="wt-field font-semibold"
+              type="number"
+              min="0.01"
+              step="any"
+              value={form.amount !== undefined && form.amount !== 0 ? form.amount : ""}
+              onChange={(e) => {
+                setForm((f) => ({ ...f, amount: e.target.value === "" ? 0 : Number(e.target.value) }));
+                if (errors.amount) setErrors((prev) => ({ ...prev, amount: "" }));
+              }}
+              placeholder="0.00"
+              required
+            />
+            {errors.amount && (
+              <span className="mt-1 block text-xs text-destructive">{errors.amount}</span>
+            )}
+          </label>
         </div>
 
+        {/* Investment holding link section */}
         {form.type === "Investment" && (
           <div className="rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-2">
             <span className="block text-xs font-bold text-foreground">
@@ -160,10 +257,132 @@ export function RecurringModal({
               <option value="">＋ Link or create holding with name above…</option>
               {data.investments?.map((h) => (
                 <option key={h.id} value={h.id}>
-                  {h.name} ({h.assetType}) · Current: ₹{h.currentAmount.toLocaleString("en-IN")}
+                  {h.name} ({h.assetType}) · Current: {currencySymbol}{h.currentAmount.toLocaleString("en-IN")}
                 </option>
               ))}
             </select>
+          </div>
+        )}
+
+        {/* PROMINENT LOAN / EMI INSTALLMENT TRACKING (ASK HOW MUCH PAID & HOW MUCH LEFT) */}
+        {form.type === "Expense" && (
+          <div className="rounded-xl border border-border/80 bg-muted/30 p-3.5 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  className="size-4 rounded accent-primary cursor-pointer"
+                  checked={isInstallmentPlan}
+                  onChange={(e) => setIsInstallmentPlan(e.target.checked)}
+                />
+                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Calculator size={14} className="text-primary" /> Track as Loan EMI or Installment Plan
+                </span>
+              </label>
+
+              {isInstallmentPlan && totalNum > 0 && (
+                <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-extrabold text-primary tabular-nums">
+                  {paidNum} of {totalNum} Paid · {remainingInstallments} Left
+                </span>
+              )}
+            </div>
+
+            {isInstallmentPlan && (
+              <div className="space-y-3 pt-1 border-t border-border/50">
+                {/* Optional link to active registered loan */}
+                {(data.loans ?? []).length > 0 && (
+                  <div>
+                    <label className="wt-label mb-1">Link to Registered Loan (Optional)</label>
+                    <select
+                      className="wt-field text-xs font-medium bg-background"
+                      value={selectedLoanId}
+                      onChange={(e) => handleLoanSelect(e.target.value)}
+                    >
+                      <option value="">-- Standalone Installment / No Linked Loan --</option>
+                      {data.loans?.map((loan) => (
+                        <option key={loan.id} value={loan.id}>
+                          {loan.name} ({loan.lenderInstitution}) · {currencySymbol}{loan.emiAmount.toLocaleString()}/mo · {loan.paidEmisCount || 0}/{loan.tenureMonths} paid
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {/* Total Installments */}
+                  <label className="block">
+                    <span className="wt-label">
+                      Total Installments (Months) <span className="text-destructive">*</span>
+                    </span>
+                    <input
+                      className="wt-field font-semibold bg-background"
+                      type="number"
+                      min="1"
+                      step="1"
+                      placeholder="e.g. 36 or 60"
+                      value={totalInstallments}
+                      onChange={(e) => {
+                        setTotalInstallments(e.target.value === "" ? "" : Math.floor(Number(e.target.value)));
+                        if (errors.totalInstallments) setErrors((prev) => ({ ...prev, totalInstallments: "" }));
+                      }}
+                    />
+                    {errors.totalInstallments && (
+                      <span className="mt-1 block text-xs text-destructive">{errors.totalInstallments}</span>
+                    )}
+                  </label>
+
+                  {/* Installments Paid (Asked directly: e.g. 4 or 10) */}
+                  <label className="block">
+                    <span className="wt-label">
+                      Installments Already Paid <span className="text-destructive">*</span>
+                    </span>
+                    <input
+                      className="wt-field font-semibold text-emerald-600 dark:text-emerald-400 bg-background"
+                      type="number"
+                      min="0"
+                      max={totalNum || 600}
+                      step="1"
+                      placeholder="e.g. 4 or 10"
+                      value={paidInstallments}
+                      onChange={(e) => {
+                        setPaidInstallments(e.target.value === "" ? "" : Math.floor(Number(e.target.value)));
+                        if (errors.paidInstallments) setErrors((prev) => ({ ...prev, paidInstallments: "" }));
+                      }}
+                    />
+                    {errors.paidInstallments && (
+                      <span className="mt-1 block text-xs text-destructive">{errors.paidInstallments}</span>
+                    )}
+                  </label>
+
+                  {/* Installments Left (Calculated automatically) */}
+                  <label className="block">
+                    <span className="wt-label">Installments Left</span>
+                    <div className="wt-field font-extrabold text-amber-600 dark:text-amber-400 bg-muted/60 flex items-center justify-between select-none">
+                      <span>{remainingInstallments} remaining</span>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase">
+                        {totalNum > 0 ? `${((paidNum / totalNum) * 100).toFixed(0)}%` : "0%"}
+                      </span>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Progress bar preview */}
+                {totalNum > 0 && (
+                  <div className="space-y-1.5 pt-0.5">
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                      <div
+                        className="h-full rounded-full bg-emerald-500 transition-all duration-300"
+                        style={{ width: `${Math.min((paidNum / totalNum) * 100, 100)}%` }}
+                      />
+                    </div>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>{paidNum} paid so far ({currencySymbol}{((form.amount || 0) * paidNum).toLocaleString()})</span>
+                      <span>{remainingInstallments} remaining ({currencySymbol}{((form.amount || 0) * remainingInstallments).toLocaleString()})</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         )}
 
@@ -200,6 +419,7 @@ export function RecurringModal({
               .map((a) => ({ value: a.id, label: a.name }))}
           />
         </div>
+
         <div
           className={`grid gap-3 ${
             form.frequency === "Custom interval" ? "sm:grid-cols-4" : "sm:grid-cols-3"
@@ -247,6 +467,7 @@ export function RecurringModal({
             onChange={(nextDate) => setForm((f) => ({ ...f, nextDate }))}
           />
         </div>
+
         <div className="flex items-center gap-2">
           <Checkbox
             checked={form.enabled ?? true}
@@ -254,11 +475,12 @@ export function RecurringModal({
           />
           <span className="text-sm font-medium">Keep schedule active</span>
         </div>
+
         <div className="flex justify-end gap-2 pt-2 border-t border-border">
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => onSave(form)}>{item ? "Save Changes" : "Add Schedule"}</Button>
+          <Button onClick={handleSave}>{item ? "Save Changes" : "Add Schedule"}</Button>
         </div>
       </div>
 

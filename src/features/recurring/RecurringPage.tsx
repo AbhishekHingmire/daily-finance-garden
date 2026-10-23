@@ -214,6 +214,16 @@ export function RecurringPage({
                           SIP · {item.instrumentType || "Investment"}
                         </span>
                       )}
+                      {Boolean(item.totalInstallments) && (
+                        <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:text-amber-300 tabular-nums">
+                          {item.paidInstallments || 0}/{item.totalInstallments} paid ({Math.max(0, (item.totalInstallments || 0) - (item.paidInstallments || 0))} left)
+                        </span>
+                      )}
+                      {item.loanId && !item.totalInstallments && (
+                        <span className="rounded-md bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:text-rose-300">
+                          Loan EMI
+                        </span>
+                      )}
                       {item.need && !isIncome && !isInv && (
                         <span
                           className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${

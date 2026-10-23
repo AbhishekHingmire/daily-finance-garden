@@ -215,6 +215,9 @@ export function LoansPage({
             const paid = Math.max(0, principal - outstanding);
             const pctPaid = principal > 0 ? (paid / principal) * 100 : 0;
             const accountName = getAccountName(loan.repaymentAccountId);
+            const paidCount = loan.paidEmisCount || 0;
+            const tenure = loan.tenureMonths || 0;
+            const remainingEmis = Math.max(0, tenure - paidCount);
 
             return (
               <div
@@ -266,19 +269,29 @@ export function LoansPage({
                   )}
                 </div>
 
-                {/* Progress Bar */}
+                {/* Progress Bar & EMIs Paid vs Left */}
                 <div className="mt-4 space-y-1.5">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground font-medium">Payoff Progress</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                      {money(paid)} of {money(principal)} paid ({pctPaid.toFixed(1)}%)
+                    <span className="font-semibold text-foreground flex items-center gap-1.5">
+                      <span className="text-emerald-600 dark:text-emerald-400 font-bold tabular-nums">{paidCount} paid</span>
+                      <span className="text-muted-foreground/60">/</span>
+                      <span className="tabular-nums">{tenure} total</span>
+                    </span>
+                    <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-700 dark:text-amber-300 tabular-nums">
+                      {remainingEmis} EMIs left
                     </span>
                   </div>
+
                   <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                     <div
                       className="h-full rounded-full bg-emerald-500 transition-all duration-300"
                       style={{ width: `${Math.min(pctPaid, 100)}%` }}
                     />
+                  </div>
+
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span className="tabular-nums">{money(paid)} paid ({pctPaid.toFixed(1)}%)</span>
+                    <span className="tabular-nums">{money(outstanding)} left</span>
                   </div>
                 </div>
 
