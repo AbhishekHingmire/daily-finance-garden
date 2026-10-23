@@ -383,29 +383,29 @@ export function CashFlowVelocityChart({
       className={`rounded-2xl border border-border/80 bg-card p-4 sm:p-5 pb-3.5 wt-shadow ${className}`}
     >
       <div>
-        {/* Header with Title and Optional All Reports Link */}
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border/60">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="wt-display text-base font-bold text-foreground">
+        {/* Header with Title, Legends, and Always-Top-Right Expand CTA */}
+        <div className="flex items-start justify-between gap-2.5 sm:gap-4 pb-3 border-b border-border/60">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <h3 className="wt-display text-sm sm:text-base font-bold text-foreground truncate">
                 {title}
               </h3>
               {isMonthlyFilter ? (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
                   Day-by-Day Flow
                 </span>
               ) : (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+                <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
                   Monthly Flow
                 </span>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-none">
               {subtitle ?? defaultSubtitle}
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-3 text-xs">
               <span className="flex items-center gap-1.5 text-muted-foreground font-semibold">
                 <span className="size-2.5 rounded-full bg-emerald-500 shadow-xs" /> Inflows
@@ -418,7 +418,7 @@ export function CashFlowVelocityChart({
             {onNavigateToReports && (
               <button
                 type="button"
-                className="text-xs font-semibold text-primary hover:underline ml-1 cursor-pointer"
+                className="text-xs font-semibold text-primary hover:underline cursor-pointer"
                 onClick={onNavigateToReports}
               >
                 All Reports →
@@ -429,7 +429,7 @@ export function CashFlowVelocityChart({
               <button
                 type="button"
                 onClick={onExpand}
-                className="grid size-7.5 place-items-center rounded-lg border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-2xs cursor-pointer ml-1"
+                className="grid size-7.5 place-items-center rounded-lg border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-2xs cursor-pointer shrink-0"
                 title="Expand Chart"
                 aria-label="Expand Chart"
               >

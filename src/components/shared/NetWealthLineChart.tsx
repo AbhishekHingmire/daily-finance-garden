@@ -231,25 +231,25 @@ export function NetWealthLineChart({
   return (
     <div className={`rounded-2xl border border-border/80 bg-card p-4 sm:p-5 pb-3.5 wt-shadow ${className}`}>
       <div>
-        <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border/60">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="wt-display text-base font-bold text-foreground">{title}</h3>
-              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+        <div className="flex items-start justify-between gap-2.5 sm:gap-4 pb-3 border-b border-border/60">
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <h3 className="wt-display text-sm sm:text-base font-bold text-foreground truncate">{title}</h3>
+              <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
                 Cumulative Trend
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-none">{subtitle}</p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {activePoint && (
-              <div className="flex items-center gap-2">
-                <span className="hidden sm:inline-block text-[11px] text-muted-foreground font-medium">
+              <div className="hidden sm:flex items-center gap-2">
+                <span className="text-[11px] text-muted-foreground font-medium">
                   {activePoint.fullLabel}:
                 </span>
                 <div className="flex items-center gap-2 tabular-nums">
                   <span
-                    className={`wt-display text-base font-extrabold ${
+                    className={`wt-display text-sm font-extrabold ${
                       activePoint.value >= 0
                         ? "text-emerald-600 dark:text-emerald-400"
                         : "text-rose-600 dark:text-rose-400"
@@ -268,7 +268,7 @@ export function NetWealthLineChart({
               <button
                 type="button"
                 onClick={onExpand}
-                className="grid size-7.5 place-items-center rounded-lg border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-2xs cursor-pointer ml-1"
+                className="grid size-7.5 place-items-center rounded-lg border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-2xs cursor-pointer shrink-0"
                 title="Expand Chart"
                 aria-label="Expand Chart"
               >
