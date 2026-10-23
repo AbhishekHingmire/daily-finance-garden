@@ -29,6 +29,7 @@ import {
   getAllAccountBalances,
   getCategorySpend,
   getInvestmentSummary,
+  getLoansSummary,
   type CustomFund,
   type Section,
   type Transaction,
@@ -130,12 +131,14 @@ export function Dashboard({
     [monthOutflowTransactions]
   );
 
-  const monthEmiPaid = useMemo(
-    () =>
-      periodTransactions
-        .filter((t) => t.type === "EMI / Loan Payment")
-        .reduce((sum, t) => sum + t.amount, 0),
+  const monthEmiTransactions = useMemo(
+    () => periodTransactions.filter((t) => t.type === "EMI / Loan Payment"),
     [periodTransactions]
+  );
+
+  const monthEmiPaid = useMemo(
+    () => monthEmiTransactions.reduce((sum, t) => sum + t.amount, 0),
+    [monthEmiTransactions]
   );
 
   const netCashFlow = monthIncome - monthExpenses;
@@ -186,9 +189,9 @@ export function Dashboard({
     };
   }, [activeAccounts, accountBalances]);
 
-  const loansOutstanding = useMemo(() => {
-    return (data.loans ?? []).reduce((sum, l) => sum + (l.currentOutstanding || 0), 0);
-  }, [data.loans]);
+  const activeLoans = useMemo(() => data.loans ?? [], [data.loans]);
+  const loansSummary = useMemo(() => getLoansSummary(activeLoans), [activeLoans]);
+  const loansOutstanding = loansSummary.totalOutstanding;
 
   const totalLiabilities = creditLiabilities + loansOutstanding;
 
@@ -391,7 +394,7 @@ export function Dashboard({
           </span>
         </div>
 
-        <div className="grid grid-cols-1 gap-2.5 sm:gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {/* Period Inflows */}
           <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
             <div className="flex items-center justify-between sm:mb-2">
@@ -429,6 +432,32 @@ export function Dashboard({
               </p>
               <p className="wt-display text-base sm:text-2xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
                 −{money(monthExpenses)}
+              </p>
+            </div>
+          </div>
+
+          {/* EMIs & Debt Servicing */}
+          <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
+            <div className="flex items-center justify-between sm:mb-2">
+              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                EMIs & Debt Servicing
+              </span>
+              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+                <Landmark size={15} />
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+              <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+                {monthEmiTransactions.length > 0
+                  ? `${monthEmiTransactions.length} paid${loansSummary.totalMonthlyEmi > 0 ? ` · Commitment: ${money(loansSummary.totalMonthlyEmi)}/mo` : ""}`
+                  : activeLoans.length > 0
+                  ? `${activeLoans.length} active loans · ${money(loansSummary.totalMonthlyEmi)}/mo`
+                  : "Zero debt obligations"}
+              </p>
+              <p className={`wt-display text-base sm:text-2xl font-extrabold tabular-nums whitespace-nowrap shrink-0 sm:order-1 ${
+                monthEmiPaid > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"
+              }`}>
+                {monthEmiPaid > 0 ? `−${money(monthEmiPaid)}` : money(0)}
               </p>
             </div>
           </div>

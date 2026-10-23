@@ -1,22 +1,18 @@
 import React from "react";
 import {
-  ArrowDownLeft,
-  ArrowUpRight,
   Download,
   FileUp,
   Landmark,
   Plus,
   RotateCcw,
-  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { DateRangeFilter, type DateRangeValue } from "@/components/shared/DateRangeFilter";
+import { DateRangeFilter, matchesDateRange, type DateRangeValue } from "@/components/shared/DateRangeFilter";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { SelectField } from "@/components/shared/FormFields";
 import { TransactionTable } from "@/components/shared/TransactionTable";
 import {
   getLoansSummary,
-  INVESTMENT_OUTFLOW_ACTIONS,
   type Transaction,
   type WealthState,
 } from "@/lib/wealthtrack";
@@ -105,71 +101,21 @@ export function TransactionsPage({
   const activeLoans = React.useMemo(() => data.loans ?? [], [data.loans]);
   const loansSummary = React.useMemo(() => getLoansSummary(activeLoans), [activeLoans]);
 
-  // Live dynamic totals for filtered transactions
-  const {
-    filteredNet,
-    filteredInflow,
-    filteredOutflow,
-    filteredEmi,
-    inflowCount,
-    outflowCount,
-    emiCount,
-  } = React.useMemo(() => {
-    let inflow = 0;
-    let outflow = 0;
+  const periodTransactions = React.useMemo(() => {
+    return data.transactions.filter((tx) => matchesDateRange(tx.date, dateRange));
+  }, [data.transactions, dateRange]);
+
+  const { periodEmi, periodEmiCount } = React.useMemo(() => {
     let emi = 0;
-    let inCount = 0;
-    let outCount = 0;
-    let eCount = 0;
-    let net = 0;
-
-    for (const tx of rows) {
-      const isInvestmentOutflow =
-        tx.type === "Investment" &&
-        (!tx.investmentAction ||
-          INVESTMENT_OUTFLOW_ACTIONS.includes(tx.investmentAction));
-
-      const isPositive =
-        tx.type === "Income" ||
-        tx.type === "Refund" ||
-        tx.type === "Borrow / Loan Taken" ||
-        tx.type === "Debt Recovery" ||
-        (tx.type === "Adjustment" && tx.amount > 0) ||
-        (tx.type === "Investment" &&
-          !isInvestmentOutflow &&
-          tx.investmentAction !== "Valuation");
-
-      const isNegative =
-        tx.type === "Expense" ||
-        tx.type === "EMI / Loan Payment" ||
-        tx.type === "Lend / Loan Given" ||
-        isInvestmentOutflow ||
-        (tx.type === "Adjustment" && tx.amount < 0);
-
-      if (isPositive) {
-        inflow += Math.abs(tx.amount);
-        net += Math.abs(tx.amount);
-        inCount++;
-      } else if (isNegative) {
-        outflow += Math.abs(tx.amount);
-        net -= Math.abs(tx.amount);
-        outCount++;
-        if (tx.type === "EMI / Loan Payment") {
-          emi += Math.abs(tx.amount);
-          eCount++;
-        }
+    let count = 0;
+    for (const tx of periodTransactions) {
+      if (tx.type === "EMI / Loan Payment") {
+        emi += Math.abs(tx.amount);
+        count++;
       }
     }
-    return {
-      filteredNet: net,
-      filteredInflow: inflow,
-      filteredOutflow: outflow,
-      filteredEmi: emi,
-      inflowCount: inCount,
-      outflowCount: outCount,
-      emiCount: eCount,
-    };
-  }, [rows]);
+    return { periodEmi: emi, periodEmiCount: count };
+  }, [periodTransactions]);
 
   return (
     <div className="space-y-6">
@@ -285,131 +231,6 @@ export function TransactionsPage({
         </div>
       </div>
 
-      {/* Dynamic Filtered Transactions Financial Summary */}
-      <div className="grid gap-2.5 sm:gap-3 sm:grid-cols-3">
-        {/* Total Inflows */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setTxType(txType === "Income" ? "All types" : "Income")}
-          className={`cursor-pointer rounded-xl sm:rounded-2xl border p-2.5 sm:p-5 wt-shadow transition-all ${
-            txType === "Income"
-              ? "border-emerald-500 ring-2 ring-emerald-500/20 bg-emerald-500/[0.04]"
-              : "border-border/60 bg-card hover:border-emerald-500/50"
-          }`}
-        >
-          <div className="flex items-center justify-between sm:mb-2">
-            <div className="flex items-center gap-2">
-              <span className="grid size-6 sm:size-7 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <ArrowDownLeft size={14} />
-              </span>
-              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Total Inflows
-              </span>
-            </div>
-            <span className="rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-2 py-0.5 text-[10px] font-bold tabular-nums">
-              {inflowCount} {inflowCount === 1 ? "deposit" : "deposits"}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
-            <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
-              Salary, refunds & incoming funds
-            </p>
-            <p className="wt-display text-base sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
-              +{money(filteredInflow)}
-            </p>
-          </div>
-        </div>
-
-        {/* Total Outflows */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setTxType(txType === "Expense" ? "All types" : "Expense")}
-          className={`cursor-pointer rounded-xl sm:rounded-2xl border p-2.5 sm:p-5 wt-shadow transition-all ${
-            txType === "Expense"
-              ? "border-rose-500 ring-2 ring-rose-500/20 bg-rose-500/[0.04]"
-              : "border-border/60 bg-card hover:border-rose-500/50"
-          }`}
-        >
-          <div className="flex items-center justify-between sm:mb-2">
-            <div className="flex items-center gap-2">
-              <span className="grid size-6 sm:size-7 place-items-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                <ArrowUpRight size={14} />
-              </span>
-              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                Total Outflows
-              </span>
-            </div>
-            <span className="rounded-full bg-rose-500/10 text-rose-700 dark:text-rose-300 px-2 py-0.5 text-[10px] font-bold tabular-nums">
-              {outflowCount} {outflowCount === 1 ? "payment" : "payments"}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
-            <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
-              Living expenses, bills & debits
-            </p>
-            <p className="wt-display text-base sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
-              −{money(filteredOutflow)}
-            </p>
-          </div>
-        </div>
-
-        {/* EMIs & Debt Repayments */}
-        <div
-          role="button"
-          tabIndex={0}
-          onClick={() => setTxType(txType === "EMI / Loan Payment" ? "All types" : "EMI / Loan Payment")}
-          className={`cursor-pointer rounded-xl sm:rounded-2xl border p-2.5 sm:p-5 wt-shadow transition-all ${
-            txType === "EMI / Loan Payment"
-              ? "border-amber-500 ring-2 ring-amber-500/20 bg-amber-500/[0.04]"
-              : "border-border/60 bg-card hover:border-amber-500/50"
-          }`}
-        >
-          <div className="flex items-center justify-between sm:mb-2">
-            <div className="flex items-center gap-2">
-              <span className="grid size-6 sm:size-7 place-items-center rounded-lg bg-amber-500/10 text-amber-600 dark:text-amber-400">
-                <Landmark size={14} />
-              </span>
-              <span className="text-[11px] sm:text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                EMIs & Debt Servicing
-              </span>
-            </div>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums ${
-                emiCount > 0
-                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20"
-                  : activeLoans.length > 0
-                  ? "bg-muted text-muted-foreground"
-                  : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-              }`}
-            >
-              {emiCount > 0
-                ? `${emiCount} paid`
-                : activeLoans.length > 0
-                ? `${activeLoans.length} active loans`
-                : "Zero debt"}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
-            <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
-              {loansSummary.totalMonthlyEmi > 0
-                ? `Commitment: ${money(loansSummary.totalMonthlyEmi)}/mo`
-                : "Active loan EMIs & debt repayments"}
-            </p>
-            <p
-              className={`wt-display text-base sm:text-3xl font-extrabold tabular-nums whitespace-nowrap shrink-0 sm:order-1 ${
-                filteredEmi > 0
-                  ? "text-amber-600 dark:text-amber-400"
-                  : "text-foreground"
-              }`}
-            >
-              {filteredEmi > 0 ? `−${money(filteredEmi)}` : money(0)}
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Dedicated Section for EMIs & Loan Obligations */}
       {activeLoans.length > 0 && (
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3 sm:px-4 sm:py-3 text-xs wt-shadow">
@@ -425,7 +246,7 @@ export function TransactionsPage({
                 </span>
               </p>
               <p className="text-[11px] text-muted-foreground mt-0.5">
-                Total Outstanding: <strong className="text-foreground tabular-nums">{money(loansSummary.totalOutstanding)}</strong> · Monthly EMI: <strong className="text-foreground tabular-nums">{money(loansSummary.totalMonthlyEmi)}/mo</strong> · Paid in selection: <strong className="text-amber-700 dark:text-amber-300 tabular-nums">{money(filteredEmi)}</strong> ({emiCount} {emiCount === 1 ? "payment" : "payments"})
+                Total Outstanding: <strong className="text-foreground tabular-nums">{money(loansSummary.totalOutstanding)}</strong> · Monthly EMI: <strong className="text-foreground tabular-nums">{money(loansSummary.totalMonthlyEmi)}/mo</strong> · Paid in selection: <strong className="text-amber-700 dark:text-amber-300 tabular-nums">{money(periodEmi)}</strong> ({periodEmiCount} {periodEmiCount === 1 ? "payment" : "payments"})
               </p>
             </div>
           </div>
