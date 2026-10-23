@@ -13,8 +13,11 @@ import { InputField, SelectField } from "@/components/shared/FormFields";
 import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import {
   calculateNextSalaryInfo,
+  formatDisplayDate,
   type WealthState,
 } from "@/lib/wealthtrack";
+
+export { formatDisplayDate };
 
 export interface SalaryUpdatePayload {
   name?: string;
@@ -33,16 +36,6 @@ interface SalaryCountdownCardProps {
   onUpdateSalary?: (payload: SalaryUpdatePayload) => void;
 }
 
-function formatDisplayDate(dateStr: string) {
-  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  if (Number.isNaN(date.getTime())) return dateStr;
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(date);
-}
 
 export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
   data,
