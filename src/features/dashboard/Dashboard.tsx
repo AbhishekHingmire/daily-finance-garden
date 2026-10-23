@@ -375,56 +375,6 @@ export function Dashboard({
         </div>
       ))}
 
-      {/* Net Worth & Assets/Liabilities Overview Card */}
-      <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-5 wt-shadow divide-y divide-border/60 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
-        {/* Section 1: Total Liquid Net Worth */}
-        <div className="pb-2.5 sm:pb-0 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Total Liquid Net Worth
-            </p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              Across {activeAccounts.length} active financial accounts
-            </p>
-          </div>
-          <p className="wt-display text-base sm:text-3xl font-extrabold text-primary tabular-nums whitespace-nowrap shrink-0 sm:mt-1">
-            {money(totalBalance)}
-          </p>
-        </div>
-
-        {/* Section 2: Liquid Assets */}
-        <div className="py-2.5 sm:py-0 sm:border-l sm:border-border/60 sm:pl-4 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Liquid Assets
-            </p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              {assetAccounts.length} Bank, Cash & Wallet accounts
-            </p>
-          </div>
-          <p className="wt-display text-base sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-1">
-            {money(liquidAssets)}
-          </p>
-        </div>
-
-        {/* Section 3: Liabilities */}
-        <div className="pt-2.5 sm:pt-0 sm:border-l sm:border-border/60 sm:pl-4 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Liabilities & Debt
-            </p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              {data.loans && data.loans.length > 0
-                ? `${liabilityAccounts.length} Cards · ${data.loans.length} active loans`
-                : `${liabilityAccounts.length} Credit Card & liability accounts`}
-            </p>
-          </div>
-          <p className="wt-display text-base sm:text-xl font-bold text-amber-600 dark:text-amber-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-1">
-            {money(totalLiabilities)}
-          </p>
-        </div>
-      </div>
-
       {/* Timeframe Filter Bar */}
       <div className="flex items-center justify-between">
         <DateRangeFilter value={dateRange} onChange={setDateRange} />

@@ -8,6 +8,7 @@ import {
   Pencil,
   Plus,
   Scale,
+  Sparkles,
   Trash2,
   TrendingUp,
   Wallet,
@@ -21,9 +22,11 @@ import { ReconcileModal } from "./ReconcileModal";
 import {
   getAccountBalance,
   getAllAccountBalances,
+  getInvestmentSummary,
   getLoansSummary,
   safeAmount,
   type Account,
+  type Section,
   type Transaction,
   type WealthState,
 } from "@/lib/wealthtrack";
@@ -43,6 +46,7 @@ export function AccountsPage({
   onEditTransaction,
   onDeleteTransaction,
   onBulkDeleteTransactions,
+  onNavigate,
 }: {
   data: WealthState;
   money: (amount: number) => string;
@@ -58,6 +62,7 @@ export function AccountsPage({
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (transaction: Transaction) => void;
   onBulkDeleteTransactions?: (ids?: string[]) => void;
+  onNavigate?: (section: Section) => void;
 }) {
   const [reconcilingAccount, setReconcilingAccount] = useState<Account | null>(null);
 
@@ -102,6 +107,42 @@ export function AccountsPage({
       liabilityAccounts: liabilitiesList,
     };
   }, [activeAccounts, accountBalances, data.loans]);
+
+  const holdingsValuation = useMemo(() => {
+    return (data.investments ?? []).reduce((sum, h) => sum + (h.currentAmount || 0), 0);
+  }, [data.investments]);
+
+  const investmentSummary = useMemo(() => {
+    return getInvestmentSummary(data.transactions);
+  }, [data.transactions]);
+
+  const effectiveInvestmentsVal = holdingsValuation > 0
+    ? holdingsValuation
+    : (investmentSummary.currentValue ?? investmentSummary.contributions);
+
+  const totalNetWorth = totalBalance + effectiveInvestmentsVal - totalLiabilities;
+
+  const totalAssetsSum = Math.max(1, totalAssets + effectiveInvestmentsVal + totalLiabilities);
+  const liquidPct = Math.round((totalAssets / totalAssetsSum) * 100);
+  const invPct = Math.round((effectiveInvestmentsVal / totalAssetsSum) * 100);
+  const liabilityPct = Math.round((totalLiabilities / totalAssetsSum) * 100);
+
+  const monthIncome = useMemo(
+    () =>
+      data.transactions
+        .filter((t) => t.type === "Income" || t.type === "Borrow / Loan Taken" || t.type === "Debt Recovery" || t.type === "Refund")
+        .reduce((sum, item) => sum + item.amount, 0),
+    [data.transactions]
+  );
+  const monthExpenses = useMemo(
+    () =>
+      data.transactions
+        .filter((t) => t.type === "Expense" || t.type === "EMI / Loan Payment" || t.type === "Lend / Loan Given")
+        .reduce((sum, item) => sum + item.amount, 0),
+    [data.transactions]
+  );
+  const netCashFlow = monthIncome - monthExpenses;
+  const savingsRate = monthIncome > 0 ? Math.round((netCashFlow / monthIncome) * 100) : 0;
 
   // Balanced grid class: when 4 accounts, render 2-col on tablet and 4-col on desktop
   // to avoid leaving an orphan 4th card on a second row
@@ -153,53 +194,162 @@ export function AccountsPage({
         }
       />
 
-      {/* Net Worth & Assets/Liabilities Overview Card */}
-      <div className="rounded-xl sm:rounded-2xl border border-border/80 bg-card p-3 sm:p-5 wt-shadow divide-y divide-border/60 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
-        {/* Section 1: Total Liquid Net Worth */}
-        <div className="pb-2.5 sm:pb-0 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Total Liquid Net Worth
+      {/* Portfolio Net Worth Hero Card */}
+      <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 sm:p-6 wt-shadow hover:border-border transition-all">
+        <div className="flex flex-col gap-5 sm:gap-6 lg:flex-row lg:items-center lg:justify-between relative z-10">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Total Net Worth
+              </span>
+              {savingsRate > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">
+                  <Sparkles size={10} /> +{savingsRate}% Saved this period
+                </span>
+              )}
+            </div>
+
+            <p className="wt-display mt-2 text-2xl sm:text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight tabular-nums whitespace-nowrap">
+              {money(totalNetWorth)}
             </p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              Across {activeAccounts.length} active financial accounts
+            <p className="mt-1 text-xs text-muted-foreground">
+              Aggregated wealth across liquid cash, investments, and liabilities
             </p>
           </div>
-          <p className="wt-display text-base sm:text-3xl font-extrabold text-primary tabular-nums whitespace-nowrap shrink-0 sm:mt-1">
-            {money(totalBalance)}
-          </p>
+
+          {/* Interactive Sub-KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3 border-t border-border/60 pt-4 sm:pt-5 lg:border-t-0 lg:border-l lg:pl-6 lg:pt-0">
+            <div
+              className="group flex items-center justify-between sm:block rounded-xl border border-border/60 bg-muted/20 hover:bg-card hover:border-border/90 p-3 transition-all"
+            >
+              <div className="flex items-center justify-between sm:w-full">
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+                    Liquid Cash
+                  </span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block mt-0.5 sm:hidden">
+                    {liquidPct}% of portfolio
+                  </span>
+                </div>
+                <span className="grid size-6 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hidden sm:grid">
+                  <Wallet size={12} />
+                </span>
+              </div>
+              <div className="flex items-center gap-2 sm:block sm:mt-1.5 shrink-0">
+                <p className="text-sm sm:text-base font-bold text-foreground tabular-nums whitespace-nowrap">
+                  {money(totalAssets)}
+                </p>
+                <span className="grid size-6 place-items-center rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 sm:hidden">
+                  <Wallet size={12} />
+                </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground hidden sm:block mt-0.5">
+                {liquidPct}% of portfolio
+              </span>
+            </div>
+
+            <div
+              className={`group flex items-center justify-between sm:block rounded-xl border border-border/60 bg-muted/20 hover:bg-card hover:border-border/90 p-3 transition-all ${
+                onNavigate ? "cursor-pointer" : ""
+              }`}
+              onClick={() => onNavigate?.("Investments")}
+            >
+              <div className="flex items-center justify-between sm:w-full">
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+                    Investments
+                  </span>
+                  <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium block mt-0.5 sm:hidden">
+                    {invPct}% of portfolio
+                  </span>
+                </div>
+                <span className="grid size-6 place-items-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 hidden sm:grid">
+                  <TrendingUp size={12} />
+                </span>
+              </div>
+              <div className="flex items-center gap-2 sm:block sm:mt-1.5 shrink-0">
+                <p className="text-sm sm:text-base font-bold text-foreground tabular-nums whitespace-nowrap">
+                  {money(effectiveInvestmentsVal)}
+                </p>
+                <span className="grid size-6 place-items-center rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400 sm:hidden">
+                  <TrendingUp size={12} />
+                </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground hidden sm:block mt-0.5">
+                {invPct}% of portfolio
+              </span>
+            </div>
+
+            <div
+              className={`group flex items-center justify-between sm:block rounded-xl border border-border/60 bg-muted/20 hover:bg-card hover:border-border/90 p-3 transition-all ${
+                onNavigate ? "cursor-pointer" : ""
+              }`}
+              onClick={() => onNavigate?.("Loans")}
+            >
+              <div className="flex items-center justify-between sm:w-full">
+                <div>
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
+                    Liabilities & Debt
+                  </span>
+                  <span className="text-[10px] text-rose-600 dark:text-rose-400 font-medium block mt-0.5 sm:hidden">
+                    {(data.loans ?? []).length} loans · {liabilityPct}%
+                  </span>
+                </div>
+                <span className="grid size-6 place-items-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 hidden sm:grid">
+                  <Landmark size={12} />
+                </span>
+              </div>
+              <div className="flex items-center gap-2 sm:block sm:mt-1.5 shrink-0">
+                <p className="text-sm sm:text-base font-bold text-foreground tabular-nums whitespace-nowrap">
+                  {money(totalLiabilities)}
+                </p>
+                <span className="grid size-6 place-items-center rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400 sm:hidden">
+                  <Landmark size={12} />
+                </span>
+              </div>
+              <span className="text-[10px] text-muted-foreground hidden sm:block mt-0.5">
+                {(data.loans ?? []).length} loans · {liabilityPct}% of total
+              </span>
+            </div>
+          </div>
         </div>
 
-        {/* Section 2: Liquid Assets */}
-        <div className="py-2.5 sm:py-0 sm:border-l sm:border-border/60 sm:pl-4 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Liquid Assets
-            </p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              {assetAccounts.length} Bank, Cash & Wallet accounts
-            </p>
+        {/* Proportional Asset Breakdown Bar */}
+        <div className="mt-6 border-t border-border/60 pt-4 relative z-10">
+          <div className="h-2 w-full overflow-hidden rounded-full bg-muted flex shadow-inner">
+            <div
+              style={{ width: `${liquidPct}%` }}
+              className="h-full bg-emerald-500 transition-all"
+              title={`Liquid Cash: ${liquidPct}%`}
+            />
+            <div
+              style={{ width: `${invPct}%` }}
+              className="h-full bg-violet-500 transition-all"
+              title={`Investments: ${invPct}%`}
+            />
+            <div
+              style={{ width: `${liabilityPct}%` }}
+              className="h-full bg-rose-500 transition-all"
+              title={`Liabilities: ${liabilityPct}%`}
+            />
           </div>
-          <p className="wt-display text-base sm:text-xl font-bold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-1">
-            {money(totalAssets)}
-          </p>
-        </div>
-
-        {/* Section 3: Liabilities */}
-        <div className="pt-2.5 sm:pt-0 sm:border-l sm:border-border/60 sm:pl-4 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <p className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Liabilities & Debt
-            </p>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              {data.loans && data.loans.length > 0
-                ? `${liabilityAccounts.length} Cards · ${data.loans.length} active loans`
-                : `${liabilityAccounts.length} Credit Card & liability accounts`}
-            </p>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] sm:text-[11px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-emerald-500" /> Liquid Cash ({liquidPct}%)
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-violet-500" /> Investments ({invPct}%)
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2 rounded-full bg-rose-500" /> Liabilities ({liabilityPct}%)
+              </span>
+            </div>
+            <span className="text-muted-foreground/80 hidden sm:inline">
+              Portfolio Distribution
+            </span>
           </div>
-          <p className="wt-display text-base sm:text-xl font-bold text-amber-600 dark:text-amber-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-1">
-            {money(totalLiabilities)}
-          </p>
         </div>
       </div>
 

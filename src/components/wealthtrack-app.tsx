@@ -2240,6 +2240,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   });
                   setModal("confirm");
                 }}
+                onNavigate={goSection}
               />
             )}
 
