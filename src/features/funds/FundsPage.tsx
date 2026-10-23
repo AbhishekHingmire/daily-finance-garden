@@ -516,6 +516,28 @@ export function FundsPage({
                   </div>
                 );
               })}
+
+              {/* Add Custom Fund Card */}
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingFund(null);
+                  setFundModalOpen(true);
+                }}
+                className="rounded-xl border-2 border-dashed border-border/70 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 p-5 transition-all flex flex-col items-center justify-center text-center gap-2.5 min-h-[200px] group cursor-pointer"
+              >
+                <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all shadow-2xs">
+                  <Plus size={20} />
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-foreground block group-hover:text-primary transition-colors">
+                    Add Custom Fund
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block mt-0.5">
+                    Sinking Fund, Vacation, or Dream Goal
+                  </span>
+                </div>
+              </button>
             </div>
           ) : (
             <div className="rounded-2xl border border-dashed border-border p-8 text-center bg-card/50">
@@ -706,6 +728,29 @@ export function FundsPage({
                   </div>
                 );
               })
+            )}
+
+            {plans.length > 0 && (
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingPlan(null);
+                  setPlanModalOpen(true);
+                }}
+                className="w-full rounded-2xl border-2 border-dashed border-border/70 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 p-6 transition-all flex flex-col sm:flex-row items-center justify-center text-center sm:text-left gap-3.5 group cursor-pointer"
+              >
+                <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all shadow-2xs shrink-0">
+                  <Plus size={20} />
+                </div>
+                <div>
+                  <span className="text-sm font-bold text-foreground block group-hover:text-primary transition-colors">
+                    Simulate Major Purchase or Goal
+                  </span>
+                  <span className="text-[11px] text-muted-foreground block mt-0.5">
+                    Vehicle, Home Down Payment, Luxury Asset, or Wedding
+                  </span>
+                </div>
+              </button>
             )}
           </div>
         </div>
