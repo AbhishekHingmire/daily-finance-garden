@@ -558,16 +558,7 @@ export function TransactionTable({
                   </div>
 
                   {/* Actions Menu */}
-                  <div className="flex items-center justify-center gap-0.5">
-                    <button
-                      type="button"
-                      onClick={() => onDelete(tx)}
-                      title={`Delete "${tx.description}"`}
-                      aria-label={`Delete transaction ${tx.description}`}
-                      className="grid size-7 place-items-center rounded-md text-muted-foreground/50 opacity-0 group-hover/row:opacity-100 hover:text-destructive hover:bg-destructive/10 transition-all cursor-pointer"
-                    >
-                      <Trash2 size={13} />
-                    </button>
+                  <div className="flex items-center justify-center">
                     <ActionMenu
                       items={[
                         {
@@ -653,15 +644,6 @@ export function TransactionTable({
                       {isPositive ? "+" : isOutflow ? "−" : ""}
                       {money(tx.amount)}
                     </span>
-                    <button
-                      type="button"
-                      onClick={() => onDelete(tx)}
-                      title={`Delete "${tx.description}"`}
-                      aria-label={`Delete transaction ${tx.description}`}
-                      className="grid size-7.5 place-items-center rounded-lg text-muted-foreground/50 hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-                    >
-                      <Trash2 size={13} />
-                    </button>
                     <ActionMenu
                       items={[
                         {

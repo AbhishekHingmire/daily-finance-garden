@@ -1054,11 +1054,39 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       setSelectedIds((current) => current.filter((item) => item !== id));
       toast.success("Transaction removed");
     }
-    if (kind === "account") setData((current) => ({ ...current, accounts: current.accounts.map((item) => item.id === id ? { ...item, archived: true } : item) }));
-    if (kind === "category") setData((current) => ({ ...current, categories: current.categories.map((item) => item.id === id ? { ...item, archived: true } : item) }));
-    if (kind === "recurring") setData((current) => ({ ...current, recurring: current.recurring.filter((item) => item.id !== id) }));
-    if (kind === "reset") { const initial = createInitialState(); setData(initial); setActive("Overview"); }
-    if (kind === "signout") { updateData({ session: false }); setAuthView("signin"); setPassword(""); }
+    if (kind === "account") {
+      setData((current) => ({
+        ...current,
+        accounts: current.accounts.map((item) => (item.id === id ? { ...item, archived: true } : item)),
+      }));
+      toast.success("Account archived");
+    }
+    if (kind === "category") {
+      setData((current) => ({
+        ...current,
+        categories: current.categories.map((item) => (item.id === id ? { ...item, archived: true } : item)),
+      }));
+      toast.success("Category archived");
+    }
+    if (kind === "recurring") {
+      setData((current) => ({
+        ...current,
+        recurring: current.recurring.filter((item) => item.id !== id),
+      }));
+      toast.success("Recurring rule removed");
+    }
+    if (kind === "reset") {
+      const initial = createInitialState();
+      setData(initial);
+      setActive("Overview");
+      toast.success("Demo data reset");
+    }
+    if (kind === "signout") {
+      updateData({ session: false });
+      setAuthView("signin");
+      setPassword("");
+      toast.success("Signed out");
+    }
     if (kind === "bulk") {
       const targetIds = pendingDelete.ids && pendingDelete.ids.length > 0 ? pendingDelete.ids : selectedIds;
       setData((current) => ({
@@ -1068,7 +1096,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       setSelectedIds([]);
       toast.success(`Deleted ${targetIds.length} transaction${targetIds.length > 1 ? "s" : ""}`);
     }
-    toast.success(kind === "reset" ? "Demo data reset" : kind === "signout" ? "Signed out" : "Removed");
     setModal(null);
     setPendingDelete(null);
   };

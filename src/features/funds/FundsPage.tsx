@@ -631,15 +631,19 @@ export function FundsPage({
                             setEditingPlan(plan);
                             setPlanModalOpen(true);
                           }}
-                          className="h-8 gap-1 text-xs font-semibold"
+                          className="size-8 p-0 grid place-items-center rounded-lg text-xs"
+                          title="Edit plan"
+                          aria-label="Edit plan"
                         >
-                          <Pencil size={13} /> Edit Plan
+                          <Pencil size={13} />
                         </Button>
                         <Button
                           variant="ghost"
                           size="sm"
                           onClick={() => onDeletePlan(plan.id)}
-                          className="h-8 text-xs text-destructive hover:bg-destructive/10"
+                          className="size-8 p-0 grid place-items-center rounded-lg text-xs text-destructive hover:bg-destructive/10"
+                          title="Delete plan"
+                          aria-label="Delete plan"
                         >
                           <Trash2 size={13} />
                         </Button>
