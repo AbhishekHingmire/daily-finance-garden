@@ -239,48 +239,24 @@ export function FundsPage({
               </div>
 
               {/* Visual Runway Meter */}
-              <div className="flex flex-row items-center justify-between sm:flex-col sm:items-end gap-2.5 shrink-0 pt-2 sm:pt-0 border-t border-border/60 sm:border-t-0">
-                <div className="flex items-center gap-3">
-                  <div className="text-left sm:text-right">
-                    <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block">
-                      Target Buffer
-                    </span>
-                    <span className="wt-display text-base sm:text-xl font-extrabold text-foreground tabular-nums whitespace-nowrap">
-                      {emergencySummary.percent}% Funded
-                    </span>
-                  </div>
-                  <span className="grid size-10 sm:size-12 place-items-center rounded-xl sm:rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-base sm:text-lg font-black shrink-0">
-                    {emergencySummary.runwayMonths}M
+              <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 shrink-0 pt-2 sm:pt-0 border-t border-border/60 sm:border-t-0">
+                <div className="text-left sm:text-right">
+                  <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block">
+                    Target Buffer
+                  </span>
+                  <span className="wt-display text-base sm:text-xl font-extrabold text-foreground tabular-nums whitespace-nowrap">
+                    {emergencySummary.percent}% Funded
                   </span>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      const em = funds.find((f) => f.type === "Emergency") || {
-                        id: "fund-emergency",
-                        name: "Emergency Reserve",
-                        targetAmount: emergencySummary.target,
-                        currentAmount: emergencySummary.current,
-                        type: "Emergency" as const,
-                        icon: "🛡️",
-                        status: "Active" as const,
-                        updatedAt: new Date().toISOString().slice(0, 10),
-                      };
-                      setEditingFund(em);
-                      setFundModalOpen(true);
-                    }}
-                    className="h-8 gap-1.5 text-xs font-semibold"
-                  >
-                    <Pencil size={13} /> Edit Emergency Fund
-                  </Button>
-
-                  {emergencySummary.percent < 100 ? (
-                    <Button
-                      size="sm"
-                      onClick={() => {
+                <span className="grid size-10 sm:size-12 mx-1.5 sm:mx-2.5 place-items-center rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/25 text-sm sm:text-base font-black shrink-0 px-2 shadow-2xs">
+                  {emergencySummary.runwayMonths}M
+                </span>
+                <ActionMenu
+                  items={[
+                    {
+                      label: "Allocate cash to emergency fund",
+                      icon: <Plus size={13} />,
+                      onClick: () => {
                         const em = funds.find((f) => f.type === "Emergency") || {
                           id: "fund-emergency",
                           name: "Emergency Reserve",
@@ -294,17 +270,28 @@ export function FundsPage({
                         setDepositFund(em);
                         setDepositAmount(em.monthlyContribution ? String(em.monthlyContribution) : "10000");
                         setDepositSourceAccountId(em.linkedAccountId || data.accounts[0]?.id || "");
-                      }}
-                      className="h-8 gap-1.5 text-xs font-semibold"
-                    >
-                      <Plus size={13} /> Allocate Cash
-                    </Button>
-                  ) : (
-                    <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold text-emerald-700 dark:text-emerald-300">
-                      🎉 100% Protected
-                    </span>
-                  )}
-                </div>
+                      },
+                    },
+                    {
+                      label: "Edit emergency fund details",
+                      icon: <Pencil size={13} />,
+                      onClick: () => {
+                        const em = funds.find((f) => f.type === "Emergency") || {
+                          id: "fund-emergency",
+                          name: "Emergency Reserve",
+                          targetAmount: emergencySummary.target,
+                          currentAmount: emergencySummary.current,
+                          type: "Emergency" as const,
+                          icon: "🛡️",
+                          status: "Active" as const,
+                          updatedAt: new Date().toISOString().slice(0, 10),
+                        };
+                        setEditingFund(em);
+                        setFundModalOpen(true);
+                      },
+                    },
+                  ]}
+                />
               </div>
             </div>
 
@@ -519,41 +506,6 @@ export function FundsPage({
                           </div>
                         ) : null}
                       </div>
-                    </div>
-
-                    {/* Bottom Quick Action: Only show deposit & skip if not fulfilled */}
-                    <div className="mt-4 pt-3 border-t border-border/60">
-                      {!isFulfilled ? (
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onSkipFundMonth?.(fund.id, "2026-10")}
-                            className={`text-xs font-semibold h-8 px-2.5 ${
-                              isSkippedThisMonth
-                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30"
-                                : "text-muted-foreground hover:text-foreground"
-                            }`}
-                          >
-                            {isSkippedThisMonth ? "Undo Skip" : "Skip Month"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={() => {
-                              setDepositFund(fund);
-                              setDepositAmount(fund.monthlyContribution ? String(fund.monthlyContribution) : "");
-                              setDepositSourceAccountId(fund.linkedAccountId || data.accounts[0]?.id || "");
-                            }}
-                            className="flex-1 text-xs font-semibold h-8 gap-1.5 shadow-2xs"
-                          >
-                            <Plus size={13} /> Deposit to Fund
-                          </Button>
-                        </div>
-                      ) : (
-                        <div className="w-full text-center py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 rounded-xl">
-                          ✨ Ready for this · Goal Achieved
-                        </div>
-                      )}
                     </div>
                   </div>
                 );
@@ -792,13 +744,26 @@ export function FundsPage({
 
               {/* Amount Quick Presets */}
               <div>
-                <label className="wt-label">Quick Amount Presets</label>
-                <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                <label className="wt-label">Quick Add Presets</label>
+                <div className="flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar py-0.5">
+                  {[100, 500, 1000].map((amt) => (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => {
+                        const cur = Number(depositAmount) || 0;
+                        setDepositAmount(String(cur + amt));
+                      }}
+                      className="rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:border-primary/60 hover:bg-primary/5 active:scale-95 transition-all shrink-0 cursor-pointer shadow-2xs"
+                    >
+                      +{money(amt)}
+                    </button>
+                  ))}
                   {depositFund.monthlyContribution ? (
                     <button
                       type="button"
                       onClick={() => setDepositAmount(String(depositFund.monthlyContribution))}
-                      className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5"
+                      className="rounded-md border border-border/80 bg-muted/40 px-2.5 py-1 text-xs font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5 shrink-0"
                     >
                       Monthly: {money(depositFund.monthlyContribution)}
                     </button>
@@ -807,25 +772,20 @@ export function FundsPage({
                     <button
                       type="button"
                       onClick={() => setDepositAmount(String(depositFund.targetAmount - depositFund.currentAmount))}
-                      className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5"
+                      className="rounded-md border border-border/80 bg-muted/40 px-2.5 py-1 text-xs font-semibold text-foreground hover:border-primary/50 hover:bg-primary/5 shrink-0"
                     >
                       Remaining: {money(depositFund.targetAmount - depositFund.currentAmount)}
                     </button>
                   ) : null}
-                  <button
-                    type="button"
-                    onClick={() => setDepositAmount("5000")}
-                    className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/50"
-                  >
-                    ₹5,000
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setDepositAmount("10000")}
-                    className="rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:border-primary/50"
-                  >
-                    ₹10,000
-                  </button>
+                  {Number(depositAmount) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setDepositAmount("")}
+                      className="text-[11px] text-muted-foreground hover:text-rose-500 font-medium ml-auto pl-1 shrink-0 cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  )}
                 </div>
               </div>
 

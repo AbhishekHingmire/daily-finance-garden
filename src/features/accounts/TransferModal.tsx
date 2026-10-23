@@ -64,6 +64,13 @@ export function TransferModal({
     setError("");
   };
 
+  // Quick increment amount
+  const handleIncrement = (inc: number) => {
+    const cur = Number(amount) || 0;
+    setAmount(String(cur + inc));
+    setError("");
+  };
+
   // Keyboard Escape listener
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -264,18 +271,27 @@ export function TransferModal({
             </div>
 
             {/* Quick Amount Chips */}
-            <div className="mt-2 flex flex-wrap items-center gap-1.5">
-              <span className="text-[11px] text-muted-foreground font-medium mr-1">Quick:</span>
-              {[500, 1000, 2000, 5000, 10000].map((amt) => (
+            <div className="mt-2 flex items-center gap-1.5 flex-nowrap overflow-x-auto no-scrollbar py-0.5">
+              <span className="text-[11px] text-muted-foreground font-medium shrink-0">Quick add:</span>
+              {[100, 500, 1000].map((amt) => (
                 <button
                   key={amt}
                   type="button"
-                  onClick={() => setAmount(String(amt))}
-                  className="rounded-md border border-border bg-card px-2 py-0.5 text-xs font-medium text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
+                  onClick={() => handleIncrement(amt)}
+                  className="rounded-md border border-border bg-card px-2.5 py-1 text-xs font-semibold text-foreground hover:border-primary/60 hover:bg-primary/5 active:scale-95 transition-all shrink-0 cursor-pointer shadow-2xs"
                 >
                   +{formatMoney(amt, currency)}
                 </button>
               ))}
+              {Number(amount) > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setAmount("")}
+                  className="text-[11px] text-muted-foreground hover:text-rose-500 font-medium ml-auto pl-1 shrink-0 cursor-pointer"
+                >
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 

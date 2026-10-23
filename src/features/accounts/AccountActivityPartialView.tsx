@@ -2,17 +2,23 @@ import { useState } from "react";
 import {
   ArrowLeftRight,
   CreditCard,
+  Landmark,
+  Pencil,
   Plus,
+  Scale,
+  Trash2,
   TrendingUp,
   Wallet,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { ActionMenu } from "@/components/shared/ActionMenu";
 import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import { TransactionTable } from "@/components/shared/TransactionTable";
 import {
   getAccountBalance,
   INVESTMENT_OUTFLOW_ACTIONS,
+  safeAmount,
   type Account,
   type Transaction,
   type WealthState,
@@ -25,6 +31,9 @@ export function AccountActivityPartialView({
   onClose,
   onAddTransaction,
   onTransfer,
+  onEdit,
+  onReconcile,
+  onArchive,
   onSelectTransaction,
   onEditTransaction,
   onDeleteTransaction,
@@ -36,6 +45,9 @@ export function AccountActivityPartialView({
   onClose: () => void;
   onAddTransaction: (accountId: string) => void;
   onTransfer: (account: Account) => void;
+  onEdit?: (account: Account) => void;
+  onReconcile?: (account: Account) => void;
+  onArchive?: (account: Account) => void;
   onSelectTransaction: (transaction: Transaction) => void;
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (transaction: Transaction) => void;
@@ -48,6 +60,12 @@ export function AccountActivityPartialView({
   const allAccountTxs = data.transactions.filter(
     (t) => t.accountId === account.id || t.destinationAccountId === account.id
   );
+
+  // Associated / Linked Loans serviced by this account
+  const linkedLoans = (data.loans || []).filter(
+    (l) => l.repaymentAccountId === account.id || (l as any).linkedAccountId === account.id
+  );
+  const linkedLoanDebt = linkedLoans.reduce((sum, l) => sum + safeAmount(l.currentOutstanding), 0);
 
   const totalInflow = allAccountTxs
     .filter(
@@ -86,7 +104,10 @@ export function AccountActivityPartialView({
   });
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in-50 duration-200">
+    <div
+      id="account-activity-partial-view"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in-50 duration-200"
+    >
       <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-3xl border border-border bg-card p-6 shadow-2xl space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/80 pb-4">
@@ -104,13 +125,53 @@ export function AccountActivityPartialView({
               <h2 className="text-xl font-black text-foreground">{account.name}</h2>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid size-9 place-items-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <ActionMenu
+              items={[
+                {
+                  label: "Transfer funds",
+                  icon: <ArrowLeftRight size={13} />,
+                  onClick: () => onTransfer(account),
+                },
+                ...(onReconcile
+                  ? [
+                      {
+                        label: "Reconcile balance",
+                        icon: <Scale size={13} />,
+                        onClick: () => onReconcile(account),
+                      },
+                    ]
+                  : []),
+                ...(onEdit
+                  ? [
+                      {
+                        label: "Edit account",
+                        icon: <Pencil size={13} />,
+                        onClick: () => onEdit(account),
+                      },
+                    ]
+                  : []),
+                ...(onArchive
+                  ? [
+                      {
+                        label: "Archive account",
+                        icon: <Trash2 size={13} />,
+                        destructive: true,
+                        onClick: () => onArchive(account),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+            <button
+              type="button"
+              onClick={onClose}
+              className="grid size-9 place-items-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              aria-label="Close"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Account Balance Metrics Cards */}
@@ -144,18 +205,64 @@ export function AccountActivityPartialView({
             </span>
           </div>
           <div className="rounded-xl border border-border bg-card p-3.5 shadow-2xs">
-            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block">
-              Ledger Items
-            </span>
-            <span className="text-base font-bold text-foreground mt-0.5 block">
-              {allAccountTxs.length} items
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider block truncate">
+                Linked Debt & Loans
+              </span>
+              {linkedLoans.length > 0 && (
+                <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300 bg-amber-500/15 px-1.5 py-0.2 rounded shrink-0">
+                  {linkedLoans.length} active
+                </span>
+              )}
+            </div>
+            <span
+              className={`text-base font-bold mt-0.5 block tabular-nums ${
+                linkedLoanDebt > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground"
+              }`}
+            >
+              {linkedLoanDebt > 0 ? money(linkedLoanDebt) : "₹0 (No debt)"}
             </span>
           </div>
         </div>
 
+        {/* Associated Loans Banner (if any loans are serviced by this account) */}
+        {linkedLoans.length > 0 && (
+          <div className="rounded-xl border border-amber-500/25 bg-amber-500/5 p-3.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="grid size-9 place-items-center rounded-lg bg-amber-500/15 text-amber-600 dark:text-amber-400 shrink-0">
+                <Landmark size={18} />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-xs font-bold text-foreground">
+                    {linkedLoans.map((l) => l.name).join(", ")}
+                  </span>
+                  <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded">
+                    Repayment Account
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  {linkedLoans.length} active loan{linkedLoans.length > 1 ? "s" : ""} serviced from this account · Monthly EMI:{" "}
+                  <strong className="text-foreground">
+                    {money(linkedLoans.reduce((sum, l) => sum + safeAmount(l.emiAmount), 0))}
+                  </strong>
+                </p>
+              </div>
+            </div>
+            <div className="text-left sm:text-right shrink-0">
+              <span className="text-[10px] font-semibold uppercase text-muted-foreground block">
+                Total Loan Balance
+              </span>
+              <span className="text-sm font-extrabold text-amber-600 dark:text-amber-400 tabular-nums">
+                {money(linkedLoanDebt)}
+              </span>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons Bar */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Button
               size="sm"
               onClick={() => onAddTransaction(account.id)}
@@ -171,6 +278,19 @@ export function AccountActivityPartialView({
             >
               <ArrowLeftRight size={13} /> Transfer
             </Button>
+            {onReconcile && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onReconcile(account)}
+                className="h-8 gap-1.5 text-xs font-semibold"
+              >
+                <Scale size={13} /> Reconcile
+              </Button>
+            )}
+          </div>
+          <div className="text-xs text-muted-foreground font-medium">
+            {allAccountTxs.length} ledger transaction{allAccountTxs.length === 1 ? "" : "s"}
           </div>
         </div>
 

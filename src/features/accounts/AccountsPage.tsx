@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowLeftRight,
+  ChevronRight,
   CreditCard,
   Eye,
+  Landmark,
   Pencil,
   Plus,
   Scale,
@@ -19,6 +21,8 @@ import { ReconcileModal } from "./ReconcileModal";
 import {
   getAccountBalance,
   getAllAccountBalances,
+  getLoansSummary,
+  safeAmount,
   type Account,
   type Transaction,
   type WealthState,
@@ -67,10 +71,10 @@ export function AccountsPage({
     [data.accounts]
   );
 
-  const { totalBalance, totalAssets, totalLiabilities, assetAccounts, liabilityAccounts } = useMemo(() => {
+  const { totalBalance, totalAssets, totalLiabilities, assetAccounts, liabilityAccounts, totalLoanDebt } = useMemo(() => {
     let balance = 0;
     let assets = 0;
-    let liabilities = 0;
+    let ccLiabilities = 0;
     const assetsList: Account[] = [];
     const liabilitiesList: Account[] = [];
 
@@ -79,21 +83,25 @@ export function AccountsPage({
       balance += b;
       if (acc.kind === "Credit card") {
         liabilitiesList.push(acc);
-        liabilities += Math.abs(b);
+        ccLiabilities += Math.abs(b);
       } else {
         assetsList.push(acc);
         assets += Math.max(0, b);
       }
     }
 
+    const loansSummary = getLoansSummary(data.loans || []);
+    const totalLiab = ccLiabilities + loansSummary.totalOutstanding;
+
     return {
       totalBalance: balance,
       totalAssets: assets,
-      totalLiabilities: liabilities,
+      totalLiabilities: totalLiab,
+      totalLoanDebt: loansSummary.totalOutstanding,
       assetAccounts: assetsList,
       liabilityAccounts: liabilitiesList,
     };
-  }, [activeAccounts, accountBalances]);
+  }, [activeAccounts, accountBalances, data.loans]);
 
   // Balanced grid class: when 4 accounts, render 2-col on tablet and 4-col on desktop
   // to avoid leaving an orphan 4th card on a second row
@@ -184,7 +192,9 @@ export function AccountsPage({
               Liabilities & Debt
             </p>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              {liabilityAccounts.length} Credit Card & liability accounts
+              {data.loans && data.loans.length > 0
+                ? `${liabilityAccounts.length} Cards · ${data.loans.length} active loans`
+                : `${liabilityAccounts.length} Credit Card & liability accounts`}
             </p>
           </div>
           <p className="wt-display text-base sm:text-xl font-bold text-amber-600 dark:text-amber-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-1">
@@ -203,9 +213,19 @@ export function AccountsPage({
           return (
             <div
               key={account.id}
-              className={`rounded-xl border p-4 sm:p-5 transition-all wt-shadow bg-card hover:border-border hover:shadow-xs flex flex-col justify-between ${
+              role="button"
+              tabIndex={0}
+              aria-pressed={isSelected}
+              onClick={() => setSelected(isSelected ? null : account)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  setSelected(isSelected ? null : account);
+                }
+              }}
+              className={`group cursor-pointer rounded-xl border p-4 sm:p-5 transition-all wt-shadow bg-card hover:border-primary/50 hover:shadow-xs flex flex-col justify-between select-none ${
                 isSelected
-                  ? "border-primary ring-2 ring-primary/20 bg-primary/[0.02]"
+                  ? "border-primary ring-2 ring-primary/20 bg-primary/[0.03]"
                   : "border-border/70"
               }`}
             >
@@ -222,7 +242,9 @@ export function AccountsPage({
                         </span>
                       )}
                     </div>
-                    <h3 className="mt-2 text-base font-bold text-foreground truncate">{account.name}</h3>
+                    <h3 className="mt-2 text-base font-bold text-foreground truncate group-hover:text-primary transition-colors">
+                      {account.name}
+                    </h3>
                     <p className="text-xs text-muted-foreground truncate">
                       {account.institution || "Local account"}{" "}
                       {account.identifier ? `· ${account.identifier}` : ""}
@@ -231,7 +253,7 @@ export function AccountsPage({
                   <InstitutionLogo
                     name={account.institution || account.name}
                     size="md"
-                    className={`shrink-0 ${isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+                    className={`shrink-0 transition-transform group-hover:scale-105 ${isSelected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
                   />
                 </div>
 
@@ -245,49 +267,36 @@ export function AccountsPage({
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between">
-                <Button
-                  size="sm"
-                  variant={isSelected ? "default" : "outline"}
-                  className="h-7.5 px-3 gap-1.5 text-xs font-semibold rounded-lg"
-                  onClick={() => setSelected(isSelected ? null : account)}
-                >
-                  <Eye size={12} /> {isSelected ? "Hide Activity" : "View Activity"}
-                </Button>
-                <ActionMenu
-                  items={[
-                    {
-                      label: isSelected ? "Hide activity ledger" : "View activity ledger",
-                      icon: <Eye size={13} />,
-                      onClick: () => setSelected(isSelected ? null : account),
-                    },
-                    {
-                      label: "Transfer funds",
-                      icon: <ArrowLeftRight size={13} />,
-                      onClick: () => onTransfer(account),
-                    },
-                    {
-                      label: "Reconcile balance",
-                      icon: <Scale size={13} />,
-                      onClick: () => setReconcilingAccount(account),
-                    },
-                    {
-                      label: "Edit account",
-                      icon: <Pencil size={13} />,
-                      onClick: () => onEdit(account),
-                    },
-                    {
-                      label: "Archive account",
-                      icon: <Trash2 size={13} />,
-                      destructive: true,
-                      onClick: () => onArchive(account),
-                    },
-                  ]}
-                />
+              <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-xs">
+                <span className="text-[11px] font-medium text-muted-foreground/80">
+                  {isCard ? "Credit Account" : "Available Funds"}
+                </span>
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-primary group-hover:translate-x-0.5 transition-transform">
+                  {isSelected ? "Active Ledger ↑" : "View Details →"}
+                </span>
               </div>
             </div>
           );
         })}
+
+        {/* Add Bank / Account Card */}
+        <button
+          type="button"
+          onClick={onAdd}
+          className="rounded-xl border-2 border-dashed border-border/70 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 p-5 transition-all flex flex-col items-center justify-center text-center gap-2.5 min-h-[170px] group cursor-pointer"
+        >
+          <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all shadow-2xs">
+            <Plus size={20} />
+          </div>
+          <div>
+            <span className="text-sm font-bold text-foreground block group-hover:text-primary transition-colors">
+              Add New Account
+            </span>
+            <span className="text-[11px] text-muted-foreground block mt-0.5">
+              Bank, Credit Card, or Wallet
+            </span>
+          </div>
+        </button>
       </div>
 
       {/* Account Activity Partial View */}
@@ -299,6 +308,9 @@ export function AccountsPage({
           onClose={() => setSelected(null)}
           onAddTransaction={onAddTransaction}
           onTransfer={onTransfer}
+          onEdit={onEdit}
+          onReconcile={(acc) => setReconcilingAccount(acc)}
+          onArchive={onArchive}
           onSelectTransaction={onSelectTransaction}
           onEditTransaction={onEditTransaction}
           onDeleteTransaction={onDeleteTransaction}
