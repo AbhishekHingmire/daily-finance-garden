@@ -1829,11 +1829,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden size-9"
+                className="lg:hidden size-10"
                 aria-label="Open navigation"
                 onClick={() => setMobileNav(true)}
               >
-                <Menu size={20} />
+                <Menu size={24} />
               </Button>
               <div className="hidden min-w-0 sm:flex items-center gap-1.5 text-xs text-muted-foreground select-none">
                 <span className="font-semibold text-muted-foreground/80">WealthTrack</span>
@@ -1863,11 +1863,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <Button
                 variant="ghost"
                 size="icon"
-                className="sm:hidden size-9"
+                className="sm:hidden size-10"
                 aria-label="Search"
                 onClick={() => setSearchOpen(true)}
               >
-                <Search size={20} />
+                <Search size={22} />
               </Button>
 
               {/* Notifications Dropdown */}
@@ -1875,14 +1875,14 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="size-9"
+                  className="size-10"
                   aria-label="Notifications"
                   onClick={() => {
                     setNotificationOpen((value) => !value);
                     setProfileOpen(false);
                   }}
                 >
-                  <Bell size={20} />
+                  <Bell size={24} />
                   {data.notifications.some((item) => !item.read) && (
                     <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive" />
                   )}
@@ -1969,17 +1969,17 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <div className="relative">
                 <Button
                   variant="ghost"
-                  className="h-9 gap-1.5 px-1.5"
+                  className="h-10 gap-1.5 px-1.5 rounded-xl"
                   aria-label="User Profile and Preferences"
                   onClick={() => {
                     setProfileOpen((value) => !value);
                     setNotificationOpen(false);
                   }}
                 >
-                  <span className="grid size-8 place-items-center rounded-full bg-accent text-accent-foreground">
-                    <User size={20} />
+                  <span className="grid size-9 place-items-center rounded-full bg-accent text-accent-foreground">
+                    <User size={24} />
                   </span>
-                  <ChevronDown size={14} className="hidden sm:block text-muted-foreground" />
+                  <ChevronDown size={15} className="hidden sm:block text-muted-foreground" />
                 </Button>
                 {profileOpen && (
                   <>
@@ -2346,7 +2346,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           }`}
           onClick={() => setMobileNav(true)}
         >
-          <Menu size={20} />
+          <Menu size={22} />
           More
         </button>
       </nav>
@@ -2355,10 +2355,10 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       <Button
         aria-label="Add transaction"
         title="Add transaction"
-        className="fixed bottom-16 right-3.5 z-20 size-11 rounded-full p-0 shadow-lg sm:bottom-7 sm:right-7 lg:hidden"
+        className="fixed bottom-16 right-4 z-20 size-13 rounded-full p-0 shadow-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-transform active:scale-95 sm:bottom-7 sm:right-7 lg:hidden"
         onClick={() => beginTransaction()}
       >
-        <Plus size={20} />
+        <Plus size={26} strokeWidth={2.6} />
       </Button>
 
       {/* Search Modal */}
