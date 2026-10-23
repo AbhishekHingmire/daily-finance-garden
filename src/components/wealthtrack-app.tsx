@@ -1771,7 +1771,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               aria-label="Close navigation"
               onClick={() => setMobileNav(false)}
             >
-              <X size={18} />
+              <X size={20} />
             </Button>
           </div>
           <div className="px-4 pt-6">
@@ -1794,7 +1794,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     }`}
                     onClick={() => goSection(label)}
                   >
-                    <Icon size={17} />
+                    <Icon size={20} />
                     {label}
                   </Button>
                 );
@@ -1829,11 +1829,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden"
+                className="lg:hidden size-9"
                 aria-label="Open navigation"
                 onClick={() => setMobileNav(true)}
               >
-                <Menu size={19} />
+                <Menu size={20} />
               </Button>
               <div className="hidden min-w-0 sm:flex items-center gap-1.5 text-xs text-muted-foreground select-none">
                 <span className="font-semibold text-muted-foreground/80">WealthTrack</span>
@@ -1867,7 +1867,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 aria-label="Search"
                 onClick={() => setSearchOpen(true)}
               >
-                <Search size={17} />
+                <Search size={20} />
               </Button>
 
               {/* Notifications Dropdown */}
@@ -1882,7 +1882,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     setProfileOpen(false);
                   }}
                 >
-                  <Bell size={17} />
+                  <Bell size={20} />
                   {data.notifications.some((item) => !item.read) && (
                     <span className="absolute right-1.5 top-1.5 size-2 rounded-full bg-destructive" />
                   )}
@@ -1969,15 +1969,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <div className="relative">
                 <Button
                   variant="ghost"
-                  className="h-9 gap-2 px-1.5"
+                  className="h-9 gap-1.5 px-1.5"
                   aria-label="User Profile and Preferences"
                   onClick={() => {
                     setProfileOpen((value) => !value);
                     setNotificationOpen(false);
                   }}
                 >
-                  <span className="grid size-8 place-items-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
-                    {getInitials(email)}
+                  <span className="grid size-8 place-items-center rounded-full bg-accent text-accent-foreground">
+                    <User size={20} />
                   </span>
                   <ChevronDown size={14} className="hidden sm:block text-muted-foreground" />
                 </Button>
@@ -2332,7 +2332,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               }`}
               onClick={() => goSection(section as Section)}
             >
-              <Icon size={16} />
+              <Icon size={20} />
               {section === "Overview" ? "Home" : section}
             </button>
           );
@@ -2346,7 +2346,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           }`}
           onClick={() => setMobileNav(true)}
         >
-          <Menu size={16} />
+          <Menu size={20} />
           More
         </button>
       </nav>

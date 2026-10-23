@@ -102,7 +102,7 @@
 
 * { border-color: var(--color-border); }
 html {
-  font-size: 75%; /* Reduced by 25% across the entire web application */
+  font-size: 78.75%; /* Increased by 5% exactly across the entire web application (75% * 1.05 = 78.75%) */
   min-width: 320px;
   font-family: "DM Sans", sans-serif;
 }
