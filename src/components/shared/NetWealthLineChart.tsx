@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Maximize2 } from "lucide-react";
 import type { Transaction } from "@/lib/wealthtrack";
 import {
   type DateRangeValue,
@@ -12,12 +13,16 @@ export function NetWealthLineChart({
   money,
   title = "Cumulative Net Cash Flow Trend",
   subtitle = "Running cash flow accumulation across the selected timeframe",
+  onExpand,
+  className = "",
 }: {
   transactions: Transaction[];
   dateRange: DateRangeValue;
   money: (amount: number) => string;
   title?: string;
   subtitle?: string;
+  onExpand?: () => void;
+  className?: string;
 }) {
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
@@ -224,7 +229,7 @@ export function NetWealthLineChart({
   };
 
   return (
-    <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 pb-3.5 wt-shadow">
+    <div className={`rounded-2xl border border-border/80 bg-card p-4 sm:p-5 pb-3.5 wt-shadow ${className}`}>
       <div>
         <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-border/60">
           <div>
@@ -236,27 +241,41 @@ export function NetWealthLineChart({
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>
           </div>
-          {activePoint && (
-            <div className="flex items-center gap-2">
-              <span className="hidden sm:inline-block text-[11px] text-muted-foreground font-medium">
-                {activePoint.fullLabel}:
-              </span>
-              <div className="flex items-center gap-2 tabular-nums">
-                <span
-                  className={`wt-display text-base font-extrabold ${
-                    activePoint.value >= 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-rose-600 dark:text-rose-400"
-                  }`}
-                >
-                  {activePoint.value >= 0 ? "+" : ""}{money(activePoint.value)}
+          <div className="flex items-center gap-3">
+            {activePoint && (
+              <div className="flex items-center gap-2">
+                <span className="hidden sm:inline-block text-[11px] text-muted-foreground font-medium">
+                  {activePoint.fullLabel}:
                 </span>
-                <span className="text-[10px] text-muted-foreground font-semibold">
-                  (Day: {activePoint.delta >= 0 ? "+" : ""}{money(activePoint.delta)})
-                </span>
+                <div className="flex items-center gap-2 tabular-nums">
+                  <span
+                    className={`wt-display text-base font-extrabold ${
+                      activePoint.value >= 0
+                        ? "text-emerald-600 dark:text-emerald-400"
+                        : "text-rose-600 dark:text-rose-400"
+                    }`}
+                  >
+                    {activePoint.value >= 0 ? "+" : ""}{money(activePoint.value)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-semibold">
+                    (Day: {activePoint.delta >= 0 ? "+" : ""}{money(activePoint.delta)})
+                  </span>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+
+            {onExpand && (
+              <button
+                type="button"
+                onClick={onExpand}
+                className="grid size-7.5 place-items-center rounded-lg border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-2xs cursor-pointer ml-1"
+                title="Expand Chart"
+                aria-label="Expand Chart"
+              >
+                <Maximize2 size={13} />
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Real-time Hover Inspection Readout Banner */}

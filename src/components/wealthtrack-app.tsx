@@ -813,26 +813,43 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     }, 450);
   };
 
-  const submitAuth = () => {
-    const errors: Record<string, string> = {};
-    if (authView !== "forgot" && !password.trim()) errors.password = "Enter your password.";
-    if (authView !== "forgot" && password.trim().length < 6) errors.password = "Use at least 6 characters.";
-    if (authView === "signup" && !fullName.trim()) errors.fullName = "Enter your name.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Enter a valid email address.";
-    if (authView === "signup" && password !== confirmPassword) errors.confirmPassword = "Passwords do not match.";
-    if (authView === "signup" && password.length < 8) errors.password = "Use at least 8 characters.";
-    setAuthErrors(errors);
-    if (Object.keys(errors).length) return;
+  const handleLoginSuccess = (mobile: string) => {
+    setAuthLoading(true);
+    setTimeout(() => {
+      updateData({ session: true });
+      setAuthLoading(false);
+      setAuthErrors({});
+      toast.success(`Welcome back! Logged in with +91 ${mobile}`);
+    }, 450);
+  };
 
-    if (authView === "forgot") {
-      setAuthLoading(true);
-      setTimeout(() => {
-        setAuthLoading(false);
-        toast.success("Reset link simulated", { description: "No email was sent in this local demo." });
-        setAuthView("signin");
-      }, 500);
-      return;
-    }
+  const handleSignupSuccess = (info: { fullName: string; email?: string; mobile: string }) => {
+    setAuthLoading(true);
+    setTimeout(() => {
+      setData((prev) => ({
+        ...prev,
+        session: true,
+        onboarded: false, // Land into stepper form as requested
+        profile: {
+          ...(prev.profile ?? {
+            occupation: "Engineer",
+            monthlyIncomeTarget: 100000,
+            emergencyFundTarget: 180000,
+            savingsRateTarget: 25,
+            riskProfile: "Balanced",
+          }),
+          fullName: info.fullName,
+          email: info.email || prev.profile?.email || "user@example.com",
+          phone: info.mobile,
+        },
+      }));
+      setAuthLoading(false);
+      setAuthErrors({});
+      toast.success(`Account verified! Welcome to onboarding, ${info.fullName}`);
+    }, 450);
+  };
+
+  const submitAuth = () => {
     startLogin();
   };
 
@@ -1724,21 +1741,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         <AuthPage
           authView={authView}
           setAuthView={setAuthView}
-          email={email}
-          setEmail={setEmail}
-          password={password}
-          setPassword={setPassword}
-          fullName={fullName}
-          setFullName={setFullName}
-          confirmPassword={confirmPassword}
-          setConfirmPassword={setConfirmPassword}
-          remember={remember}
-          setRemember={setRemember}
-          showPassword={showPassword}
-          setShowPassword={setShowPassword}
           authLoading={authLoading}
-          authErrors={authErrors}
-          onSubmit={submitAuth}
+          onLoginSuccess={handleLoginSuccess}
+          onSignupSuccess={handleSignupSuccess}
           onQuickLogin={startLogin}
         />
       </>

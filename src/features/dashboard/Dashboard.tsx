@@ -372,20 +372,20 @@ export function Dashboard({
             <div className="flex items-center gap-2">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Live Portfolio Balance
+                Total Net Worth
               </span>
               {savingsRate > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">
-                  <Sparkles size={10} /> +{savingsRate}% Saved
+                  <Sparkles size={10} /> +{savingsRate}% Saved this period
                 </span>
               )}
             </div>
 
             <p className="wt-display mt-2 text-2xl sm:text-4xl lg:text-5xl font-extrabold text-foreground tracking-tight tabular-nums whitespace-nowrap">
-              {money(totalBalance)}
+              {money(totalBalance + effectiveInvestmentsVal - totalLiabilities)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Total aggregated wealth across {activeAccounts.length} accounts
+              Aggregated wealth across liquid cash, investments, and liabilities
             </p>
           </div>
 
@@ -502,7 +502,7 @@ export function Dashboard({
               title={`Liabilities: ${liabilityPct}%`}
             />
           </div>
-          <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-[10px] sm:text-[11px] text-muted-foreground">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[10px] sm:text-[11px] text-muted-foreground">
             <div className="flex flex-wrap items-center gap-2 sm:gap-4">
               <span className="inline-flex items-center gap-1.5">
                 <span className="size-2 rounded-full bg-emerald-500" /> Liquid Cash ({liquidPct}%)
@@ -514,85 +514,98 @@ export function Dashboard({
                 <span className="size-2 rounded-full bg-rose-500" /> Liabilities ({liabilityPct}%)
               </span>
             </div>
-            <span className="font-semibold text-foreground pt-1 sm:pt-0">
-              Net Wealth: {money(totalBalance + effectiveInvestmentsVal - totalLiabilities)}
+            <span className="text-muted-foreground/80 hidden sm:inline">
+              Portfolio Distribution
             </span>
           </div>
         </div>
       </div>
-
-      {/* Salary Countdown & Inflow Tracker */}
-      <SalaryCountdownCard
-        data={data}
-        money={money}
-        onUpdateSalary={onUpdateSalary}
-      />
 
       {/* Timeframe Filter Bar */}
       <div className="flex items-center justify-between">
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
       </div>
 
+      {/* Salary Countdown & Inflow Tracker (Fixed tracker placed right after filter card) */}
+      <SalaryCountdownCard
+        data={data}
+        money={money}
+        onUpdateSalary={onUpdateSalary}
+      />
+
       {/* Cash Flow Performance Metric Cards */}
-      <div className="grid grid-cols-1 gap-2.5 sm:gap-4 sm:grid-cols-3">
-        {/* Period Inflows */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
-          <div className="flex items-center justify-between sm:mb-2">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Period Inflows
-            </span>
-            <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-              <ArrowDownLeft size={15} />
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
-            <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
-              {monthInflowTransactions.length} deposit{monthInflowTransactions.length !== 1 ? "s" : ""}
-            </p>
-            <p className="wt-display text-base sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
-              +{money(monthIncome)}
-            </p>
-          </div>
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between px-0.5">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Period Cash Flow Movement
+          </h3>
+          <span className="text-[11px] text-muted-foreground font-medium">
+            Incoming & Outgoing Cash Activity
+          </span>
         </div>
 
-        {/* Period Outflows */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
-          <div className="flex items-center justify-between sm:mb-2">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Period Outflows
-            </span>
-            <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-              <ArrowUpRight size={15} />
-            </span>
+        <div className="grid grid-cols-1 gap-2.5 sm:gap-4 sm:grid-cols-3">
+          {/* Period Inflows */}
+          <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
+            <div className="flex items-center justify-between sm:mb-2">
+              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Cash Inflows (Incoming)
+              </span>
+              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <ArrowDownLeft size={15} />
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+              <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+                {monthInflowTransactions.length} deposit{monthInflowTransactions.length !== 1 ? "s" : ""} · salary & income
+              </p>
+              <p className="wt-display text-base sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
+                +{money(monthIncome)}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
-            <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
-              {monthOutflowTransactions.length} payment{monthOutflowTransactions.length !== 1 ? "s" : ""}
-              {monthEmiPaid > 0 ? ` (incl. ${money(monthEmiPaid)} in EMIs)` : ""}
-            </p>
-            <p className="wt-display text-base sm:text-2xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
-              −{money(monthExpenses)}
-            </p>
-          </div>
-        </div>
 
-        {/* Net Savings */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
-          <div className="flex items-center justify-between sm:mb-2">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Net Savings
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-              {savingsRate}% Saved
-            </span>
+          {/* Period Outflows */}
+          <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
+            <div className="flex items-center justify-between sm:mb-2">
+              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Cash Outflows (Outgoing)
+              </span>
+              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                <ArrowUpRight size={15} />
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+              <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+                {monthOutflowTransactions.length} payment{monthOutflowTransactions.length !== 1 ? "s" : ""}
+                {monthEmiPaid > 0 ? ` (incl. ${money(monthEmiPaid)} in EMIs)` : ""}
+              </p>
+              <p className="wt-display text-base sm:text-2xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
+                −{money(monthExpenses)}
+              </p>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
-            <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
-              {netCashFlow >= 0 ? "Surplus capital retained" : "Net spending deficit"}
-            </p>
-            <p className="wt-display text-base sm:text-2xl font-extrabold text-foreground tabular-nums whitespace-nowrap shrink-0 sm:order-1">
-              {money(netCashFlow)}
-            </p>
+
+          {/* Net Savings */}
+          <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
+            <div className="flex items-center justify-between sm:mb-2">
+              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Net Savings Retained
+              </span>
+              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-primary/10 text-primary">
+                <Sparkles size={15} />
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
+              <p className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+                {savingsRate}% saved · {netCashFlow >= 0 ? "surplus cash" : "cash deficit"}
+              </p>
+              <p className={`wt-display text-base sm:text-2xl font-extrabold tabular-nums whitespace-nowrap shrink-0 sm:order-1 ${
+                netCashFlow >= 0 ? "text-primary" : "text-rose-600 dark:text-rose-400"
+              }`}>
+                {money(netCashFlow)}
+              </p>
+            </div>
           </div>
         </div>
       </div>

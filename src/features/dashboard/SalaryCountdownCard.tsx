@@ -177,12 +177,14 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
               </span>
             )}
             <Button
-              size="sm"
+              size="icon"
               variant="outline"
               onClick={handleOpenModal}
-              className="h-8 gap-1.5 px-3 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground"
+              className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted shadow-2xs"
+              title="Edit Payroll & Payday"
+              aria-label="Edit Payroll & Payday"
             >
-              <Pencil size={12} /> Edit Salary
+              <Pencil size={13} />
             </Button>
           </div>
         </div>

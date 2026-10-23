@@ -8,6 +8,7 @@ import {
   Landmark,
   Sparkles,
   TrendingUp,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter, type DateRangeValue } from "@/components/shared/DateRangeFilter";
@@ -44,6 +45,7 @@ export function ReportsPage({
   onCategory?: (id: string) => void;
 }) {
   const [priorityFilter, setPriorityFilter] = useState("All");
+  const [expandedChart, setExpandedChart] = useState<"velocity" | "trend" | null>(null);
 
   const activeRows = useMemo(() => {
     return rows.filter((r) => priorityFilter === "All" || r.need === priorityFilter);
@@ -137,7 +139,7 @@ export function ReportsPage({
 
   // Category breakdown for Donut Chart
   const categorySpendList = useMemo(() => {
-    return data.categories
+    const list = data.categories
       .filter((c) => c.kind === "Expense" && !c.archived)
       .map((c) => {
         const amount = activeRows
@@ -156,9 +158,44 @@ export function ReportsPage({
           pct: pctOfTotal,
         };
       })
-      .filter((c) => c.amount > 0)
-      .sort((a, b) => b.amount - a.amount);
-  }, [data.categories, activeRows, totalExpenses]);
+      .filter((c) => c.amount > 0);
+
+    // Account for loan EMI debt payments in outflow donut
+    if (emiPaidInPeriod > 0) {
+      const emiPct = totalExpenses > 0 ? Math.round((emiPaidInPeriod / totalExpenses) * 100) : 0;
+      list.push({
+        id: "cat-emi-repayments",
+        name: "EMI & Debt Repayments",
+        kind: "Expense" as const,
+        icon: "🏛️",
+        color: "rose",
+        monthlyLimit: 0,
+        amount: emiPaidInPeriod,
+        count: activeRows.filter((r) => r.type === "EMI / Loan Payment").length,
+        pctOfTotal: emiPct,
+        pct: emiPct,
+      });
+    }
+
+    // Account for money lent in outflow donut
+    if (lentInPeriod > 0) {
+      const lentPct = totalExpenses > 0 ? Math.round((lentInPeriod / totalExpenses) * 100) : 0;
+      list.push({
+        id: "cat-money-lent",
+        name: "Money Lent / Advances",
+        kind: "Expense" as const,
+        icon: "🤝",
+        color: "violet",
+        monthlyLimit: 0,
+        amount: lentInPeriod,
+        count: activeRows.filter((r) => r.type === "Lend / Loan Given").length,
+        pctOfTotal: lentPct,
+        pct: lentPct,
+      });
+    }
+
+    return list.sort((a, b) => b.amount - a.amount);
+  }, [data.categories, activeRows, totalExpenses, emiPaidInPeriod, lentInPeriod]);
 
   // Income Sources
   const incomeSources = useMemo(() => {
@@ -308,13 +345,24 @@ export function ReportsPage({
         </div>
       </div>
 
-      {/* Reused Cash Flow Velocity Chart (Day-by-Day view when Month selected) */}
-      <CashFlowVelocityChart
-        transactions={data.transactions}
-        dateRange={dateRange}
-        money={money}
-        title="Cash Flow Velocity Breakdown"
-      />
+      {/* Side by Side Charts in 1 Row: Velocity Breakdown & Cumulative Net Cash Flow Trend */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CashFlowVelocityChart
+          transactions={data.transactions}
+          dateRange={dateRange}
+          money={money}
+          title="Cash Flow Velocity Breakdown"
+          onExpand={() => setExpandedChart("velocity")}
+        />
+
+        <NetWealthLineChart
+          transactions={data.transactions}
+          dateRange={dateRange}
+          money={money}
+          title="Cumulative Net Cash Flow Trend"
+          onExpand={() => setExpandedChart("trend")}
+        />
+      </div>
 
       {/* Two Column Visual Analytics: Allocation Donut & 50/30/20 Diagnostic */}
       <div className="grid gap-6 lg:grid-cols-2">
@@ -406,13 +454,6 @@ export function ReportsPage({
           </div>
         </div>
       </div>
-
-      {/* Cumulative Net Wealth & Cash Flow Trend Line Chart */}
-      <NetWealthLineChart
-        transactions={data.transactions}
-        dateRange={dateRange}
-        money={money}
-      />
 
       {/* 3-Pillar Capital Flow: Income Streams, Investments, and Debt/Loan Cash Flow */}
       <div className="grid gap-6 lg:grid-cols-3">
@@ -602,6 +643,54 @@ export function ReportsPage({
           </div>
         </div>
       </div>
+
+      {/* Expanded Large Chart Modal Popup */}
+      {expandedChart && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in-50 duration-200">
+          <div className="relative w-full max-w-5xl max-h-[92vh] overflow-y-auto rounded-3xl border border-border bg-card p-5 sm:p-7 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-border/70 pb-3">
+              <div>
+                <h3 className="wt-display text-lg font-bold text-foreground">
+                  {expandedChart === "velocity"
+                    ? "Cash Flow Velocity Breakdown (Expanded Analytics)"
+                    : "Cumulative Net Cash Flow Trend (Expanded Analytics)"}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  High-resolution chronological inspection across all recorded cash activity.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpandedChart(null)}
+                className="grid size-9 place-items-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                aria-label="Close dialog"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="pt-2">
+              {expandedChart === "velocity" ? (
+                <CashFlowVelocityChart
+                  transactions={data.transactions}
+                  dateRange={dateRange}
+                  money={money}
+                  title="Cash Flow Velocity Breakdown"
+                  className="border-0 shadow-none p-0"
+                />
+              ) : (
+                <NetWealthLineChart
+                  transactions={data.transactions}
+                  dateRange={dateRange}
+                  money={money}
+                  title="Cumulative Net Cash Flow Trend"
+                  className="border-0 shadow-none p-0"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

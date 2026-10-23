@@ -54,15 +54,8 @@ export function TransactionModal({
     );
   }, [data.categories, isInflowType]);
 
-  const [showMore, setShowMore] = useState<boolean>(() => {
-    return Boolean(
-      edit ||
-      form.merchant ||
-      form.notes ||
-      (form.tags && form.tags.length > 0) ||
-      (form.date && !form.date.startsWith(new Date().toISOString().slice(0, 10)))
-    );
-  });
+  // Always collapsed by default across all scenarios per user specification
+  const [showMore, setShowMore] = useState<boolean>(false);
 
   const set = (key: keyof Transaction, value: any) =>
     setForm((current) => ({ ...current, [key]: value }));

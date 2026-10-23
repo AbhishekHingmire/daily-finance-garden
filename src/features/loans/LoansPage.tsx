@@ -269,9 +269,9 @@ export function LoansPage({
                 {/* Progress Bar */}
                 <div className="mt-4 space-y-1.5">
                   <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground">Payoff Progress</span>
-                    <span className="font-bold text-emerald-600 dark:text-emerald-400">
-                      {pctPaid.toFixed(1)}% ({money(paid)} paid)
+                    <span className="text-muted-foreground font-medium">Payoff Progress</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                      {money(paid)} of {money(principal)} paid ({pctPaid.toFixed(1)}%)
                     </span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-muted">

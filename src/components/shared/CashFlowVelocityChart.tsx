@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Maximize2 } from "lucide-react";
 import {
   type DateRangeValue,
   MONTH_NAMES,
@@ -11,6 +12,7 @@ export interface CashFlowVelocityChartProps {
   dateRange: DateRangeValue;
   money: (amount: number) => string;
   onNavigateToReports?: () => void;
+  onExpand?: () => void;
   title?: string;
   subtitle?: string;
   className?: string;
@@ -83,6 +85,7 @@ export function CashFlowVelocityChart({
   dateRange,
   money,
   onNavigateToReports,
+  onExpand,
   title = "Cash Flow Velocity",
   subtitle,
   className = "",
@@ -415,10 +418,22 @@ export function CashFlowVelocityChart({
             {onNavigateToReports && (
               <button
                 type="button"
-                className="text-xs font-semibold text-primary hover:underline ml-1"
+                className="text-xs font-semibold text-primary hover:underline ml-1 cursor-pointer"
                 onClick={onNavigateToReports}
               >
                 All Reports →
+              </button>
+            )}
+
+            {onExpand && (
+              <button
+                type="button"
+                onClick={onExpand}
+                className="grid size-7.5 place-items-center rounded-lg border border-border/80 text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors shadow-2xs cursor-pointer ml-1"
+                title="Expand Chart"
+                aria-label="Expand Chart"
+              >
+                <Maximize2 size={13} />
               </button>
             )}
           </div>

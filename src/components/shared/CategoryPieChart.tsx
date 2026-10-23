@@ -32,15 +32,51 @@ export function CategoryPieChart({
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
-  // Filter out zero amount categories
-  const activeItems = useMemo(
-    () => categories.filter((c) => c.amount > 0).slice(0, 7),
-    [categories]
-  );
+  // Filter out zero amount categories and prepare items that account for 100% of the chart
+  const activeItems = useMemo(() => {
+    const nonZero = categories.filter((c) => c.amount > 0).sort((a, b) => b.amount - a.amount);
+    if (nonZero.length === 0) return [];
+
+    // Keep top 6 categories, and if more exist, bundle into "Other Categories"
+    const top = nonZero.slice(0, 6);
+    const remainder = nonZero.slice(6);
+    const remainderSum = remainder.reduce((s, c) => s + c.amount, 0);
+
+    const result = [...top];
+    if (remainderSum > 0) {
+      result.push({
+        id: "cat-other-bundled",
+        name: `Other Categories (${remainder.length})`,
+        icon: "📦",
+        amount: remainderSum,
+        pct: totalAmount > 0 ? Math.round((remainderSum / totalAmount) * 100) : 0,
+      });
+    }
+
+    // If totalAmount is larger than the sum of all categories (e.g. EMIs or unclassified outflows)
+    const currentSum = result.reduce((s, c) => s + c.amount, 0);
+    if (totalAmount > currentSum && totalAmount - currentSum > 10) {
+      const diff = totalAmount - currentSum;
+      result.push({
+        id: "cat-other-outflows",
+        name: "Other Outflows / EMIs",
+        icon: "💳",
+        amount: diff,
+        pct: Math.round((diff / totalAmount) * 100),
+      });
+    }
+
+    return result;
+  }, [categories, totalAmount]);
+
+  // Total for the entire circular donut (always 100% full circle)
+  const chartTotal = useMemo(() => {
+    return activeItems.reduce((sum, item) => sum + item.amount, 0);
+  }, [activeItems]);
 
   // Compute SVG slice paths for a donut chart
   const slices = useMemo(() => {
-    if (totalAmount <= 0 || activeItems.length === 0) return [];
+    if (chartTotal <= 0 || activeItems.length === 0) return [];
 
     const size = 180;
     const center = size / 2;
@@ -50,7 +86,7 @@ export function CategoryPieChart({
     let cumulativeAngle = -Math.PI / 2; // start at top 12 o'clock
 
     return activeItems.map((item, idx) => {
-      const sliceAngle = (item.amount / totalAmount) * (2 * Math.PI);
+      const sliceAngle = (item.amount / chartTotal) * (2 * Math.PI);
       const startAngle = cumulativeAngle;
       const endAngle = cumulativeAngle + sliceAngle;
       cumulativeAngle = endAngle;
@@ -86,7 +122,7 @@ export function CategoryPieChart({
         index: idx,
       };
     });
-  }, [activeItems, totalAmount]);
+  }, [activeItems, chartTotal]);
 
   const activeCategory = useMemo(() => {
     if (hoveredId) {
