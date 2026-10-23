@@ -15,7 +15,15 @@ const PALETTE = [
   "#f59e0b", // amber-500
   "#f43f5e", // rose-500
   "#06b6d4", // cyan-500
+  "#ec4899", // pink-500
+  "#14b8a6", // teal-500
+  "#f97316", // orange-500
+  "#84cc16", // lime-500
+  "#6366f1", // indigo-500
   "#d946ef", // fuchsia-500
+  "#eab308", // yellow-500
+  "#0ea5e9", // sky-500
+  "#a855f7", // purple-500
   "#64748b", // slate-500
 ];
 
@@ -37,9 +45,10 @@ export function CategoryPieChart({
     const nonZero = categories.filter((c) => c.amount > 0).sort((a, b) => b.amount - a.amount);
     if (nonZero.length === 0) return [];
 
-    // Keep top 6 categories, and if more exist, bundle into "Other Categories"
-    const top = nonZero.slice(0, 6);
-    const remainder = nonZero.slice(6);
+    // Support up to 15 categories individually so user can add 10+ or 15+ without aggressive truncation
+    const maxItems = 15;
+    const top = nonZero.slice(0, maxItems);
+    const remainder = nonZero.slice(maxItems);
     const remainderSum = remainder.reduce((s, c) => s + c.amount, 0);
 
     const result = [...top];
@@ -140,12 +149,12 @@ export function CategoryPieChart({
   }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-6">
+    <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-6">
       {/* SVG Donut */}
       <div className="relative shrink-0 flex items-center justify-center">
         <svg
           viewBox="0 0 180 180"
-          className="size-48 drop-shadow-xs transition-transform"
+          className="size-44 sm:size-48 drop-shadow-xs transition-transform"
         >
           {slices.map((slice) => {
             const isHovered = hoveredId === slice.id;
@@ -170,10 +179,10 @@ export function CategoryPieChart({
 
         {/* Center Readout */}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center p-2">
-          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-            {hoveredId ? "Selected" : "Total Outflow"}
+          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground truncate max-w-[100px]">
+            {hoveredId && activeCategory ? activeCategory.name : "Total Outflow"}
           </span>
-          <span className="wt-display text-base font-extrabold text-foreground tabular-nums leading-tight mt-0.5">
+          <span className="wt-display text-sm sm:text-base font-extrabold text-foreground tabular-nums leading-tight mt-0.5">
             {money(activeCategory && hoveredId ? activeCategory.amount : totalAmount)}
           </span>
           {activeCategory && hoveredId && (
@@ -184,46 +193,54 @@ export function CategoryPieChart({
         </div>
       </div>
 
-      {/* Category Legend */}
-      <div className="flex-1 w-full space-y-2">
-        {activeItems.map((item, idx) => {
-          const isHovered = hoveredId === item.id;
-          const color = PALETTE[idx % PALETTE.length];
+      {/* Category Legend with Fixed View Area & Smooth Scrolling for 8+ Categories */}
+      <div className="flex-1 w-full min-w-0 flex flex-col justify-center">
+        {activeItems.length > 7 && (
+          <div className="flex items-center justify-between pb-1.5 mb-1 px-1 text-[11px] font-semibold text-muted-foreground border-b border-border/40">
+            <span>Categories ({activeItems.length})</span>
+            <span className="text-[10px] text-muted-foreground/70">Scroll for more ↓</span>
+          </div>
+        )}
+        <div className="space-y-1.5 max-h-[260px] sm:max-h-[290px] overflow-y-auto wt-scrollbar pr-1">
+          {activeItems.map((item, idx) => {
+            const isHovered = hoveredId === item.id;
+            const color = PALETTE[idx % PALETTE.length];
 
-          return (
-            <div
-              key={item.id}
-              onMouseEnter={() => setHoveredId(item.id)}
-              onMouseLeave={() => setHoveredId(null)}
-              onClick={() => onCategoryClick?.(item.id)}
-              className={`flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer ${
-                isHovered
-                  ? "bg-muted/70 ring-1 ring-primary/40 shadow-xs"
-                  : "hover:bg-muted/30"
-              }`}
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <span
-                  className="size-3 rounded-full shrink-0 shadow-2xs"
-                  style={{ backgroundColor: color }}
-                />
-                <span className="text-xs font-bold text-foreground truncate">
-                  {item.icon ? `${item.icon} ` : ""}
-                  {item.name}
-                </span>
-              </div>
+            return (
+              <div
+                key={item.id}
+                onMouseEnter={() => setHoveredId(item.id)}
+                onMouseLeave={() => setHoveredId(null)}
+                onClick={() => onCategoryClick?.(item.id)}
+                className={`flex items-center justify-between p-2 rounded-xl transition-all cursor-pointer ${
+                  isHovered
+                    ? "bg-muted/70 ring-1 ring-primary/40 shadow-xs"
+                    : "hover:bg-muted/30"
+                }`}
+              >
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                  <span
+                    className="size-3 rounded-full shrink-0 shadow-2xs"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="text-xs font-bold text-foreground truncate" title={item.name}>
+                    {item.icon ? `${item.icon} ` : ""}
+                    {item.name}
+                  </span>
+                </div>
 
-              <div className="flex items-center gap-2 shrink-0 text-right">
-                <span className="text-xs font-extrabold text-foreground tabular-nums">
-                  {money(item.amount)}
-                </span>
-                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground min-w-[34px] text-center">
-                  {item.pct}%
-                </span>
+                <div className="flex items-center gap-2 shrink-0 text-right">
+                  <span className="text-xs font-extrabold text-foreground tabular-nums">
+                    {money(item.amount)}
+                  </span>
+                  <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground min-w-[34px] text-center">
+                    {item.pct}%
+                  </span>
+                </div>
               </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

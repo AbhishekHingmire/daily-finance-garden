@@ -1937,80 +1937,95 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   )}
                 </Button>
                 {notificationOpen && (
-                  <div className="absolute right-0 top-12 z-30 w-[min(340px,calc(100vw-24px))] rounded-xl border border-border bg-card p-2 wt-shadow">
-                    <div className="flex items-center justify-between px-2.5 py-2">
-                      <p className="font-bold text-xs text-foreground uppercase tracking-wider">
-                        Notifications
-                      </p>
-                      <Button
-                        variant="link"
-                        className="h-auto p-0 text-[11px] font-semibold text-primary"
-                        onClick={() =>
-                          setData((current) => ({
-                            ...current,
-                            notifications: current.notifications.map((item) => ({ ...item, read: true })),
-                          }))
-                        }
-                      >
-                        Mark all read
-                      </Button>
-                    </div>
-                    {data.notifications.length ? (
-                      <div className="max-h-80 overflow-y-auto space-y-1 pr-1">
-                        {data.notifications.slice(0, 15).map((notice) => (
-                          <button
-                            key={notice.id}
-                            type="button"
-                            className="flex w-full gap-2.5 rounded-lg p-2.5 text-left hover:bg-muted/50 transition-colors"
-                            onClick={() => {
-                              setData((current) => ({
-                                ...current,
-                                notifications: current.notifications.map((item) =>
-                                  item.id === notice.id ? { ...item, read: true } : item
-                                ),
-                              }));
-                              setNotificationOpen(false);
-                            }}
-                          >
-                            <span
-                              className={`mt-1.5 size-2 shrink-0 rounded-full ${
-                                notice.read ? "bg-muted-foreground/30" : "bg-primary"
-                              }`}
-                            />
-                            <div className="flex-1 min-w-0">
-                              <span className="block text-xs font-bold text-foreground">
-                                {notice.title}
-                              </span>
-                              <span className="block text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
-                                {notice.description}
-                              </span>
-                              {notice.date && (
-                                <span className="block text-[10px] text-muted-foreground/70 mt-1 font-medium">
-                                  {notice.date}
-                                </span>
-                              )}
-                            </div>
-                          </button>
-                        ))}
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setNotificationOpen(false)}
+                      aria-label="Close notifications menu"
+                    />
+                    <div className="absolute right-0 top-12 z-50 w-[min(340px,calc(100vw-24px))] rounded-xl border border-border bg-card p-2 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
+                      <div className="flex items-center justify-between px-2.5 py-2">
+                        <p className="font-bold text-xs text-foreground uppercase tracking-wider">
+                          Notifications
+                        </p>
+                        <Button
+                          variant="link"
+                          className="h-auto p-0 text-[11px] font-semibold text-primary disabled:opacity-40 disabled:cursor-not-allowed"
+                          disabled={!data.notifications.some((item) => !item.read)}
+                          onClick={() =>
+                            setData((current) => ({
+                              ...current,
+                              notifications: current.notifications.map((item) => ({ ...item, read: true })),
+                            }))
+                          }
+                        >
+                          Mark all read
+                        </Button>
                       </div>
-                    ) : (
-                      <p className="px-2 py-6 text-center text-xs text-muted-foreground">
-                        You’re all caught up.
-                      </p>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-xs"
-                      onClick={() => {
-                        const ids = data.notifications.map((n) => n.id);
-                        saveClearedNotificationIds(ids);
-                        setData((current) => ({ ...current, notifications: [] }));
-                      }}
-                    >
-                      Clear Notifications
-                    </Button>
-                  </div>
+                      {data.notifications.length ? (
+                        <div className="max-h-80 overflow-y-auto space-y-1 pr-1 wt-scrollbar">
+                          {data.notifications.slice(0, 15).map((notice) => (
+                            <button
+                              key={notice.id}
+                              type="button"
+                              className="flex w-full gap-2.5 rounded-lg p-2.5 text-left hover:bg-muted/50 transition-colors cursor-pointer"
+                              onClick={() => {
+                                setData((current) => ({
+                                  ...current,
+                                  notifications: current.notifications.map((item) =>
+                                    item.id === notice.id ? { ...item, read: true } : item
+                                  ),
+                                }));
+                                setNotificationOpen(false);
+                              }}
+                            >
+                              <span
+                                className={`mt-1.5 size-2 shrink-0 rounded-full ${
+                                  notice.read ? "bg-muted-foreground/30" : "bg-primary"
+                                }`}
+                              />
+                              <div className="flex-1 min-w-0">
+                                <span className="block text-xs font-bold text-foreground">
+                                  {notice.title}
+                                </span>
+                                <span className="block text-[11px] text-muted-foreground mt-0.5 leading-relaxed">
+                                  {notice.description}
+                                </span>
+                                {notice.date && (
+                                  <span className="block text-[10px] text-muted-foreground/70 mt-1 font-medium">
+                                    {notice.date}
+                                  </span>
+                                )}
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="px-4 py-7 text-center space-y-1.5">
+                          <span className="grid size-9 mx-auto place-items-center rounded-full bg-muted/60 text-muted-foreground mb-2">
+                            <Bell size={16} className="opacity-60" />
+                          </span>
+                          <p className="text-xs font-bold text-foreground">You’re all caught up</p>
+                          <p className="text-[11px] text-muted-foreground">No unread alerts or new activity</p>
+                        </div>
+                      )}
+                      <div className="pt-2 border-t border-border/60 mt-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled={data.notifications.length === 0}
+                          className="w-full h-8 text-xs font-semibold text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                          onClick={() => {
+                            const ids = data.notifications.map((n) => n.id);
+                            saveClearedNotificationIds(ids);
+                            setData((current) => ({ ...current, notifications: [] }));
+                          }}
+                        >
+                          Clear Notifications
+                        </Button>
+                      </div>
+                    </div>
+                  </>
                 )}
               </div>
 
