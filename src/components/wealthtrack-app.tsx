@@ -169,6 +169,29 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const [searchText, setSearchText] = useState("");
   const [notificationOpen, setNotificationOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const notificationContainerRef = useRef<HTMLDivElement>(null);
+  const profileContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleGlobalClick(event: MouseEvent) {
+      if (
+        notificationOpen &&
+        notificationContainerRef.current &&
+        !notificationContainerRef.current.contains(event.target as Node)
+      ) {
+        setNotificationOpen(false);
+      }
+      if (
+        profileOpen &&
+        profileContainerRef.current &&
+        !profileContainerRef.current.contains(event.target as Node)
+      ) {
+        setProfileOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleGlobalClick);
+    return () => document.removeEventListener("mousedown", handleGlobalClick);
+  }, [notificationOpen, profileOpen]);
 
   // Modals
   const [modal, setModal] = useState<
@@ -1920,7 +1943,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               </Button>
 
               {/* Notifications Dropdown */}
-              <div className="relative">
+              <div ref={notificationContainerRef} className="relative">
                 <Button
                   variant="ghost"
                   size="icon"
@@ -2021,7 +2044,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                             setData((current) => ({ ...current, notifications: [] }));
                           }}
                         >
-                          Clear Notifications
+                          Clear All Notifications
                         </Button>
                       </div>
                     </div>
@@ -2030,7 +2053,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               </div>
 
               {/* Profile Dropdown */}
-              <div className="relative">
+              <div ref={profileContainerRef} className="relative">
                 <Button
                   variant="ghost"
                   className="h-10 gap-1.5 px-1.5 rounded-xl"

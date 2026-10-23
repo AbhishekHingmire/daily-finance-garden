@@ -64,7 +64,7 @@ export function CategoryModal({
           <p className="text-[11px] text-muted-foreground mb-2">
             Icon auto-detects as you type, or choose any icon below:
           </p>
-          <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto rounded-xl border border-border p-2 bg-muted/20">
+          <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto wt-scrollbar rounded-xl border border-border p-2 bg-muted/20">
             {POPULAR_CATEGORY_ICONS.map((icon) => (
               <button
                 key={icon}

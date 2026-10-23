@@ -35,7 +35,7 @@ export function Modal({
     >
       <section
         role="document"
-        className={`max-h-[92dvh] w-full overflow-y-auto rounded-t-2xl border border-border bg-card p-5 wt-shadow sm:rounded-2xl sm:p-6 ${
+        className={`max-h-[92dvh] w-full overflow-y-auto wt-scrollbar rounded-t-2xl border border-border bg-card p-5 wt-shadow sm:rounded-2xl sm:p-6 ${
           wide ? "max-w-2xl" : "max-w-lg"
         }`}
       >

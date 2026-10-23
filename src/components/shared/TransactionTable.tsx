@@ -247,9 +247,9 @@ export function TransactionTable({
             </Button>
           </div>
         ) : (
-          <div className="flex flex-wrap items-center justify-between gap-2.5">
+          <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-2.5">
             {/* Left: Mobile Search Button or Desktop Input + Record Count */}
-            <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <div className="flex items-center gap-2 sm:gap-2.5 shrink min-w-0">
               {/* Mobile Search Toggle Icon */}
               <Button
                 variant="outline"
@@ -263,11 +263,11 @@ export function TransactionTable({
               </Button>
 
               {/* Desktop Search Input (Always visible on sm and up) */}
-              <div className="relative hidden sm:block w-56 lg:w-64 shrink-0">
+              <div className="relative hidden sm:block w-36 sm:w-44 md:w-52 shrink min-w-[110px]">
                 <Search size={14} className="absolute left-3 top-2.5 text-muted-foreground" />
                 <input
                   type="text"
-                  className="wt-field h-8.5 pl-9 pr-8 text-xs font-medium bg-background"
+                  className="wt-field h-8.5 pl-8 pr-7 text-xs font-medium bg-background"
                   placeholder={searchPlaceholder}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
@@ -283,14 +283,14 @@ export function TransactionTable({
                 )}
               </div>
 
-              {/* Transaction count & Net Total Pill */}
-              <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-wrap">
+              {/* Transaction count & Net Total Pill - NO flex-wrap so it never breaks apart */}
+              <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
                 <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
                   {sortedTransactions.length} tx{sortedTransactions.length !== 1 ? "s" : ""}
                 </span>
                 <span className="text-muted-foreground/40 hidden sm:inline">·</span>
                 <div
-                  className={`inline-flex items-center gap-1 px-2 sm:px-2.5 py-0.5 rounded-full text-[11px] sm:text-xs font-semibold tabular-nums border shrink-0 ${
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold tabular-nums border shrink-0 ${
                     totalNet > 0
                       ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
                       : totalNet < 0
@@ -298,7 +298,7 @@ export function TransactionTable({
                       : "bg-muted text-muted-foreground border-border"
                   }`}
                 >
-                  <span className="text-[9.5px] uppercase font-medium text-muted-foreground hidden sm:inline">Total:</span>
+                  <span className="text-[9.5px] uppercase font-medium text-muted-foreground hidden md:inline">Total:</span>
                   <span>
                     {totalNet > 0
                       ? `+${money(totalNet)}`
@@ -314,15 +314,15 @@ export function TransactionTable({
             <div className="flex items-center gap-1.5 shrink-0 ml-auto">
               {headerActions}
               <select
-                className="wt-field h-8 py-0 pl-2.5 pr-8 text-xs font-semibold bg-background rounded-lg border border-border/70 w-auto min-w-[165px] sm:min-w-[170px] cursor-pointer"
+                className="wt-field h-8 py-0 pl-2 pr-7 text-xs font-semibold bg-background rounded-lg border border-border/70 w-auto min-w-[125px] sm:min-w-[145px] cursor-pointer"
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as any)}
                 aria-label="Sort transactions"
               >
-                <option value="newest">Sort: Newest first</option>
-                <option value="oldest">Sort: Oldest first</option>
-                <option value="highest">Sort: Highest amount</option>
-                <option value="lowest">Sort: Lowest amount</option>
+                <option value="newest">Sort: Newest</option>
+                <option value="oldest">Sort: Oldest</option>
+                <option value="highest">Sort: Highest</option>
+                <option value="lowest">Sort: Lowest</option>
               </select>
             </div>
           </div>

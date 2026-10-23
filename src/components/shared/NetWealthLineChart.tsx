@@ -242,28 +242,6 @@ export function NetWealthLineChart({
             <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-none">{subtitle}</p>
           </div>
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-            {activePoint && (
-              <div className="hidden sm:flex items-center gap-2">
-                <span className="text-[11px] text-muted-foreground font-medium">
-                  {activePoint.fullLabel}:
-                </span>
-                <div className="flex items-center gap-2 tabular-nums">
-                  <span
-                    className={`wt-display text-sm font-extrabold ${
-                      activePoint.value >= 0
-                        ? "text-emerald-600 dark:text-emerald-400"
-                        : "text-rose-600 dark:text-rose-400"
-                    }`}
-                  >
-                    {activePoint.value >= 0 ? "+" : ""}{money(activePoint.value)}
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-semibold">
-                    (Day: {activePoint.delta >= 0 ? "+" : ""}{money(activePoint.delta)})
-                  </span>
-                </div>
-              </div>
-            )}
-
             {onExpand && (
               <button
                 type="button"
