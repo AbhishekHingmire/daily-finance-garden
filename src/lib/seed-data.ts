@@ -389,7 +389,7 @@ export function getCanonicalSeedLoans(): Loan[] {
       pay_from_account: "acc-hdfc",
       auto_post: true,
       mode: "already_running",
-      opening_outstanding: 2850970, // after installment 29 is posted in Oct, becomes 2,840,000
+      opening_outstanding: 2823940, // after installment 29 is posted in Oct (principal 10,970), becomes 2,812,970
       opening_installments_paid: 28,
       notes: "Auto-debited from Everyday account on 10th of every month.",
     },

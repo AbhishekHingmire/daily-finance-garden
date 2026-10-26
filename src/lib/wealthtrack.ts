@@ -471,7 +471,7 @@ export function createInitialState(): WealthState {
         loanType: "Home Loan",
         lenderInstitution: "HDFC Bank",
         principalAmount: 3500000,
-        currentOutstanding: 2840000,
+        currentOutstanding: 2812970,
         interestRate: 8.4,
         emiAmount: 30850,
         repaymentAccountId: "acc-hdfc",

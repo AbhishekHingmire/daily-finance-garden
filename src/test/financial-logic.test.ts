@@ -437,10 +437,10 @@ describe("Financial Engine & Calculations", () => {
 
     const summary = getLoansSummary(state.loans);
     expect(summary.totalPrincipal).toBe(4350000);
-    expect(summary.totalOutstanding).toBe(3260000);
+    expect(summary.totalOutstanding).toBe(3232970);
     expect(summary.totalMonthlyEmi).toBe(45050);
-    expect(summary.totalPaid).toBe(1090000);
-    expect(summary.payoffPercentage).toBeCloseTo(25.06, 1);
+    expect(summary.totalPaid).toBe(1117030);
+    expect(summary.payoffPercentage).toBeCloseTo(25.68, 1);
   });
 
   it("calculates account balances and cash flows across debt types: EMI, Borrow, Lend, and Recovery", () => {
