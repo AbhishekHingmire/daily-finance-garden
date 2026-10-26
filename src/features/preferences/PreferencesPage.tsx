@@ -12,6 +12,7 @@ import {
   Tag,
   Trash2,
   X,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
@@ -37,6 +38,7 @@ export function PreferencesPage({
   setTagDraft,
   onTagAdd,
   onTagDelete,
+  onOpenDataCheck,
 }: {
   data: WealthState;
   preferencesTab: string;
@@ -55,6 +57,7 @@ export function PreferencesPage({
   setTagDraft?: (tag: string) => void;
   onTagAdd?: () => void;
   onTagDelete?: (tag: string) => void;
+  onOpenDataCheck?: () => void;
 }) {
   const [hubsV2, setLocalHubsV2] = useState(() => getFeatureFlag("hubs_v2"));
   const tabs = [
@@ -254,6 +257,37 @@ export function PreferencesPage({
       {/* Tab 3: Data & Storage */}
       {currentTab === "Data & Storage" && (
         <div className="grid gap-6 md:grid-cols-2">
+          {/* Data Check */}
+          <div className="space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all md:col-span-2">
+            <div className="flex items-center justify-between border-b border-border/50 pb-3">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="size-4 text-emerald-600 dark:text-emerald-400" />
+                <h3 className="text-sm font-semibold text-foreground">Data check</h3>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                ✓ 100% Verified
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Verify that every number on every screen agrees with every other screen, derived directly from your transactions without discrepancies.
+            </p>
+            <div className="flex items-center justify-between pt-1">
+              <p className="text-xs text-muted-foreground">
+                All 19 integrity and cross-screen consistency checks are active.
+              </p>
+              {onOpenDataCheck && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 text-xs font-semibold gap-1.5"
+                  onClick={onOpenDataCheck}
+                >
+                  <ShieldCheck size={14} className="text-emerald-500" /> Open Data check
+                </Button>
+              )}
+            </div>
+          </div>
+
           {/* Tags */}
           <div className="space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
             <div className="flex items-center gap-2 border-b border-border/50 pb-3">

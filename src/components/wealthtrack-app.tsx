@@ -54,6 +54,7 @@ import { SettingsPage } from "@/features/settings/SettingsPage";
 import { WealthHub, type WealthSubtab } from "@/features/wealth/WealthHub";
 import { PlanHub, type PlanSubtab } from "@/features/plan/PlanHub";
 import { DataHealthModal } from "@/components/shared/DataHealthModal";
+import { runDataHealthChecks } from "@/lib/data-health";
 import { GlobalAddSheet } from "@/components/shared/GlobalAddSheet";
 import { useSharedPeriod } from "@/lib/period-state";
 import { getFeatureFlag } from "@/lib/feature-flags";
@@ -204,6 +205,20 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   });
 
   const unified = useMemo(() => migrateLegacyState(data), [data]);
+
+  const allDataChecksPass = useMemo(() => {
+    const checks = runDataHealthChecks(
+      unified.accounts,
+      unified.categories,
+      unified.entries,
+      unified.loans,
+      unified.holdings,
+      unified.goals,
+      unified.schedules,
+      sharedPeriod
+    );
+    return checks.every((c) => c.passed);
+  }, [unified, sharedPeriod]);
 
   const handleSaveGlobalEntry = (entry: any, newSchedule?: any) => {
     const legacyTx = entryToLegacyTransaction(entry);
@@ -2289,13 +2304,19 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                       </Button>
                       <Button
                         variant="ghost"
-                        className="w-full justify-start text-xs font-semibold"
+                        className="w-full justify-between text-xs font-semibold"
                         onClick={() => {
                           setDataHealthOpen(true);
                           setProfileOpen(false);
                         }}
                       >
-                        <ShieldCheck size={15} className="mr-2 text-emerald-500" /> Data Health (I1–I16)
+                        <span className="flex items-center">
+                          <ShieldCheck size={15} className={`mr-2 ${allDataChecksPass ? "text-emerald-500" : "text-amber-500"}`} />
+                          Data check
+                        </span>
+                        {!allDataChecksPass && (
+                          <span className="size-2 rounded-full bg-amber-500 animate-pulse" title="Discrepancies detected" />
+                        )}
                       </Button>
                       <Button
                         variant="ghost"
@@ -2600,6 +2621,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 money={money}
                 onExport={() => exportCsv()}
                 onImport={openImport}
+                onOpenDataCheck={() => setDataHealthOpen(true)}
                 onReset={() => {
                   setPendingDelete({
                     kind: "reset",

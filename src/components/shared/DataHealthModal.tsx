@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { CheckCircle2, XCircle, ShieldCheck, RefreshCw } from "lucide-react";
+import { CheckCircle2, XCircle, ShieldCheck } from "lucide-react";
 import { Modal } from "@/components/shared/Modal";
 import { Button } from "@/components/ui/button";
 import { runDataHealthChecks } from "@/lib/data-health";
@@ -38,8 +38,8 @@ export function DataHealthModal({ isOpen, onClose, data }: DataHealthModalProps)
 
   return (
     <Modal
-      title="System Data Health & Ledger Invariants"
-      description="Continuous validation of Section 0 correlation contracts (I1–I16) against single source of truth."
+      title="Data check"
+      description="Verify that all numbers, account balances, and calculations agree across screens."
       onClose={onClose}
     >
       <div className="space-y-4">
@@ -55,10 +55,10 @@ export function DataHealthModal({ isOpen, onClose, data }: DataHealthModalProps)
             <ShieldCheck size={20} className={allPassed ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400"} />
             <div>
               <p className="text-xs font-bold">
-                {allPassed ? "100% Data Integrity Verified" : `${totalCount - passedCount} Invariant Discrepancies Detected`}
+                {allPassed ? "100% Data Integrity Verified" : `${totalCount - passedCount} Discrepancies Detected`}
               </p>
               <p className="text-[11px] opacity-80">
-                {passedCount} of {totalCount} canonical ledger invariants passed.
+                {allPassed ? `All ${totalCount} checks passed.` : `${passedCount} of ${totalCount} checks passed.`}
               </p>
             </div>
           </div>
@@ -67,38 +67,49 @@ export function DataHealthModal({ isOpen, onClose, data }: DataHealthModalProps)
           </span>
         </div>
 
-        {/* Invariant Check Results List */}
+        {/* Check Results List */}
         <div className="max-h-[380px] overflow-y-auto space-y-2 pr-1">
           {results.map((item) => (
             <div
               key={item.id}
-              className="flex items-start justify-between gap-3 rounded-xl border border-border/70 bg-card p-3 text-xs"
+              className="flex items-center justify-between gap-3 rounded-xl border border-border/70 bg-card p-3 text-xs"
             >
               <div className="space-y-1 min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-[10px] font-bold text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                    {item.id}
-                  </span>
-                  <span className="font-semibold text-foreground truncate">{item.name}</span>
+                  <span className="font-semibold text-foreground text-xs">{item.name}</span>
                 </div>
-                <div className="flex items-center gap-3 text-[11px] text-muted-foreground font-mono">
-                  <span>Actual: <strong className="text-foreground">{item.actual}</strong></span>
-                  <span>·</span>
+                <div className="flex flex-wrap items-center gap-x-2 text-[11px] text-muted-foreground font-mono">
                   <span>Expected: <strong className="text-foreground">{item.expected}</strong></span>
+                  <span>·</span>
+                  <span>Shown: <strong className="text-foreground">{item.actual}</strong></span>
                 </div>
                 {item.message && (
                   <p className="text-[11px] text-muted-foreground">{item.message}</p>
                 )}
               </div>
-              <div className="shrink-0 pt-0.5">
+              <div className="shrink-0 flex items-center gap-2">
                 {item.passed ? (
                   <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
                     <CheckCircle2 size={16} /> Passed
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400">
-                    <XCircle size={16} /> Failed
-                  </span>
+                  <>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                      <XCircle size={16} /> Failed
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2.5 text-[11px] font-semibold text-rose-600 border-rose-300 hover:bg-rose-50 dark:hover:bg-rose-950/30"
+                      onClick={() => {
+                        if (item.fixAction) {
+                          item.fixAction();
+                        }
+                      }}
+                    >
+                      Fix
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
