@@ -68,8 +68,9 @@ export function ProfilePage({
   return (
     <div className="space-y-6">
       <PageHeading
-        title="My Profile"
+        title="Profile"
         description="Manage your identity, monthly income targets, emergency fund security, and investor risk profile."
+        isBalancePage
       />
 
       {/* Profile Header Identity Card */}

@@ -185,8 +185,35 @@ export function ReportsPage({
 
   return (
     <div className="space-y-6">
+      {/* Responsive Segmented Reports Navigation Tabs (Sticky directly under top bar) */}
+      <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2.5 bg-background border-b border-border/80 w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 wt-scrollbar">
+          {[
+            { id: "all", label: "Overview & All" },
+            { id: "cashflow", label: "Cash Flow & Trends" },
+            { id: "spending", label: "Spending Allocation" },
+            { id: "rule", label: "50/30/20 Discipline" },
+            { id: "debt", label: "Income & Debt" },
+            { id: "wealth", label: "Wealth & SIPs" },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
+                activeTab === tab.id
+                  ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <PageHeading
-        title="Reports & Analytics"
+        title="Insights"
         description="Comprehensive cash flow velocity, category allocation, and wealth accumulation."
         actions={
           <Button
@@ -275,31 +302,6 @@ export function ReportsPage({
             </span>
           )}
         </div>
-      </div>
-
-      {/* Responsive Segmented Reports Navigation Tabs */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 wt-scrollbar">
-        {[
-          { id: "all", label: "Overview & All" },
-          { id: "cashflow", label: "Cash Flow & Trends" },
-          { id: "spending", label: "Spending Allocation" },
-          { id: "rule", label: "50/30/20 Discipline" },
-          { id: "debt", label: "Income & Debt" },
-          { id: "wealth", label: "Wealth & SIPs" },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-              activeTab === tab.id
-                ? "bg-primary text-primary-foreground shadow-2xs font-bold"
-                : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
       </div>
 
       {/* Hero Financial Performance Metric Cards */}

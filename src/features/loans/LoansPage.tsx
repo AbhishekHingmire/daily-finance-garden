@@ -76,14 +76,15 @@ export function LoansPage({
   return (
     <div className="space-y-6">
       <PageHeading
-        title="Loans & Debt"
+        title="Loans"
         description="Manage borrowings, mortgages, debt payoff progress, and linked auto-recurring bank EMIs."
-        actions={
+        isBalancePage
+        primaryAction={
           <Button
             onClick={onAddLoan}
             className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-xs"
           >
-            <Plus size={15} /> Add Loan / Debt
+            <Plus size={15} /> Add loan
           </Button>
         }
       />

@@ -144,33 +144,27 @@ export function TransactionsPage({
       <PageHeading
         title="Transactions"
         description="Every financial movement, categorized and accounted for."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5 text-xs font-semibold"
-              onClick={onImport}
-            >
-              <FileUp size={15} /> Bulk Import
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9 gap-1.5 text-xs font-semibold"
-              onClick={onExport}
-            >
-              <Download size={15} /> Export CSV
-            </Button>
-            <Button
-              size="sm"
-              className="h-9 gap-1.5 text-xs font-semibold shadow-xs"
-              onClick={onAdd}
-            >
-              <Plus size={15} /> Add Transaction
-            </Button>
-          </div>
+        primaryAction={
+          <Button
+            size="sm"
+            className="h-9 gap-1.5 text-xs font-semibold shadow-xs"
+            onClick={onAdd}
+          >
+            <Plus size={15} /> Add transaction
+          </Button>
         }
+        moreMenuItems={[
+          {
+            label: "Bulk Import",
+            icon: <FileUp size={15} />,
+            onClick: onImport,
+          },
+          {
+            label: "Export CSV",
+            icon: <Download size={15} />,
+            onClick: onExport,
+          },
+        ]}
       />
 
       {/* Review items for unclassified transactions if any */}
@@ -193,8 +187,8 @@ export function TransactionsPage({
         </div>
       )}
 
-      {/* Top Filter Bar: Compact Responsive Date Range Filter & Dropdown Filters */}
-      <div className="rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 wt-shadow hover:border-border transition-colors space-y-2.5">
+      {/* Top Filter Bar: Compact Responsive Date Range Filter & Dropdown Filters (Sticky under top bar) */}
+      <div className="sticky top-[56px] md:top-[64px] z-subnav rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 wt-shadow hover:border-border transition-colors space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2.5">
           <div className="flex-1 min-w-0">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />

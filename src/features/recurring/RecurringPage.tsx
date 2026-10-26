@@ -54,9 +54,10 @@ export function RecurringPage({
       <PageHeading
         title="Recurring"
         description="Scheduled bills, loan EMIs, automated SIP investments, and income schedules."
-        actions={
+        isBalancePage
+        primaryAction={
           <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-xs">
-            <Plus size={15} /> Add Schedule
+            <Plus size={15} /> Add schedule
           </Button>
         }
       />

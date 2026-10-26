@@ -102,12 +102,13 @@ export function InvestmentsPage({
       <PageHeading
         title="Investments"
         description="Track your portfolio holdings, asset allocation, invested amount, and real-time earned returns."
-        actions={
+        isBalancePage
+        primaryAction={
           <Button
             onClick={onAddHolding}
             className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-xs"
           >
-            <Plus size={15} /> Add Investment
+            <Plus size={15} /> Add investment
           </Button>
         }
       />

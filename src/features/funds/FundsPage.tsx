@@ -126,33 +126,31 @@ export function FundsPage({
   return (
     <div className="space-y-6">
       <PageHeading
-        title="Fund Planner"
+        title="Goals"
         description="Manage your emergency safety runway, custom sinking funds, and AI-powered purchase simulations."
-        actions={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setEditingFund(null);
-                setFundModalOpen(true);
-              }}
-              className="h-9 gap-1.5 text-xs font-semibold shadow-2xs"
-            >
-              <Plus size={15} /> Add Custom Fund
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => {
-                setEditingPlan(null);
-                setPlanModalOpen(true);
-              }}
-              className="h-9 gap-1.5 text-xs font-semibold shadow-xs"
-            >
-              <Sparkles size={15} /> Plan Major Purchase
-            </Button>
-          </div>
+        isBalancePage
+        primaryAction={
+          <Button
+            size="sm"
+            onClick={() => {
+              setEditingFund(null);
+              setFundModalOpen(true);
+            }}
+            className="h-9 gap-1.5 text-xs font-semibold shadow-2xs"
+          >
+            <Plus size={15} /> Add goal
+          </Button>
         }
+        moreMenuItems={[
+          {
+            label: "Plan Major Purchase",
+            icon: <Sparkles size={14} />,
+            onClick: () => {
+              setEditingPlan(null);
+              setPlanModalOpen(true);
+            },
+          },
+        ]}
       />
 
       {/* Navigation Switch Panels */}

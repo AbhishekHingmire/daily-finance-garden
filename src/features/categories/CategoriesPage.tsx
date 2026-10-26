@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, ChevronDown, Pencil, Plus, SlidersHorizontal
 import { Button } from "@/components/ui/button";
 import { ActionMenu } from "@/components/shared/ActionMenu";
 import { PageHeading } from "@/components/shared/PageHeading";
+import { PeriodPill } from "@/components/shared/PeriodPill";
 import { Metric } from "@/components/shared/Metric";
 import { useSharedPeriod } from "@/lib/period-state";
 import { migrateLegacyState } from "@/lib/migration";
@@ -32,7 +33,7 @@ export function CategoriesPage({
 }) {
   const [priorityFilter, setPriorityFilter] = useState("All");
   const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
-  const [sharedPeriod] = useSharedPeriod();
+  const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
 
   const unified = useMemo(() => migrateLegacyState(data), [data]);
   const budgetMetrics = useMemo(
@@ -61,11 +62,12 @@ export function CategoriesPage({
   return (
     <div className="space-y-6">
       <PageHeading
-        title="Budgets & Categories"
-        description="Organize your spending into smart 50/30/20 Need vs. Want classifications with monthly budget caps."
-        actions={
+        title="Budgets"
+        description="Organize your spending into smart need or want classifications with monthly budget caps."
+        periodSlot={<PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />}
+        primaryAction={
           <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 text-xs font-semibold shadow-xs">
-            <Plus size={15} /> Add Category
+            <Plus size={15} /> Add category
           </Button>
         }
       />

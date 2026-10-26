@@ -73,6 +73,7 @@ export function PreferencesPage({
       <PageHeading
         title="Preferences"
         description="Configure your currency display, visual theme, default accounts, smart reminders, and offline backups."
+        isBalancePage
       />
 
       <div className="flex flex-wrap gap-1.5 sm:gap-2 border-b border-border/60 pb-3">

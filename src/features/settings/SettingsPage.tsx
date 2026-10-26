@@ -48,6 +48,7 @@ export function SettingsPage({
       <PageHeading
         title="Settings"
         description="Customize your WealthTrack experience, regional formats, metadata tags, and local data."
+        isBalancePage
       />
 
       <div className="flex flex-wrap gap-1.5 sm:gap-2 border-b border-border/60 pb-3">

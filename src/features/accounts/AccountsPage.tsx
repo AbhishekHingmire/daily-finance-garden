@@ -199,21 +199,19 @@ export function AccountsPage({
       <PageHeading
         title="Accounts"
         description="Bank accounts, digital wallets, cash reserves, and liabilities."
-        actions={
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => onTransfer(activeAccounts[0])}
-              className="h-9 gap-1.5 text-xs font-semibold"
-            >
-              <ArrowLeftRight size={14} /> Transfer
-            </Button>
-            <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 text-xs font-semibold shadow-xs">
-              <Plus size={15} /> Add Account
-            </Button>
-          </div>
+        isBalancePage
+        primaryAction={
+          <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 text-xs font-semibold shadow-xs">
+            <Plus size={15} /> Add account
+          </Button>
         }
+        moreMenuItems={[
+          {
+            label: "Transfer",
+            icon: <ArrowLeftRight size={14} />,
+            onClick: () => onTransfer(activeAccounts[0]),
+          },
+        ]}
       />
 
       {/* Portfolio Net Worth & Wealth Hero Card */}
