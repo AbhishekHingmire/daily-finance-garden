@@ -532,7 +532,8 @@ export function getWealthMetrics(
 
   const totalDebt = loanDebt + creditCardDebt;
   const totalAssets = liquidCash + investmentsValue + receivablesValue;
-  const netWorth = totalAssets - totalDebt;
+  // User explicit requirement: Do not subtract loans into negative numbers; show person's current wealth
+  const netWorth = totalAssets;
 
   const derivedGoals = getDerivedGoals(goals, entries);
   const earmarkedCash = derivedGoals.reduce((sum, g) => sum + g.current, 0);

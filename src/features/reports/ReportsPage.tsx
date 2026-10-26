@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter, type DateRangeValue } from "@/components/shared/DateRangeFilter";
+import { PeriodPill } from "@/components/shared/PeriodPill";
 import { CashFlowVelocityChart } from "@/components/shared/CashFlowVelocityChart";
 import { CategoryPieChart } from "@/components/shared/CategoryPieChart";
 import { CirclePercentageGauge } from "@/components/shared/CirclePercentageGauge";
@@ -61,17 +62,9 @@ export function ReportsPage({
   const [priorityFilter, setPriorityFilter] = useState("All");
   const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
   const [expandedChart, setExpandedChart] = useState<"velocity" | "trend" | null>(null);
-  const [activeTab, setActiveTab] = useState<"summary" | "spending" | "cashflow" | "wealth" | "debt" | "all">("summary");
-  const isSummary = activeTab === "summary" || activeTab === "all";
-  const activeTabButtonRef = useRef<HTMLButtonElement | null>(null);
+  const isSummary = true;
 
-  useEffect(() => {
-    if (activeTabButtonRef.current) {
-      activeTabButtonRef.current.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-    }
-  }, [activeTab]);
-
-  const [sharedPeriod] = useSharedPeriod();
+  const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
   const unified = useMemo(() => migrateLegacyState(data), [data]);
   const periodMetrics = useMemo(
     () => getPeriodMetrics(unified.entries, sharedPeriod),
@@ -193,43 +186,10 @@ export function ReportsPage({
 
   return (
     <div className="space-y-6">
-      {/* Responsive Segmented Reports Navigation Tabs (5 tabs, sticky directly under top bar with scroll-into-view and right edge fade) */}
-      <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2.5 bg-background border-b border-border/80 w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)]">
-        <div className="relative w-full">
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 wt-scrollbar [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pr-10">
-            {[
-              { id: "summary" as const, label: "Summary" },
-              { id: "spending" as const, label: "Spending" },
-              { id: "cashflow" as const, label: "Cash flow" },
-              { id: "wealth" as const, label: "Wealth" },
-              { id: "debt" as const, label: "Debt" },
-            ].map((tab) => {
-              const isActive = activeTab === tab.id || (tab.id === "summary" && (activeTab as string) === "all");
-              return (
-                <button
-                  key={tab.id}
-                  ref={isActive ? activeTabButtonRef : undefined}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
-                    isActive
-                      ? "bg-primary text-primary-foreground shadow-2xs font-bold"
-                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-          {/* Right edge fade gradient */}
-          <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-background to-transparent" />
-        </div>
-      </div>
-
       <PageHeading
         title="Insights"
         description="Comprehensive cash flow velocity, category allocation, and wealth accumulation."
+        periodSlot={<PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />}
         actions={
           <Button
             size="sm"
@@ -242,11 +202,19 @@ export function ReportsPage({
         }
       />
 
-      {/* Date Range & Priority Filter Controls: Collapsible across all screen sizes */}
+      {/* Priority Filter Controls: Collapsible across all screen sizes */}
       <div className="rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 wt-shadow hover:border-border transition-colors space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2.5">
-          <div className="flex-1 min-w-0">
-            <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+            <span>Period:</span>
+            <span className="font-bold text-foreground">
+              {sharedPeriod.month === 10 && sharedPeriod.year === 2026 ? "Oct 2026" : `${sharedPeriod.month}/${sharedPeriod.year}`}
+            </span>
+            {priorityFilter !== "All" && (
+              <span className="text-primary font-semibold">
+                · Filtered by {priorityFilter}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {/* Filter Toggle (Consistent across Desktop and Mobile) */}
@@ -383,32 +351,28 @@ export function ReportsPage({
       </div>
 
       {/* Side by Side Charts in 1 Row: Velocity Breakdown & Cumulative Net Cash Flow Trend */}
-      {(isSummary || activeTab === "cashflow") && (
-        <div className="grid gap-6 lg:grid-cols-2">
-          <CashFlowVelocityChart
-            transactions={data.transactions}
-            dateRange={dateRange}
-            money={money}
-            title="Cash Flow Velocity Breakdown"
-            onExpand={() => setExpandedChart("velocity")}
-          />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <CashFlowVelocityChart
+          transactions={data.transactions}
+          dateRange={dateRange}
+          money={money}
+          title="Cash Flow Velocity Breakdown"
+          onExpand={() => setExpandedChart("velocity")}
+        />
 
-          <NetWealthLineChart
-            transactions={data.transactions}
-            dateRange={dateRange}
-            money={money}
-            title="Cumulative Net Cash Flow Trend"
-            onExpand={() => setExpandedChart("trend")}
-          />
-        </div>
-      )}
+        <NetWealthLineChart
+          transactions={data.transactions}
+          dateRange={dateRange}
+          money={money}
+          title="Cumulative Net Cash Flow Trend"
+          onExpand={() => setExpandedChart("trend")}
+        />
+      </div>
 
       {/* Two Column Visual Analytics: Allocation Donut & 50/30/20 Diagnostic */}
-      {(isSummary || activeTab === "spending") && (
-        <div className={isSummary ? "grid gap-6 lg:grid-cols-2" : "grid gap-6"}>
-          {/* Interactive Category Pie / Donut Chart */}
-          {(isSummary || activeTab === "spending") && (
-            <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Interactive Category Pie / Donut Chart */}
+        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between pb-3 border-b border-border/60">
                   <div>
@@ -431,11 +395,9 @@ export function ReportsPage({
                 />
               </div>
             </div>
-          )}
 
           {/* 50 / 30 / 20 Budget Diagnostic & Allocations */}
-          {(isSummary || activeTab === "spending") && (
-            <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
+          <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-border/60">
                   <div>
@@ -555,23 +517,13 @@ export function ReportsPage({
                     : `Balanced cash flow profile. Direct surplus capital into automated recurring SIPs or debt reduction to accelerate wealth compounding.`}
                 </span>
               </div>
-            </div>
-          )}
-        </div>
-      )}
+          </div>
+      </div>
 
       {/* 3-Pillar Capital Flow: Income Streams, Investments, and Debt/Loan Cash Flow */}
-      {(isSummary || activeTab === "debt" || activeTab === "wealth") && (
-        <div className={`grid gap-6 ${
-          isSummary
-            ? "md:grid-cols-3"
-            : activeTab === "debt"
-            ? "md:grid-cols-2"
-            : "grid-cols-1 max-w-3xl"
-        }`}>
-          {/* Income Breakdown */}
-          {(isSummary || activeTab === "debt") && (
-            <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col justify-between h-[390px] sm:h-[410px] transition-all hover:border-border">
+      <div className="grid gap-6 md:grid-cols-3">
+        {/* Income Breakdown */}
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border">
               <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
                 <div className="flex items-center gap-2.5">
                   <span className="grid size-8 sm:size-9 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
@@ -591,7 +543,7 @@ export function ReportsPage({
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto wt-scrollbar min-h-0 py-3 pr-1 space-y-2">
+              <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2">
                 {incomeSources.length === 0 ? (
                   <div className="py-7 px-4 text-center rounded-xl border border-dashed border-border/70 bg-muted/15 space-y-2 my-auto">
                     <span className="grid size-10 mx-auto place-items-center rounded-full bg-muted/60 text-muted-foreground">
@@ -644,7 +596,7 @@ export function ReportsPage({
                 )}
               </div>
 
-              <div className="mt-auto shrink-0 pt-2.5 border-t border-border/60">
+              <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
                 <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center justify-between">
                   <span className="font-medium">Total Inflows</span>
                   <span className="font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
@@ -653,11 +605,9 @@ export function ReportsPage({
                 </div>
               </div>
             </div>
-          )}
 
           {/* Investment & Wealth Deployment */}
-          {(isSummary || activeTab === "wealth") && (
-            <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col justify-between h-[390px] sm:h-[410px] transition-all hover:border-border">
+          <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border">
               <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
                 <div className="flex items-center gap-2.5">
                   <span className="grid size-8 sm:size-9 place-items-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0">
@@ -677,7 +627,7 @@ export function ReportsPage({
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto wt-scrollbar min-h-0 py-3 pr-1 space-y-2.5">
+              <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2.5">
                 {!hasInvestmentActivity ? (
                   <div className="py-7 px-4 text-center rounded-xl border border-dashed border-border/70 bg-muted/15 space-y-2 my-auto">
                     <span className="grid size-10 mx-auto place-items-center rounded-full bg-muted/60 text-muted-foreground">
@@ -757,7 +707,7 @@ export function ReportsPage({
                 )}
               </div>
 
-              <div className="mt-auto shrink-0 pt-2.5 border-t border-border/60">
+              <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
                 <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center gap-2">
                   <Compass size={14} className="shrink-0 text-primary" />
                   <span className="truncate">
@@ -768,11 +718,9 @@ export function ReportsPage({
                 </div>
               </div>
             </div>
-          )}
 
           {/* Debt, Loan & Borrowing Cash Flow */}
-          {(isSummary || activeTab === "debt") && (
-            <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col justify-between h-[390px] sm:h-[410px] transition-all hover:border-border">
+          <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border">
               <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
                 <div className="flex items-center gap-2.5">
                   <span className={`grid size-8 sm:size-9 place-items-center rounded-xl shrink-0 ${
@@ -798,7 +746,7 @@ export function ReportsPage({
                 </span>
               </div>
 
-              <div className="flex-1 overflow-y-auto wt-scrollbar min-h-0 py-3 pr-1 space-y-2.5">
+              <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2.5">
                 {!hasDebtActivity ? (
                   <div className="py-7 px-4 text-center rounded-xl border border-dashed border-emerald-500/30 bg-emerald-500/5 space-y-2 my-auto">
                     <span className="grid size-10 mx-auto place-items-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
@@ -911,7 +859,7 @@ export function ReportsPage({
                 )}
               </div>
 
-              <div className="mt-auto shrink-0 pt-2.5 border-t border-border/60">
+              <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
                 <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center justify-between">
                   <span className="font-medium">Monthly Liability Load</span>
                   <span
@@ -928,9 +876,7 @@ export function ReportsPage({
                 </div>
               </div>
             </div>
-          )}
         </div>
-      )}
 
       {/* Expanded Large Chart Modal Popup */}
       {expandedChart && (

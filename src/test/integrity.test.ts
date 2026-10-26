@@ -51,8 +51,8 @@ describe("Section 5: Integrity Tests (I1–I16)", () => {
   });
 
   it("I2: Net worth identical on Dashboard link, Wealth hero, Insights Wealth tab", () => {
-    const expected = wealthMetrics.totalAssets - wealthMetrics.totalDebt;
-    expect(wealthMetrics.netWorth).toBe(-2240781);
+    const expected = wealthMetrics.totalAssets;
+    expect(wealthMetrics.netWorth).toBe(992189);
     expect(wealthMetrics.netWorth).toBe(expected);
   });
 
@@ -195,7 +195,7 @@ describe("Section 5: Integrity Tests (I1–I16)", () => {
     expect(wealthMetrics.totalAssets).toBe(992189);
     expect(wealthMetrics.receivablesValue).toBe(10000);
     expect(wealthMetrics.totalDebt).toBe(3232970);
-    expect(wealthMetrics.netWorth).toBe(-2240781);
+    expect(wealthMetrics.netWorth).toBe(992189);
 
     expect(runway.cashRunwayMonths).toBe(6.9);
     expect(runway.emergencyCoverageMonths).toBe(1.7);

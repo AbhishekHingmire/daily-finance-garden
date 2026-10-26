@@ -26,7 +26,6 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { PeriodPill } from "@/components/shared/PeriodPill";
-import { CashFlowVelocityChart } from "@/components/shared/CashFlowVelocityChart";
 import { EmptyInline } from "@/components/shared/EmptyInline";
 import { TransactionRow } from "@/components/shared/TransactionRow";
 import { SalaryCountdownCard } from "./SalaryCountdownCard";
@@ -65,8 +64,7 @@ export function Dashboard({
   onUpdateSalary?: (payload: any) => void;
 }) {
   const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
-  const [goalsAccordionOpen, setGoalsAccordionOpen] = useState(false);
-  const [chartAccordionOpen, setChartAccordionOpen] = useState(false);
+  const [goalsAccordionOpen, setGoalsAccordionOpen] = useState(true);
 
   // Derive all data from canonical metrics service (Correlation Contract C1)
   const unified = useMemo(() => migrateLegacyState(data), [data]);
@@ -191,7 +189,7 @@ export function Dashboard({
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs text-xs space-y-1 p-2.5">
-                    <p className="font-bold text-foreground">Net Worth Calculation</p>
+                    <p className="font-bold text-foreground">Current Wealth</p>
                     <p className="text-muted-foreground">
                       Total Assets: <strong className="text-foreground"><Metric id="total_assets" value={wealthMetrics.totalAssets} /></strong> (Cash <Metric id="cash" value={wealthMetrics.liquidCash} /> + Investments <Metric id="invested" value={wealthMetrics.investmentsValue} /> + Lent <Metric id="lent_out" value={wealthMetrics.receivablesValue} />)
                     </p>
@@ -199,7 +197,7 @@ export function Dashboard({
                       Loans: <strong className="text-foreground"><Metric id="total_debt" value={wealthMetrics.totalDebt} /></strong>
                     </p>
                     <p className="text-[10px] text-muted-foreground pt-1 border-t border-border/50">
-                      Your loans are counted in full; a home or car you own isn't tracked as an asset yet.
+                      Shows your actual current wealth. Loans are tracked as active liabilities and debt obligations.
                     </p>
                   </TooltipContent>
                 </Tooltip>
@@ -476,219 +474,209 @@ export function Dashboard({
         </div>
       </div>
 
-      {/* BLOCK 4: Merged Coming Up Card (Payday + Next 3 Recurring / Commitments) */}
-      <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs space-y-3.5">
-        <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <div className="flex items-center gap-2">
-            <CalendarDays size={16} className="text-primary" />
-            <h3 className="text-sm font-bold text-foreground">Coming Up</h3>
-          </div>
-          <div className="text-right">
-            <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-bold">
-              {payday ? formatPaydayLabel(payday.nextDate) : "No upcoming payday"}
-            </span>
-          </div>
-        </div>
-
-        {comingUpItems.length === 0 ? (
-          <p className="text-xs text-muted-foreground py-2 text-center">No scheduled payments due in the next 30 days.</p>
-        ) : (
-          <div className="space-y-2">
-            {comingUpItems.slice(0, 3).map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 px-3.5 py-2.5 text-xs"
-              >
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-card border border-border/60 font-bold text-foreground text-xs shadow-2xs">
-                    {item.date.slice(8, 10)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="font-bold text-foreground truncate">{item.name}</p>
-                    <p className="text-[11px] text-muted-foreground">
-                      Due in {item.daysRemaining} days · {item.sourceType === "loan" ? "Loan EMI" : item.sourceType === "sip" ? "SIP" : "Recurring"}
-                    </p>
-                  </div>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="font-black text-foreground tabular-nums">{money(item.amount)}</p>
-                  <span className="text-[10px] text-muted-foreground">{item.sourceType === "loan" ? "Auto-debit" : "Scheduled"}</span>
-                </div>
+      {/* ROW 1: Coming Up & Top Spending (Desktop Side-by-Side, Responsive) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* BLOCK 4: Coming Up Card (Payday + Next 3 Commitments) */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5">
+          <div className="space-y-3.5">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div className="flex items-center gap-2">
+                <CalendarDays size={16} className="text-primary" />
+                <h3 className="text-sm font-bold text-foreground">Coming Up</h3>
               </div>
-            ))}
-          </div>
-        )}
-
-        <div className="flex items-center justify-between pt-1">
-          <span className="text-[11px] text-muted-foreground">
-            Total monthly commitments: <strong className="text-foreground">{money(commitments.total)}</strong>
-          </span>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onNavigate("Plan")}
-            className="h-7 text-xs font-semibold text-primary"
-          >
-            Manage recurring →
-          </Button>
-        </div>
-      </div>
-
-      {/* BLOCK 5: Top Spending Categories */}
-      <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs space-y-3.5">
-        <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Top Spending</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {budgetMetrics.budgetUsedPct}% of total budget used in {periodLabel}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onNavigate("Plan")}
-            className="h-7 text-xs font-semibold text-primary"
-          >
-            All Budgets →
-          </Button>
-        </div>
-
-        <div className="space-y-3">
-          {topCategories.map((r) => {
-            const pct = r.cap > 0 ? Math.round((r.spent / r.cap) * 100) : 100;
-            const isOver = r.isOverBudget;
-            return (
-              <div key={r.category.id} className="space-y-1.5">
-                <div className="flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2">
-                    <span>{r.category.icon}</span>
-                    <span className="font-bold text-foreground">{r.category.name}</span>
-                  </div>
-                  <div className="text-right tabular-nums">
-                    <span className="font-bold text-foreground">
-                      <Metric id={`category_total:${r.category.id}`} value={r.spent} />
-                    </span>
-                    {r.cap > 0 && (
-                      <span className="text-muted-foreground ml-1">/ {money(r.cap)}</span>
-                    )}
-                  </div>
-                </div>
-                <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                  <div
-                    style={{ width: `${Math.min(100, pct)}%` }}
-                    className={`h-full rounded-full transition-all ${
-                      isOver ? "bg-rose-500" : pct > 75 ? "bg-amber-500" : "bg-primary"
-                    }`}
-                  />
-                </div>
+              <div className="text-right">
+                <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-bold">
+                  {payday ? formatPaydayLabel(payday.nextDate) : "No upcoming payday"}
+                </span>
               </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* BLOCK 6: Recent Activity (Last 4 entries) */}
-      <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs space-y-3.5">
-        <div className="flex items-center justify-between border-b border-border/60 pb-3">
-          <div>
-            <h3 className="text-sm font-bold text-foreground">Recent Activity</h3>
-            <p className="text-xs text-muted-foreground mt-0.5">Latest posted transactions</p>
-          </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => onNavigate("Transactions")}
-            className="h-7 text-xs font-semibold text-primary"
-          >
-            View all →
-          </Button>
-        </div>
-
-        <div className="space-y-1">
-          {recentTransactions.map((tx) => (
-            <TransactionRow
-              key={tx.id}
-              transaction={tx}
-              category={data.categories.find((c) => c.id === tx.categoryId)}
-              account={data.accounts.find((a) => a.id === tx.accountId)}
-              money={money}
-              onClick={() => onSelectTransaction(tx)}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Collapsed Accordions: Sinking Funds/Goals & Cash Flow Velocity Chart */}
-      <div className="space-y-3 pt-2">
-        {/* Accordion 1: Goals */}
-        <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setGoalsAccordionOpen(!goalsAccordionOpen)}
-            className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors"
-          >
-            <div className="flex items-center gap-2.5">
-              <ShieldCheck size={18} className="text-emerald-500" />
-              <span className="text-xs font-bold text-foreground">
-                Goals & Sinking Funds · {unified.goals.length} active · {money(commitments.goalContributions)}/mo
-              </span>
             </div>
-            <ChevronDown
-              size={16}
-              className={`text-muted-foreground transition-transform ${goalsAccordionOpen ? "rotate-180" : ""}`}
-            />
-          </button>
-          {goalsAccordionOpen && (
-            <div className="p-4 pt-0 border-t border-border/60 space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {unified.goals.map((g) => {
-                  const pct = g.target > 0 ? Math.min(100, Math.round((g.opening_amount / g.target) * 100)) : 100;
-                  return (
-                    <div key={g.id} className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-bold text-foreground">{g.name}</span>
-                        <span className="text-[10px] font-bold text-primary">{pct}%</span>
-                      </div>
-                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                        <div style={{ width: `${pct}%` }} className="h-full bg-emerald-500 rounded-full" />
-                      </div>
-                      <div className="flex justify-between text-[11px] text-muted-foreground">
-                        <span><Metric id={`goal_current:${g.id}`} value={g.opening_amount} /></span>
-                        <span>Target: {money(g.target)}</span>
+
+            {comingUpItems.length === 0 ? (
+              <p className="text-xs text-muted-foreground py-2 text-center">No scheduled payments due in the next 30 days.</p>
+            ) : (
+              <div className="space-y-2">
+                {comingUpItems.slice(0, 3).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-border/60 bg-muted/20 px-3.5 py-2.5 text-xs"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-card border border-border/60 font-bold text-foreground text-xs shadow-2xs">
+                        {item.date.slice(8, 10)}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="font-bold text-foreground truncate">{item.name}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          Due in {item.daysRemaining} days · {item.sourceType === "loan" ? "Loan EMI" : item.sourceType === "sip" ? "SIP" : "Recurring"}
+                        </p>
                       </div>
                     </div>
-                  );
-                })}
+                    <div className="text-right shrink-0">
+                      <p className="font-black text-foreground tabular-nums">{money(item.amount)}</p>
+                      <span className="text-[10px] text-muted-foreground">{item.sourceType === "loan" ? "Auto-debit" : "Scheduled"}</span>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          <div className="flex items-center justify-between pt-2 border-t border-border/40">
+            <span className="text-[11px] text-muted-foreground">
+              Total monthly commitments: <strong className="text-foreground">{money(commitments.total)}</strong>
+            </span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onNavigate("Plan")}
+              className="h-7 text-xs font-semibold text-primary"
+            >
+              Manage recurring →
+            </Button>
+          </div>
         </div>
 
-        {/* Accordion 2: Cash Flow Velocity Chart */}
-        <div className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-2xs">
-          <button
-            type="button"
-            onClick={() => setChartAccordionOpen(!chartAccordionOpen)}
-            className="w-full flex items-center justify-between p-4 text-left hover:bg-muted/30 transition-colors"
-          >
-            <div className="flex items-center gap-2.5">
-              <TrendingUp size={18} className="text-primary" />
-              <span className="text-xs font-bold text-foreground">Cash Flow Velocity Chart</span>
+        {/* BLOCK 5: Top Spending Categories */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5">
+          <div className="space-y-3.5">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Top Spending</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {budgetMetrics.budgetUsedPct}% of total budget used in {periodLabel}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onNavigate("Plan")}
+                className="h-7 text-xs font-semibold text-primary"
+              >
+                All Budgets →
+              </Button>
             </div>
-            <ChevronDown
-              size={16}
-              className={`text-muted-foreground transition-transform ${chartAccordionOpen ? "rotate-180" : ""}`}
-            />
-          </button>
-          {chartAccordionOpen && (
-            <div className="p-4 pt-0 border-t border-border/60">
-              <CashFlowVelocityChart
-                transactions={periodTransactions}
-                money={money}
-                dateRange={{ preset: "1m" }}
-              />
+
+            <div className="space-y-3">
+              {topCategories.map((r) => {
+                const pct = r.cap > 0 ? Math.round((r.spent / r.cap) * 100) : 100;
+                const isOver = r.isOverBudget;
+                return (
+                  <div key={r.category.id} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span>{r.category.icon}</span>
+                        <span className="font-bold text-foreground">{r.category.name}</span>
+                      </div>
+                      <div className="text-right tabular-nums">
+                        <span className="font-bold text-foreground">
+                          <Metric id={`category_total:${r.category.id}`} value={r.spent} />
+                        </span>
+                        {r.cap > 0 && (
+                          <span className="text-muted-foreground ml-1">/ {money(r.cap)}</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                      <div
+                        style={{ width: `${Math.min(100, pct)}%` }}
+                        className={`h-full rounded-full transition-all ${
+                          isOver ? "bg-rose-500" : pct > 75 ? "bg-amber-500" : "bg-primary"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          )}
+          </div>
+
+          <div className="pt-2" />
+        </div>
+      </div>
+
+      {/* ROW 2: Recent Activity & Goals & Sinking Funds (Desktop Side-by-Side, Responsive) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* BLOCK 6: Recent Activity (Last 4 entries) */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5">
+          <div className="space-y-3.5">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Recent Activity</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">Latest posted transactions</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onNavigate("Transactions")}
+                className="h-7 text-xs font-semibold text-primary"
+              >
+                View all →
+              </Button>
+            </div>
+
+            <div className="space-y-1">
+              {recentTransactions.map((tx) => (
+                <TransactionRow
+                  key={tx.id}
+                  transaction={tx}
+                  category={data.categories.find((c) => c.id === tx.categoryId)}
+                  account={data.accounts.find((a) => a.id === tx.accountId)}
+                  money={money}
+                  onClick={() => onSelectTransaction(tx)}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-2" />
+        </div>
+
+        {/* BLOCK 7: Goals & Sinking Funds (Expanded by default) */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5">
+          <div className="space-y-3.5">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <ShieldCheck size={16} className="text-emerald-500" />
+                  <h3 className="text-sm font-bold text-foreground">Goals & Sinking Funds</h3>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {unified.goals.length} active goals · {money(commitments.goalContributions)}/mo allocated
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onNavigate("Plan")}
+                className="h-7 text-xs font-semibold text-primary"
+              >
+                All Goals →
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {unified.goals.map((g) => {
+                const pct = g.target > 0 ? Math.min(100, Math.round((g.opening_amount / g.target) * 100)) : 100;
+                return (
+                  <div key={g.id} className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-foreground">{g.name}</span>
+                      <span className="text-[10px] font-bold text-primary tabular-nums">{pct}%</span>
+                    </div>
+                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                      <div style={{ width: `${pct}%` }} className="h-full bg-emerald-500 rounded-full" />
+                    </div>
+                    <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
+                      <span><Metric id={`goal_current:${g.id}`} value={g.opening_amount} /></span>
+                      <span>Target: {money(g.target)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="pt-2" />
         </div>
       </div>
     </div>

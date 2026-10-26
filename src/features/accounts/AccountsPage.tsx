@@ -227,7 +227,7 @@ export function AccountsPage({
               <Metric id="net_worth" value={wealthMetrics.netWorth} />
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Your loans are counted in full; a home or car you own isn't tracked as an asset yet.
+              Current person wealth across cash, investments and receivables. Loans are tracked as active debt obligations.
             </p>
           </div>
 

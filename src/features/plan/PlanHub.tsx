@@ -72,7 +72,7 @@ export function PlanHub({
   };
 
   const tabs: { id: PlanSubtab; label: string; icon: typeof Tag; count?: number }[] = [
-    { id: "budgets", label: "Budgets", icon: Tag, count: data.categories.length },
+    { id: "budgets", label: "Budgets & Categories", icon: Tag, count: data.categories.length },
     { id: "goals", label: "Goals", icon: ShieldCheck, count: (data.funds ?? []).length },
     { id: "recurring", label: "Recurring", icon: CalendarDays, count: (data.recurring ?? []).length },
   ];
@@ -80,7 +80,7 @@ export function PlanHub({
   return (
     <div className="space-y-6">
       {/* Subtab Segmented Switcher (Sticky directly under top bar) */}
-      <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2.5 bg-background border-b border-border/80 w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2.5 bg-background border-b border-border/80 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <div className="flex items-center w-full sm:w-auto justify-between sm:justify-start rounded-xl bg-muted/60 p-1 border border-border/60 shadow-2xs">
           {tabs.map(({ id, label, icon: Icon, count }) => {
             const isActive = tab === id;

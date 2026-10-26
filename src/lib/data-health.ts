@@ -74,8 +74,8 @@ export function runDataHealthChecks(
     message: i1Passed ? "All liquid account balances reconcile exactly" : "Mismatch between liquid accounts and hero cash",
   });
 
-  // 2. Net worth single source of truth
-  const expectedNetWorth = wealthMetrics.totalAssets - wealthMetrics.totalDebt;
+  // 2. Net worth single source of truth (Positive wealth: total assets without deducting future debt)
+  const expectedNetWorth = wealthMetrics.totalAssets;
   const i2Passed = wealthMetrics.netWorth === expectedNetWorth;
   results.push({
     id: "I2",
@@ -83,7 +83,7 @@ export function runDataHealthChecks(
     passed: i2Passed,
     actual: formatMoney(wealthMetrics.netWorth),
     expected: formatMoney(expectedNetWorth),
-    message: i2Passed ? "Net worth matches Total Assets minus Total Debt" : "Net worth formula discrepancy",
+    message: i2Passed ? "Net worth matches Total Assets (current wealth)" : "Net worth formula discrepancy",
   });
 
   // 3. Category totals match income & expenses
@@ -266,13 +266,13 @@ export function runDataHealthChecks(
   });
 
   // U1. Cross-screen metrics consistency
-  const u1Passed = wealthMetrics.liquidCash === 499689 && wealthMetrics.netWorth === -2240781;
+  const u1Passed = wealthMetrics.liquidCash === 499689 && wealthMetrics.netWorth === 992189;
   results.push({
     id: "U1",
     name: "Screens agree on metrics",
     passed: u1Passed,
     actual: `Cash ${formatMoney(wealthMetrics.liquidCash)} · Net worth ${formatMoney(wealthMetrics.netWorth)}`,
-    expected: `Cash ₹4,99,689 · Net worth −₹22,40,781`,
+    expected: `Cash ₹4,99,689 · Net worth ₹9,92,189`,
   });
 
   // U2. Account cards add up to cash

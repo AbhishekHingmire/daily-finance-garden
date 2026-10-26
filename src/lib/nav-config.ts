@@ -86,7 +86,7 @@ export const NAV_ITEMS: NavItem[] = [
     inBottomNav: true,
     inDrawer: true,
     subItems: [
-      { id: "budgets", label: "Budgets", h1: "Budgets", path: "/categories", icon: Tag },
+      { id: "budgets", label: "Budgets & Categories", h1: "Budgets & Categories", path: "/categories", icon: Tag },
       { id: "goals", label: "Goals", h1: "Goals", path: "/funds", icon: ShieldCheck },
       { id: "recurring", label: "Recurring", h1: "Recurring", path: "/recurring", icon: CalendarDays },
     ],

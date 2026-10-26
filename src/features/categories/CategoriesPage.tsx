@@ -62,8 +62,8 @@ export function CategoriesPage({
   return (
     <div className="space-y-6">
       <PageHeading
-        title="Budgets"
-        description="Organize your spending into smart need or want classifications with monthly budget caps."
+        title="Budgets & Categories"
+        description="Organize your spending into smart need or want classifications with monthly budget caps. Tap any category to edit, or use ⋯ to delete."
         periodSlot={<PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />}
         primaryAction={
           <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 text-xs font-semibold shadow-xs">
@@ -222,7 +222,8 @@ export function CategoriesPage({
           return (
             <div
               key={category.id}
-              className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-border hover:shadow-xs"
+              onClick={() => onEdit(category)}
+              className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-border hover:shadow-xs cursor-pointer"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">

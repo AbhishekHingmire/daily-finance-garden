@@ -48,7 +48,7 @@ describe("Cross-screen Metric Invariant & Seed Verification (SPEC_R2 1.16)", () 
     expect(wealthMetrics.receivablesValue).toBe(10000);
     expect(wealthMetrics.totalAssets).toBe(992189);
     expect(wealthMetrics.totalDebt).toBe(3232970);
-    expect(wealthMetrics.netWorth).toBe(-2240781);
+    expect(wealthMetrics.netWorth).toBe(992189);
 
     // Budget & Goals
     expect(budgetMetrics.budgetUsedPct).toBe(71);

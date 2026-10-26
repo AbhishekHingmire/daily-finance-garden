@@ -12,6 +12,7 @@ export function ActionMenu({
   items,
   align = "end",
   triggerClassName,
+  contentClassName,
 }: {
   items: Array<{
     label: string;
@@ -22,6 +23,7 @@ export function ActionMenu({
   }>;
   align?: "start" | "end" | "center";
   triggerClassName?: string;
+  contentClassName?: string;
 }) {
   return (
     <DropdownMenu>
@@ -38,7 +40,7 @@ export function ActionMenu({
           <MoreHorizontal size={16} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={align} className="w-48 z-topbar">
+      <DropdownMenuContent align={align} className={`w-48 z-toast ${contentClassName || ""}`}>
         {items.map((item, idx) => (
           <DropdownMenuItem
             key={idx}

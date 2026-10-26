@@ -2073,34 +2073,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <AppLogo small />
             </div>
           </div>
-          <div className="px-2 lg:px-4 pt-3 pb-1">
-            <div className="hidden lg:block">
-              <Button
-                onClick={() => setGlobalAddOpen(true)}
-                className="w-full flex items-center justify-between h-9 rounded-xl px-3 font-semibold text-xs bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
-                title="Add entry (N)"
-              >
-                <div className="flex items-center gap-2">
-                  <Plus size={15} className="stroke-[2.5]" />
-                  <span>Add entry</span>
-                </div>
-                <kbd className="rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                  N
-                </kbd>
-              </Button>
-            </div>
-            <div className="lg:hidden flex justify-center">
-              <Button
-                size="icon"
-                onClick={() => setGlobalAddOpen(true)}
-                className="size-9 rounded-xl bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
-                title="Add entry (N)"
-              >
-                <Plus size={18} className="stroke-[2.5]" />
-              </Button>
-            </div>
-          </div>
-          <div className="px-2 lg:px-4 pt-2 lg:pt-3">
+          <div className="px-2 lg:px-4 pt-3 lg:pt-4">
             <p className="hidden lg:block px-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               Workspace
             </p>
@@ -2134,75 +2107,10 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               })}
             </nav>
           </div>
-          <div className="hidden lg:flex flex-col mt-auto p-3 border-t border-border/70 gap-1">
-            <Button
-              variant={active === "Preferences" || (active as string) === "Settings" ? "secondary" : "ghost"}
-              className={`h-9 w-full justify-start gap-2.5 px-3 text-xs ${
-                active === "Preferences" || (active as string) === "Settings"
-                  ? "font-bold text-primary shadow-2xs"
-                  : "text-muted-foreground font-medium"
-              }`}
-              onClick={() => goSection("Preferences")}
-            >
-              <Settings2 size={16} className="shrink-0" />
-              <span>Preferences</span>
-            </Button>
-
-            <Button
-              variant={active === "Profile" ? "secondary" : "ghost"}
-              className={`h-9 w-full justify-start gap-2.5 px-3 text-xs ${
-                active === "Profile"
-                  ? "font-bold text-primary shadow-2xs"
-                  : "text-muted-foreground font-medium"
-              }`}
-              onClick={() => goSection("Profile")}
-            >
-              <User size={16} className="shrink-0" />
-              <span>Profile</span>
-            </Button>
-
-            <button
-              type="button"
-              onClick={() => goSection("Help")}
-              className="mt-1 flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground rounded-lg transition-colors group cursor-pointer text-left"
-            >
-              <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
-              <span className="truncate group-hover:underline">Your data stays on this device</span>
-            </button>
-          </div>
-          <div className="lg:hidden mt-auto p-2 flex flex-col items-center gap-1 border-t border-border/70">
-            <Button
-              variant={active === "Preferences" || (active as string) === "Settings" ? "secondary" : "ghost"}
-              size="icon"
-              title="Preferences"
-              onClick={() => goSection("Preferences")}
-              className="size-10 text-muted-foreground hover:text-foreground"
-            >
-              <Settings2 size={18} />
-            </Button>
-            <Button
-              variant={active === "Profile" ? "secondary" : "ghost"}
-              size="icon"
-              title="Profile"
-              onClick={() => goSection("Profile")}
-              className="size-10 text-muted-foreground hover:text-foreground"
-            >
-              <User size={18} />
-            </Button>
-            <Button
-              variant={active === "Help" ? "secondary" : "ghost"}
-              size="icon"
-              title="Help & Privacy (Your data stays on this device)"
-              onClick={() => goSection("Help")}
-              className="size-10 text-emerald-600 dark:text-emerald-400 hover:text-foreground"
-            >
-              <ShieldCheck size={18} />
-            </Button>
-          </div>
         </aside>
 
         {/* Main Content Area */}
-        <div className="min-w-0 flex-1 w-full">
+        <div className="min-w-0 flex-1 w-full md:pl-[72px] lg:pl-[248px] overflow-x-hidden">
           <header className="fixed top-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-topbar flex h-[56px] md:h-[64px] pt-[env(safe-area-inset-top)] md:pt-0 items-center justify-between gap-3 border-b border-border bg-background px-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               {["Reports", "Insights", "Profile", "Preferences", "Settings", "Help"].includes(active) ? (
@@ -2273,19 +2181,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 onClick={() => setSearchOpen(true)}
               >
                 <Search size={22} />
-              </Button>
-
-              {/* Primary + Add Button (Desktop / Tablet) */}
-              <Button
-                onClick={() => setGlobalAddOpen(true)}
-                className="hidden md:flex items-center gap-1.5 h-9 rounded-xl px-3 font-semibold text-xs bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
-                title="Add entry (N)"
-              >
-                <Plus size={15} className="stroke-[2.5]" />
-                <span>Add</span>
-                <kbd className="ml-1 rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
-                  N
-                </kbd>
               </Button>
 
               {/* Notifications Dropdown */}
@@ -2521,7 +2416,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             </div>
           </header>
 
-          <main className="w-full ml-0 md:ml-[72px] lg:ml-[248px] pt-[calc(56px+env(safe-area-inset-top))] md:pt-[64px] pb-[calc(64px+env(safe-area-inset-bottom)+1.5rem)] md:pb-12">
+          <main className="w-full max-w-full overflow-x-hidden pt-[calc(56px+env(safe-area-inset-top))] md:pt-[64px] pb-[calc(64px+env(safe-area-inset-bottom)+1.5rem)] md:pb-12">
             <PageContainer>
               {active === "Overview" && (
               <Dashboard
@@ -2886,7 +2781,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           type="button"
           aria-label="Add transaction"
           onClick={() => setGlobalAddOpen(true)}
-          className="flex flex-col items-center justify-center -mt-5 py-0 group cursor-pointer w-full min-w-0 overflow-visible"
+          className="flex flex-col items-center justify-center -translate-y-2.5 py-0 group cursor-pointer w-full min-w-0 overflow-visible"
         >
           <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 group-active:scale-95 transition-transform ring-4 ring-card shrink-0">
             <Plus size={20} className="stroke-[2.5]" />
@@ -2932,6 +2827,21 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Plan</span>
         </button>
       </nav>
+
+      {/* Desktop & Tablet Common Floating Action Button */}
+      <button
+        type="button"
+        onClick={() => setGlobalAddOpen(true)}
+        aria-label="New Transaction"
+        title="Add new transaction (N)"
+        className="fixed bottom-6 right-6 z-topbar hidden md:flex items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-lg hover:shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer group"
+      >
+        <Plus size={16} className="stroke-[2.5]" />
+        <span>New Transaction</span>
+        <kbd className="ml-1 rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+          N
+        </kbd>
+      </button>
 
       {/* Mobile "More" Drawer Sheet */}
       {mobileNav && (
@@ -3014,53 +2924,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   })}
                 </div>
               </div>
-
-              <div>
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">
-                  Settings & Help
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {SECONDARY_NAV_ITEMS.map((item) => {
-                    const isSelected = active === item.section;
-                    const Icon = item.icon;
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition-all ${
-                          isSelected
-                            ? "border-primary/50 bg-primary/10 shadow-xs"
-                            : "border-border/70 bg-card hover:bg-muted/40 hover:border-border"
-                        }`}
-                        onClick={() => {
-                          setMobileNav(false);
-                          goSection(item.section);
-                        }}
-                      >
-                        <span
-                          className={`grid size-8 shrink-0 place-items-center rounded-lg ${
-                            isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          <Icon size={16} />
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className={`text-xs font-bold ${isSelected ? "text-primary" : "text-foreground"}`}>
-                            {item.label}
-                          </p>
-                          <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                            {item.id === "preferences"
-                              ? "Currency, formats, tags & backup"
-                              : item.id === "profile"
-                              ? "User details & account preferences"
-                              : "Offline privacy & keyboard shortcuts"}
-                          </p>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
             </div>
 
             <div className="mt-5 pt-4 border-t border-border/70 flex items-center justify-between">
@@ -3068,17 +2931,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 <ShieldCheck size={15} className="text-emerald-500" />
                 <span className="font-semibold text-foreground">100% Offline & Private</span>
               </div>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-8 text-xs font-semibold"
-                onClick={() => {
-                  setMobileNav(false);
-                  goSection("Profile");
-                }}
-              >
-                <User size={14} className="mr-1.5" /> My Profile
-              </Button>
             </div>
           </div>
         </div>

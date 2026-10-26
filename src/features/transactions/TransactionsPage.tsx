@@ -12,8 +12,10 @@ import {
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter, matchesDateRange, type DateRangeValue } from "@/components/shared/DateRangeFilter";
 import { PageHeading } from "@/components/shared/PageHeading";
+import { PeriodPill } from "@/components/shared/PeriodPill";
 import { SelectField } from "@/components/shared/FormFields";
 import { TransactionTable } from "@/components/shared/TransactionTable";
+import { useSharedPeriod } from "@/lib/period-state";
 import {
   getLoansSummary,
   type Transaction,
@@ -86,6 +88,7 @@ export function TransactionsPage({
   onNavigate?: (section: any) => void;
 }) {
   const [isFilterExpanded, setIsFilterExpanded] = React.useState<boolean>(false);
+  const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
 
   const activeDropdownFiltersCount = React.useMemo(() => {
     let count = 0;
@@ -144,6 +147,7 @@ export function TransactionsPage({
       <PageHeading
         title="Transactions"
         description="Every financial movement, categorized and accounted for."
+        periodSlot={<PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />}
         moreMenuItems={[
           {
             label: "Bulk Import",
@@ -178,11 +182,19 @@ export function TransactionsPage({
         </div>
       )}
 
-      {/* Top Filter Bar: Compact Responsive Date Range Filter & Dropdown Filters (Sticky under top bar) */}
+      {/* Top Filter Bar: Dropdown Filters (Sticky under top bar) */}
       <div className="sticky top-[56px] md:top-[64px] z-subnav rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 wt-shadow hover:border-border transition-colors space-y-2.5">
         <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2.5">
-          <div className="flex-1 min-w-0">
-            <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
+            <span>Period:</span>
+            <span className="font-bold text-foreground">
+              {sharedPeriod.month === 10 && sharedPeriod.year === 2026 ? "Oct 2026" : `${sharedPeriod.month}/${sharedPeriod.year}`}
+            </span>
+            {activeDropdownFiltersCount > 0 && (
+              <span className="text-primary font-semibold">
+                · {activeDropdownFiltersCount} filter{activeDropdownFiltersCount > 1 ? "s" : ""}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
             {/* Filter Expand / Collapse Button (Consistent across Desktop and Mobile) */}
