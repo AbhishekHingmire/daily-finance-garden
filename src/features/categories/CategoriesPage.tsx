@@ -23,8 +23,8 @@ export function CategoriesPage({
   money,
 }: {
   data: WealthState;
-  kind: "All" | "Expense" | "Income";
-  setKind: (kind: "All" | "Expense" | "Income") => void;
+  kind: "Expense" | "Income" | "Transfer";
+  setKind: (kind: "Expense" | "Income" | "Transfer") => void;
   onAdd: () => void;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
@@ -46,16 +46,17 @@ export function CategoriesPage({
     [data.transactions, periodKey]
   );
 
+  const expenseCategories = data.categories.filter((c) => !c.archived && c.kind === "Expense");
+  const incomeCategories = data.categories.filter((c) => !c.archived && c.kind === "Income");
+  const transferCategories = data.categories.filter((c) => !c.archived && c.kind === "Transfer");
+
   const categories = data.categories.filter((c) => {
     if (c.archived) return false;
-    if (kind !== "All" && c.kind !== kind) return false;
+    if (c.kind !== kind) return false;
     if (priorityFilter !== "All" && c.kind === "Expense" && (c.defaultNeed || "Need") !== priorityFilter)
       return false;
     return true;
   });
-
-  const expenseCategories = data.categories.filter((c) => !c.archived && c.kind === "Expense");
-  const incomeCategories = data.categories.filter((c) => !c.archived && c.kind === "Income");
 
   return (
     <div className="space-y-6">
@@ -118,14 +119,6 @@ export function CategoriesPage({
         <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
           <div className="flex flex-wrap gap-1.5 sm:gap-2">
             <Button
-              variant={kind === "All" ? "default" : "outline"}
-              size="sm"
-              className="h-8 text-xs font-medium"
-              onClick={() => setKind("All")}
-            >
-              All ({data.categories.filter((c) => !c.archived).length})
-            </Button>
-            <Button
               variant={kind === "Expense" ? "default" : "outline"}
               size="sm"
               className="h-8 text-xs font-medium"
@@ -140,6 +133,14 @@ export function CategoriesPage({
               onClick={() => setKind("Income")}
             >
               Income ({incomeCategories.length})
+            </Button>
+            <Button
+              variant={kind === "Transfer" ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs font-medium"
+              onClick={() => setKind("Transfer")}
+            >
+              Transfers ({transferCategories.length})
             </Button>
           </div>
 
@@ -198,11 +199,12 @@ export function CategoriesPage({
           const row = budgetMetrics.categoryRows.find((r) => r.category.id === category.id);
           const isExpense = category.kind === "Expense";
           const isIncome = category.kind === "Income";
+          const isTransfer = category.kind === "Transfer";
 
           let spent = 0;
           if (isExpense) {
             spent = row ? row.spent : 0;
-          } else if (isIncome) {
+          } else if (isIncome || isTransfer) {
             const periodKey = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
             spent = unified.entries
               .filter((e) => e.status === "posted" && e.category_id === category.id && e.date.startsWith(periodKey))

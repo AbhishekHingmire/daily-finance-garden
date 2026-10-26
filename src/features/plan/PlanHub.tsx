@@ -11,8 +11,8 @@ export interface PlanHubProps {
   initialSubtab?: PlanSubtab;
   data: WealthState;
   money: (amount: number) => string;
-  categoryTab: "All" | "Expense" | "Income";
-  setCategoryTab: (tab: "All" | "Expense" | "Income") => void;
+  categoryTab: "Expense" | "Income" | "Transfer";
+  setCategoryTab: (tab: "Expense" | "Income" | "Transfer") => void;
   onAddCategory: () => void;
   onEditCategory: (cat: Category) => void;
   onDeleteCategory: (cat: Category) => void;

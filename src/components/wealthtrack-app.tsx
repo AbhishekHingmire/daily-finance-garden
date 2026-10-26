@@ -316,7 +316,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const [transactionErrors, setTransactionErrors] = useState<Record<string, string>>({});
 
   // Categories & Recurring Page States
-  const [categoryTab, setCategoryTab] = useState<"All" | "Expense" | "Income">("All");
+  const [categoryTab, setCategoryTab] = useState<CategoryKind>("Expense");
 
   // Reports Page Specific Filters
   const [reportPriority, setReportPriority] = useState("All priorities");
@@ -1345,9 +1345,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   };
 
   // Category Actions
-  const openCategoryForm = (category?: Category, kind?: "All" | CategoryKind) => {
+  const openCategoryForm = (category?: Category, kind?: CategoryKind) => {
     setEditingCategory(category ?? null);
-    if (kind && kind !== "All") setCategoryTab(kind);
+    if (kind) setCategoryTab(kind);
     else if (category?.kind) setCategoryTab(category.kind);
     setModal("category");
   };
@@ -1360,7 +1360,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     const category: Category = {
       id: editingCategory?.id ?? createTransactionId(),
       name: form.name.trim(),
-      kind: form.kind ?? (categoryTab === "Income" ? "Income" : "Expense"),
+      kind: form.kind ?? categoryTab,
       icon: form.icon ?? "📁",
       color: form.color ?? "blue",
       monthlyLimit: Number(form.monthlyLimit) || 0,
@@ -2452,7 +2452,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 money={money}
                 categoryTab={categoryTab}
                 setCategoryTab={setCategoryTab}
-                onAddCategory={() => openCategoryForm(undefined, categoryTab === "Income" ? "Income" : "Expense")}
+                onAddCategory={() => openCategoryForm(undefined, categoryTab)}
                 onEditCategory={openCategoryForm}
                 onDeleteCategory={(category) => requestDelete("category", category.id, category.name)}
                 onSaveFund={handleSaveFund}
@@ -2543,7 +2543,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 data={data}
                 kind={categoryTab}
                 setKind={setCategoryTab}
-                onAdd={() => openCategoryForm(undefined, categoryTab === "Income" ? "Income" : "Expense")}
+                onAdd={() => openCategoryForm(undefined, categoryTab)}
                 onEdit={openCategoryForm}
                 onDelete={(category) => requestDelete("category", category.id, category.name)}
                 money={money}
@@ -2986,7 +2986,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       {modal === "category" && (
         <CategoryModal
           category={editingCategory}
-          kind={categoryTab === "Income" ? "Income" : "Expense"}
+          kind={categoryTab}
           onClose={() => setModal(null)}
           onSave={saveCategory}
         />

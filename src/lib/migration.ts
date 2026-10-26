@@ -271,6 +271,20 @@ export function migrateLegacyState(legacyState: any): UnifiedWealthState {
       }
     }
 
+    const catId = t.categoryId || t.category_id;
+    if (catId === "cat-lend") {
+      kind = "transfer";
+      subtype = "lent";
+      if (!to_ref) to_ref = { kind: "person", id: `person-${t.merchant || "other"}`, name: t.merchant || "Contact" };
+    } else if (catId === "cat-debt-recovery") {
+      kind = "transfer";
+      subtype = "recovered";
+      if (!to_ref) to_ref = { kind: "person", id: `person-${t.merchant || "other"}`, name: t.merchant || "Contact" };
+    } else if (catId === "cat-borrow") {
+      kind = "transfer";
+      subtype = "borrowed";
+    }
+
     entries.push({
       id: t.id || `entry-${Date.now()}-${Math.random()}`,
       date: (t.date || "2026-10-01").slice(0, 10),

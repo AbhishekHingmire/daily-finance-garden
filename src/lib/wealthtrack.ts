@@ -29,7 +29,7 @@ export const INFLOW_TYPES: TransactionType[] = [
   "Debt Recovery",
   "Refund",
 ];
-export type CategoryKind = "Expense" | "Income";
+export type CategoryKind = "Expense" | "Income" | "Transfer";
 export type AccountKind = "Bank account" | "Cash" | "Digital wallet" | "Credit card" | "Investment" | "Other";
 export type Section =
   | "Overview"
@@ -309,9 +309,9 @@ export function createInitialState(): WealthState {
     { id: "cat-investments", name: "Investments", kind: "Income", icon: "📈", color: "teal", monthlyLimit: 0 },
     { id: "cat-other-income", name: "Other income", kind: "Income", icon: "💰", color: "violet", monthlyLimit: 0 },
     { id: "cat-loan-emi", name: "Loan EMI & Debt", kind: "Expense", icon: "💳", color: "rose", monthlyLimit: 45000 },
-    { id: "cat-borrow", name: "Loans & Borrowings", kind: "Income", icon: "🏦", color: "amber", monthlyLimit: 0 },
-    { id: "cat-lend", name: "Money Lent / Advances", kind: "Expense", icon: "🤝", color: "violet", monthlyLimit: 0 },
-    { id: "cat-debt-recovery", name: "Debt Recovery", kind: "Income", icon: "💵", color: "emerald", monthlyLimit: 0 },
+    { id: "cat-borrow", name: "Loans & Borrowings", kind: "Transfer", icon: "🏦", color: "amber", monthlyLimit: 0 },
+    { id: "cat-lend", name: "Money Lent / Advances", kind: "Transfer", icon: "🤝", color: "violet", monthlyLimit: 0 },
+    { id: "cat-debt-recovery", name: "Debt Recovery", kind: "Transfer", icon: "💵", color: "emerald", monthlyLimit: 0 },
   ];
   const tx = (
     id: string, date: string, description: string, type: TransactionType, amount: number,

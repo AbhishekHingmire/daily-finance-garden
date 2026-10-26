@@ -360,6 +360,7 @@ export function getCanonicalSeedEntries(): Entry[] {
       status: "posted",
       kind: "transfer",
       amount: 10000,
+      category_id: "cat-lend",
       account_id: "acc-hdfc",
       to_ref: { kind: "person", id: "person-rohan", name: "Rohan Verma" },
       need_want: "Need",

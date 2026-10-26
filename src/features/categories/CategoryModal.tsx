@@ -50,6 +50,7 @@ export function CategoryModal({
           options={[
             { value: "Expense", label: "Expense Category" },
             { value: "Income", label: "Income Category" },
+            { value: "Transfer", label: "Transfer Category" },
           ]}
           required
         />
