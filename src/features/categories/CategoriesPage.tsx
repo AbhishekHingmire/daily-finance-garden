@@ -195,12 +195,25 @@ export function CategoriesPage({
       {/* Categories Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category) => {
-          const spent = getCategorySpend(category.id, periodTransactions);
-          const hasBudget = category.kind === "Expense" && category.monthlyLimit > 0;
-          const percent = hasBudget
-            ? Math.round((spent / category.monthlyLimit) * 100)
-            : 0;
-          const overBudget = hasBudget && spent > category.monthlyLimit;
+          const row = budgetMetrics.categoryRows.find((r) => r.category.id === category.id);
+          const isExpense = category.kind === "Expense";
+          const isIncome = category.kind === "Income";
+
+          let spent = 0;
+          if (isExpense) {
+            spent = row ? row.spent : 0;
+          } else if (isIncome) {
+            const periodKey = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
+            spent = unified.entries
+              .filter((e) => e.status === "posted" && e.category_id === category.id && e.date.startsWith(periodKey))
+              .reduce((sum, e) => sum + e.amount, 0);
+          }
+
+          const cap = row ? row.cap : category.monthlyLimit;
+          const hasBudget = isExpense && cap > 0;
+          const percent = hasBudget && cap > 0 ? Math.round((spent / cap) * 100) : 0;
+          const overBudget = hasBudget && spent > cap;
+          const overByAmount = spent - cap;
 
           return (
             <div
@@ -272,7 +285,7 @@ export function CategoriesPage({
                   {hasBudget && (
                     <div className="mt-2.5">
                       <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Cap: {money(category.monthlyLimit)}</span>
+                        <span>Cap: {money(cap)}</span>
                         <span
                           className={
                             overBudget
@@ -282,7 +295,7 @@ export function CategoriesPage({
                               : "font-semibold text-foreground"
                           }
                         >
-                          {percent}%
+                          {overBudget ? `Over by ${money(overByAmount)}` : `${percent}%`}
                         </span>
                       </div>
                       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/60">
