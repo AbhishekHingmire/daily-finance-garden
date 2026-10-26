@@ -140,6 +140,11 @@ export function AccountsPage({
   const assetsPct = Math.round((wealthMetrics.totalAssets / totalAssetsSum) * 100);
   const debtPct = 100 - assetsPct;
 
+  const totalAssetsValue = wealthMetrics.totalAssets;
+  const cashPct = totalAssetsValue > 0 ? Math.round((wealthMetrics.liquidCash / totalAssetsValue) * 100) : 0;
+  const invPct = totalAssetsValue > 0 ? Math.round((wealthMetrics.investmentsValue / totalAssetsValue) * 100) : 0;
+  const recPct = Math.max(0, 100 - cashPct - invPct);
+
   const totalNetWorth = wealthMetrics.netWorth;
   const liabilityPct = Math.round((totalLiabilities / totalAssetsSum) * 100);
 
@@ -210,27 +215,33 @@ export function AccountsPage({
         }
       />
 
-      {/* Portfolio Net Worth Hero Card */}
+      {/* Portfolio Consolidated Assets & Wealth Hero Card */}
       <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 sm:p-6 wt-shadow hover:border-border transition-all space-y-4">
         <div className="flex flex-col gap-5 sm:gap-6 lg:flex-row lg:items-center lg:justify-between relative z-10">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
-                <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-                Net Worth
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
+                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Consolidated Assets & Wealth
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-muted border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground flex-wrap max-w-full">
-                <span>Assets: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.totalAssets)}</strong></span>
+                <span>Cash: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.liquidCash)}</strong></span>
                 <span>·</span>
-                <span>Debt: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.totalDebt)}</strong></span>
+                <span>Investments: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.investmentsValue)}</strong></span>
+                {wealthMetrics.receivablesValue > 0 && (
+                  <>
+                    <span>·</span>
+                    <span>Lent: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.receivablesValue)}</strong></span>
+                  </>
+                )}
               </span>
             </div>
 
             <p className="wt-display mt-1.5 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight tabular-nums truncate max-w-full">
-              {money(wealthMetrics.netWorth)}
+              {money(wealthMetrics.totalAssets)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Total assets ({money(wealthMetrics.totalAssets)}) minus total liabilities ({money(wealthMetrics.totalDebt)})
+              Total funds you own: {money(wealthMetrics.liquidCash)} liquid cash + {money(wealthMetrics.investmentsValue)} investments{wealthMetrics.receivablesValue > 0 ? ` + ${money(wealthMetrics.receivablesValue)} receivables` : ""}.
             </p>
           </div>
 
@@ -280,7 +291,7 @@ export function AccountsPage({
               onClick={() => onNavigate?.("Loans")}
             >
               <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground block">
-                Debt
+                Debt (Liabilities)
               </span>
               <p className="text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400 tabular-nums mt-1 truncate">
                 {money(wealthMetrics.totalDebt)}
@@ -292,23 +303,47 @@ export function AccountsPage({
           </div>
         </div>
 
-        {/* Assets vs Debt 2-Segment Proportion Bar */}
+        {/* Asset Composition Proportion Bar */}
         <div className="space-y-1.5 pt-2 border-t border-border/60">
           <div className="h-2 w-full rounded-full bg-muted overflow-hidden flex shadow-inner">
             <div
-              style={{ width: `${assetsPct}%` }}
+              style={{ width: `${cashPct}%` }}
               className="bg-emerald-500 h-full transition-all"
-              title={`Assets: ${assetsPct}%`}
+              title={`Cash: ${cashPct}%`}
             />
             <div
-              style={{ width: `${debtPct}%` }}
-              className="bg-rose-500 h-full transition-all"
-              title={`Debt: ${debtPct}%`}
+              style={{ width: `${invPct}%` }}
+              className="bg-blue-500 h-full transition-all"
+              title={`Investments: ${invPct}%`}
             />
+            {recPct > 0 && (
+              <div
+                style={{ width: `${recPct}%` }}
+                className="bg-amber-500 h-full transition-all"
+                title={`Receivables: ${recPct}%`}
+              />
+            )}
           </div>
-          <div className="flex flex-wrap justify-between gap-1 text-[11px] text-muted-foreground">
-            <span>Assets: {money(wealthMetrics.totalAssets)} ({assetsPct}%)</span>
-            <span>Debt: {money(wealthMetrics.totalDebt)} ({debtPct}%)</span>
+          <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-muted-foreground">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span className="size-2 rounded-full bg-emerald-500 inline-block" />
+                Cash: <strong className="text-foreground">{money(wealthMetrics.liquidCash)}</strong> ({cashPct}%)
+              </span>
+              <span className="inline-flex items-center gap-1 font-medium">
+                <span className="size-2 rounded-full bg-blue-500 inline-block" />
+                Investments: <strong className="text-foreground">{money(wealthMetrics.investmentsValue)}</strong> ({invPct}%)
+              </span>
+              {wealthMetrics.receivablesValue > 0 && (
+                <span className="inline-flex items-center gap-1 font-medium">
+                  <span className="size-2 rounded-full bg-amber-500 inline-block" />
+                  Lent: <strong className="text-foreground">{money(wealthMetrics.receivablesValue)}</strong> ({recPct}%)
+                </span>
+              )}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              Total Debt: <span className="font-semibold text-rose-600 dark:text-rose-400">{money(wealthMetrics.totalDebt)}</span> (serviced via EMIs)
+            </div>
           </div>
         </div>
       </div>

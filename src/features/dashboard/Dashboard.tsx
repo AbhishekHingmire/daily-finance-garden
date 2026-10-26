@@ -184,9 +184,9 @@ export function Dashboard({
             </div>
 
             <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium pt-0.5">
-              <span>Net worth</span>
+              <span>Total Assets</span>
               <span className="font-bold text-foreground tabular-nums">
-                {money(wealthMetrics.netWorth)}
+                {money(wealthMetrics.totalAssets)}
               </span>
               <ChevronRight size={14} className="text-primary group-hover:translate-x-0.5 transition-transform" />
             </div>

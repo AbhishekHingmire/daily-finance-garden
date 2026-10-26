@@ -3,16 +3,21 @@ import {
   ArrowDownLeft,
   ArrowRight,
   ArrowUpRight,
+  Briefcase,
   Calendar,
   Check,
   ChevronDown,
+  CircleDollarSign,
   Landmark,
   PiggyBank,
   Plus,
+  Receipt,
   RefreshCw,
+  ShoppingBag,
   TrendingUp,
   User,
   Users,
+  Utensils,
   Wallet,
   X,
 } from "lucide-react";
@@ -109,18 +114,12 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
     }
   };
 
-  const handleQuickSpecialAction = (type: "invest" | "pay_loan" | "lend" | "recover" | "borrow") => {
-    if (type === "invest") {
-      setActiveTab("transfer");
-      setSubtype("sip");
-      setToRefKind("holding");
-      setToRefId(holdings[0]?.id || "");
-      setToRefName(holdings[0]?.name || "");
-      setNote("Investment SIP/Purchase");
-    } else if (type === "pay_loan") {
-      setActiveTab("expense");
+  const handleExpenseShortcut = (type: "emi" | "food" | "bills" | "shopping") => {
+    if (type === "emi") {
       setSubtype("emi");
-      const loanCat = categories.find((c) => c.id === "cat-loan-emi");
+      const loanCat = categories.find(
+        (c) => c.id === "cat-loan-emi" || c.name.toLowerCase().includes("loan") || c.name.toLowerCase().includes("emi")
+      );
       if (loanCat) setCategoryId(loanCat.id);
       if (loans[0]) {
         setToRefKind("loan");
@@ -129,36 +128,131 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
         setAmount(String(loans[0].emi));
         setAccountId(loans[0].pay_from_account);
         setNote(`${loans[0].name} EMI`);
+      } else {
+        setNote("Loan EMI Payment");
       }
+      setNeedWant("Need");
+    } else if (type === "food") {
+      setSubtype("none");
+      const foodCat = categories.find(
+        (c) =>
+          c.kind === "expense" &&
+          (c.id === "cat-food" ||
+            c.name.toLowerCase().includes("food") ||
+            c.name.toLowerCase().includes("dining") ||
+            c.name.toLowerCase().includes("grocer"))
+      );
+      if (foodCat) setCategoryId(foodCat.id);
+      setNote("Groceries & Food");
+      setNeedWant("Need");
+    } else if (type === "bills") {
+      setSubtype("none");
+      const billsCat = categories.find(
+        (c) =>
+          c.kind === "expense" &&
+          (c.id === "cat-bills" ||
+            c.name.toLowerCase().includes("bill") ||
+            c.name.toLowerCase().includes("utilit"))
+      );
+      if (billsCat) setCategoryId(billsCat.id);
+      setNote("Electricity / Utility Bill");
+      setNeedWant("Need");
+    } else if (type === "shopping") {
+      setSubtype("none");
+      const shopCat = categories.find(
+        (c) =>
+          c.kind === "expense" &&
+          (c.id === "cat-shopping" || c.name.toLowerCase().includes("shop"))
+      );
+      if (shopCat) setCategoryId(shopCat.id);
+      setNote("Shopping & Supplies");
+      setNeedWant("Want");
+    }
+  };
+
+  const handleIncomeShortcut = (type: "salary" | "freelance" | "investments" | "other") => {
+    setSubtype("none");
+    if (type === "salary") {
+      const salCat = categories.find(
+        (c) => c.kind === "income" && (c.id === "cat-salary" || c.name.toLowerCase().includes("sal"))
+      );
+      if (salCat) setCategoryId(salCat.id);
+      setNote("Monthly Salary");
+    } else if (type === "freelance") {
+      const freeCat = categories.find(
+        (c) => c.kind === "income" && (c.id === "cat-freelance" || c.name.toLowerCase().includes("free"))
+      );
+      if (freeCat) setCategoryId(freeCat.id);
+      setNote("Freelance / Consulting");
+    } else if (type === "investments") {
+      const invCat = categories.find(
+        (c) => c.kind === "income" && (c.id === "cat-investments" || c.name.toLowerCase().includes("invest"))
+      );
+      if (invCat) setCategoryId(invCat.id);
+      setNote("Dividends / Capital Gains");
+    } else {
+      const otherCat = categories.find(
+        (c) => c.kind === "income" && (c.id === "cat-other-income" || c.name.toLowerCase().includes("other"))
+      );
+      if (otherCat) setCategoryId(otherCat.id);
+      setNote("Miscellaneous Income");
+    }
+  };
+
+  const handleTransferShortcut = (type: "account" | "invest" | "lend" | "recover") => {
+    if (type === "account") {
+      setToRefKind("account");
+      setSubtype("none");
+      setNote("Account Transfer");
+      const otherAcc = accounts.find((a) => a.id !== accountId && !a.archived);
+      if (otherAcc) {
+        setToRefId(otherAcc.id);
+        setToRefName(otherAcc.name);
+      }
+    } else if (type === "invest") {
+      setToRefKind("holding");
+      setSubtype("sip");
+      setToRefId(holdings[0]?.id || "");
+      setToRefName(holdings[0]?.name || "");
+      setNote("Investment SIP/Purchase");
     } else if (type === "lend") {
-      setActiveTab("transfer");
+      setToRefKind("person");
       setSubtype("lent");
-      setToRefKind("person");
-      setNote("Money lent");
+      setNote("Money Lent");
     } else if (type === "recover") {
-      setActiveTab("transfer");
-      setSubtype("recovered");
       setToRefKind("person");
-      setNote("Advance recovered");
-    } else if (type === "borrow") {
-      setActiveTab("transfer");
-      setSubtype("borrowed");
-      setToRefKind("loan");
-      setNote("Borrowing disbursed");
+      setSubtype("recovered");
+      setNote("Advance Recovered");
     }
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const numAmt = parseFloat(amount);
-    if (isNaN(numAmt) || numAmt <= 0) {
+    if (!amount || isNaN(numAmt) || numAmt <= 0) {
       toast.error("Please enter a valid amount");
+      return;
+    }
+
+    if (!note.trim()) {
+      toast.error("Please enter a description or note");
       return;
     }
 
     if (!accountId) {
       toast.error("Please select an account");
       return;
+    }
+
+    if (activeTab === "transfer") {
+      if (toRefKind === "account" && (!toRefId || toRefId === accountId)) {
+        toast.error("Please select a different destination account");
+        return;
+      }
+      if (toRefKind === "person" && !toRefName.trim()) {
+        toast.error("Please enter the contact / recipient name");
+        return;
+      }
     }
 
     const entryId = `entry-${Date.now()}`;
@@ -264,41 +358,132 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
           </Button>
         </div>
 
-        {/* More Actions Shortcut Strip */}
+        {/* More Actions Shortcut Strip (Context-Aware for selected section) */}
         <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 wt-scrollbar">
           <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground shrink-0 mr-1">
             Shortcuts:
           </span>
-          <button
-            type="button"
-            onClick={() => handleQuickSpecialAction("invest")}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${
-              subtype === "sip" ? "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30" : "bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
-            }`}
-          >
-            <TrendingUp size={12} /> Invest (SIP)
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickSpecialAction("pay_loan")}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${
-              subtype === "emi" ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30" : "bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
-            }`}
-          >
-            <Landmark size={12} /> Pay Loan EMI
-          </button>
-          <button
-            type="button"
-            onClick={() => handleQuickSpecialAction("lend")}
-            className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${
-              subtype === "lent" ? "bg-primary/10 text-primary border-primary/30" : "bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
-            }`}
-          >
-            <Users size={12} /> Lend Money
-          </button>
+          {activeTab === "expense" && (
+            <>
+              <button
+                type="button"
+                onClick={() => handleExpenseShortcut("emi")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${
+                  subtype === "emi"
+                    ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 shadow-2xs"
+                    : "bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+                }`}
+              >
+                <Landmark size={12} /> Pay Loan EMI
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExpenseShortcut("food")}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+              >
+                <Utensils size={12} /> Groceries & Food
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExpenseShortcut("bills")}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+              >
+                <Receipt size={12} /> Bills & Utilities
+              </button>
+              <button
+                type="button"
+                onClick={() => handleExpenseShortcut("shopping")}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+              >
+                <ShoppingBag size={12} /> Shopping
+              </button>
+            </>
+          )}
+
+          {activeTab === "income" && (
+            <>
+              <button
+                type="button"
+                onClick={() => handleIncomeShortcut("salary")}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+              >
+                <Briefcase size={12} /> Salary Payday
+              </button>
+              <button
+                type="button"
+                onClick={() => handleIncomeShortcut("freelance")}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+              >
+                <TrendingUp size={12} /> Freelance
+              </button>
+              <button
+                type="button"
+                onClick={() => handleIncomeShortcut("investments")}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+              >
+                <CircleDollarSign size={12} /> Dividends / Returns
+              </button>
+              <button
+                type="button"
+                onClick={() => handleIncomeShortcut("other")}
+                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+              >
+                <PiggyBank size={12} /> Other Income
+              </button>
+            </>
+          )}
+
+          {activeTab === "transfer" && (
+            <>
+              <button
+                type="button"
+                onClick={() => handleTransferShortcut("account")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${
+                  toRefKind === "account" && subtype === "none"
+                    ? "bg-primary/10 text-primary border-primary/30 shadow-2xs"
+                    : "bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+                }`}
+              >
+                <ArrowRight size={12} /> Between Accounts
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTransferShortcut("invest")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${
+                  subtype === "sip"
+                    ? "bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30 shadow-2xs"
+                    : "bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+                }`}
+              >
+                <TrendingUp size={12} /> Invest (SIP)
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTransferShortcut("lend")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${
+                  subtype === "lent"
+                    ? "bg-primary/10 text-primary border-primary/30 shadow-2xs"
+                    : "bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+                }`}
+              >
+                <Users size={12} /> Lend Money
+              </button>
+              <button
+                type="button"
+                onClick={() => handleTransferShortcut("recover")}
+                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-colors cursor-pointer shrink-0 ${
+                  subtype === "recovered"
+                    ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/30 shadow-2xs"
+                    : "bg-muted/40 text-muted-foreground border-border/70 hover:bg-muted"
+                }`}
+              >
+                <RefreshCw size={12} /> Recover Advance
+              </button>
+            </>
+          )}
         </div>
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+        <form onSubmit={handleSubmit} noValidate className="mt-4 space-y-4">
           {/* Hero Amount Input */}
           <div className="rounded-2xl border border-border/80 bg-muted/20 p-4 text-center focus-within:border-primary focus-within:bg-card transition-all">
             <span className="text-xs font-semibold text-muted-foreground block mb-1">
@@ -311,7 +496,6 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
                 type="number"
                 step="any"
                 min="0.01"
-                required
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="0"
@@ -330,7 +514,6 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="e.g. Dinner with team, Groceries…"
                 className="wt-field"
-                required
               />
             </div>
             <div>
@@ -389,7 +572,6 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
                     onChange={(e) => setToRefName(e.target.value)}
                     placeholder="Contact name (e.g. Rohan)"
                     className="wt-field"
-                    required
                   />
                 ) : (
                   <select
@@ -417,7 +599,6 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
                   value={categoryId}
                   onChange={(e) => handleCategoryChange(e.target.value)}
                   className="wt-field cursor-pointer"
-                  required
                 >
                   {categories.filter((c) => !c.archived && c.kind === activeTab).map((c) => (
                     <option key={c.id} value={c.id}>
@@ -438,7 +619,6 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
                 className="wt-field"
-                required
               />
             </div>
 

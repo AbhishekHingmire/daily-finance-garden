@@ -2086,6 +2086,16 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             </div>
 
             <div className="flex items-center gap-2.5">
+              {/* Desktop Global Add Button */}
+              <Button
+                size="sm"
+                onClick={() => setGlobalAddOpen(true)}
+                className="hidden sm:inline-flex h-9 gap-1.5 px-3.5 text-xs font-bold shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
+              >
+                <Plus size={16} className="stroke-[2.5]" />
+                <span>New Transaction</span>
+              </Button>
+
               <div className="relative hidden sm:block">
                 <button
                   type="button"
@@ -2662,9 +2672,21 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         </div>
       </div>
 
+      {/* Desktop Floating Action Button (Quick New Transaction) */}
+      <button
+        type="button"
+        onClick={() => setGlobalAddOpen(true)}
+        aria-label="Add transaction"
+        title="Add transaction"
+        className="hidden lg:flex fixed bottom-6 right-6 z-40 items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-primary-foreground/20"
+      >
+        <Plus size={16} className="stroke-[2.5]" />
+        <span>New Transaction</span>
+      </button>
+
       {/* Mobile Bottom Navigation Bar */}
       {hubsV2 ? (
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-1 sm:px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center w-full max-w-full overflow-hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-1 sm:px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center w-full max-w-full overflow-visible">
           <button
             type="button"
             aria-label="Home"
@@ -2702,9 +2724,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             type="button"
             aria-label="Add transaction"
             onClick={() => setGlobalAddOpen(true)}
-            className="flex flex-col items-center justify-center -mt-3.5 py-0.5 group cursor-pointer w-full min-w-0"
+            className="relative z-10 flex flex-col items-center justify-center -mt-4 py-0.5 group cursor-pointer w-full min-w-0 overflow-visible"
           >
-            <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/30 group-active:scale-95 transition-transform">
+            <span className="grid size-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 group-active:scale-95 transition-transform ring-4 ring-card">
               <Plus size={22} className="stroke-[2.5]" />
             </span>
             <span className="text-[9.5px] sm:text-[10px] font-bold text-foreground mt-0.5">Add</span>
@@ -2747,7 +2769,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           </button>
         </nav>
       ) : (
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-1 sm:px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center w-full max-w-full overflow-hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-1 sm:px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center w-full max-w-full overflow-visible">
           {[
             { label: "Home", section: "Overview" as Section, icon: LayoutDashboard },
             { label: "Transactions", section: "Transactions" as Section, icon: ArrowLeftRight },
@@ -2831,16 +2853,28 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-              {[
-                { label: "Loans" as Section, title: "Loans & Debt", desc: "Liabilities, EMIs & debt payoff", icon: Landmark },
-                { label: "Fund Planner" as Section, title: "Fund Planner", desc: "Emergency runway & sinking funds", icon: ShieldCheck },
-                { label: "Recurring" as Section, title: "Recurring Bills", desc: "Scheduled auto-debits & SIPs", icon: CalendarDays },
-                { label: "Categories" as Section, title: "Categories & Budgets", desc: "50/30/20 caps & spend limits", icon: Tag },
-                { label: "Reports" as Section, title: "Reports & Analytics", desc: "Cash flow velocity & allocation", icon: Activity },
-                { label: "Preferences" as Section, title: "Preferences", desc: "Regional, currency & reminders", icon: SlidersHorizontal },
-              ].map(({ label, title, desc, icon: Icon }) => {
+              {(hubsV2
+                ? [
+                    { label: "Overview" as Section, title: "Overview", desc: "Dashboard & financial overview", icon: LayoutDashboard },
+                    { label: "Transactions" as Section, title: "Transactions", desc: "Ledger, filters & search", icon: ArrowLeftRight },
+                    { label: "Wealth" as Section, title: "Wealth Hub", desc: "Accounts, Investments & Loans", icon: Wallet },
+                    { label: "Plan" as Section, title: "Plan Hub", desc: "Budgets, Goals & Recurring", icon: ShieldCheck },
+                    { label: "Reports" as Section, title: "Reports & Insights", desc: "Cash flow trends & analytics", icon: Activity },
+                    { label: "Preferences" as Section, title: "Preferences", desc: "Regional settings & currency", icon: SlidersHorizontal },
+                  ]
+                : [
+                    { label: "Loans" as Section, title: "Loans & Debt", desc: "Liabilities, EMIs & debt payoff", icon: Landmark },
+                    { label: "Fund Planner" as Section, title: "Fund Planner", desc: "Emergency runway & sinking funds", icon: ShieldCheck },
+                    { label: "Recurring" as Section, title: "Recurring Bills", desc: "Scheduled auto-debits & SIPs", icon: CalendarDays },
+                    { label: "Categories" as Section, title: "Categories & Budgets", desc: "50/30/20 caps & spend limits", icon: Tag },
+                    { label: "Reports" as Section, title: "Reports & Analytics", desc: "Cash flow velocity & allocation", icon: Activity },
+                    { label: "Preferences" as Section, title: "Preferences", desc: "Regional, currency & reminders", icon: SlidersHorizontal },
+                  ]
+              ).map(({ label, title, desc, icon: Icon }) => {
                 const isSelected =
                   active === label ||
+                  (label === "Wealth" && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active))) ||
+                  (label === "Plan" && (active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active))) ||
                   (label === "Fund Planner" && (active === "Funds" || active === "Fund Planner")) ||
                   (label === "Preferences" && (active === "Preferences" || (active as string) === "Settings"));
 
