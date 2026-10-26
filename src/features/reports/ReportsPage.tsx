@@ -25,6 +25,14 @@ import { EmptyInline } from "@/components/shared/EmptyInline";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { Metric } from "@/components/shared/Metric";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
+import { useSharedPeriod } from "@/lib/period-state";
+import { migrateLegacyState } from "@/lib/migration";
+import {
+  getBudgetMetrics,
+  getDerivedLoanState,
+  getPeriodMetrics,
+  getWealthMetrics,
+} from "@/lib/metrics-service";
 import {
   getHoldingsSummary,
   getInvestmentSummary,
@@ -55,173 +63,86 @@ export function ReportsPage({
   const [expandedChart, setExpandedChart] = useState<"velocity" | "trend" | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "cashflow" | "spending" | "rule" | "debt" | "wealth">("all");
 
-  const activeRows = useMemo(() => {
-    return rows.filter((r) => priorityFilter === "All" || r.need === priorityFilter);
-  }, [rows, priorityFilter]);
-
-  const totalIncome = useMemo(
+  const [sharedPeriod] = useSharedPeriod();
+  const unified = useMemo(() => migrateLegacyState(data), [data]);
+  const periodMetrics = useMemo(
+    () => getPeriodMetrics(unified.entries, sharedPeriod),
+    [unified.entries, sharedPeriod]
+  );
+  const wealthMetrics = useMemo(
     () =>
-      activeRows
-        .filter(
-          (r) =>
-            r.type === "Income" ||
-            r.type === "Borrow / Loan Taken" ||
-            r.type === "Debt Recovery" ||
-            r.type === "Refund"
-        )
-        .reduce((sum, r) => sum + r.amount, 0),
-    [activeRows]
+      getWealthMetrics(
+        unified.accounts,
+        unified.entries,
+        unified.holdings,
+        unified.loans,
+        unified.goals
+      ),
+    [unified]
+  );
+  const budgetMetrics = useMemo(
+    () => getBudgetMetrics(unified.categories, unified.entries, sharedPeriod),
+    [unified.categories, unified.entries, sharedPeriod]
   );
 
-  const totalExpenses = useMemo(
-    () =>
-      activeRows
-        .filter(
-          (r) =>
-            r.type === "Expense" ||
-            r.type === "EMI / Loan Payment" ||
-            r.type === "Lend / Loan Given"
-        )
-        .reduce((sum, r) => sum + r.amount, 0),
-    [activeRows]
-  );
-
-  const netSavings = totalIncome - totalExpenses;
-  const savingsRate =
-    totalIncome > 0 ? Math.round((netSavings / totalIncome) * 100) : 0;
+  const totalIncome = periodMetrics.moneyIn;
+  const totalExpenses = periodMetrics.moneyOut;
+  const netSavings = periodMetrics.saved;
+  const savingsRate = periodMetrics.savingsRatePct ?? 0;
 
   // 50 / 30 / 20 Budget Rule Metrics
-  const needsSpend = useMemo(
-    () =>
-      rows
-        .filter((r) => r.type === "Expense" && r.need === "Need")
-        .reduce((sum, r) => sum + r.amount, 0),
-    [rows]
-  );
-
-  const wantsSpend = useMemo(
-    () =>
-      rows
-        .filter((r) => r.type === "Expense" && r.need === "Want")
-        .reduce((sum, r) => sum + r.amount, 0),
-    [rows]
-  );
-
-  const effectiveIncome = Math.max(1, totalIncome);
-  const needsPct = Math.round((needsSpend / effectiveIncome) * 100);
-  const wantsPct = Math.round((wantsSpend / effectiveIncome) * 100);
-  const savingsPct = Math.max(0, Math.round((netSavings / effectiveIncome) * 100));
+  const needsSpend = periodMetrics.needs;
+  const wantsSpend = periodMetrics.wants;
+  const needsPct = periodMetrics.split503020.needsPct;
+  const wantsPct = periodMetrics.split503020.wantsPct;
+  const savingsPct = periodMetrics.split503020.savingsPct;
 
   // Debt & Loan Cash Flow Metrics
-  const emiPaidInPeriod = useMemo(
-    () =>
-      rows
-        .filter((r) => r.type === "EMI / Loan Payment")
-        .reduce((sum, r) => sum + r.amount, 0),
-    [rows]
-  );
+  const emiPaidInPeriod = periodMetrics.emisInPeriod;
+  const borrowedInPeriod = periodMetrics.whereSavingsWent.borrowedNet;
+  const lentInPeriod = periodMetrics.whereSavingsWent.lentOutNet;
+  const recoveredInPeriod = 0;
 
-  const borrowedInPeriod = useMemo(
-    () =>
-      rows
-        .filter((r) => r.type === "Borrow / Loan Taken")
-        .reduce((sum, r) => sum + r.amount, 0),
-    [rows]
-  );
-
-  const lentInPeriod = useMemo(
-    () =>
-      rows
-        .filter((r) => r.type === "Lend / Loan Given")
-        .reduce((sum, r) => sum + r.amount, 0),
-    [rows]
-  );
-
-  const recoveredInPeriod = useMemo(
-    () =>
-      rows
-        .filter((r) => r.type === "Debt Recovery")
-        .reduce((sum, r) => sum + r.amount, 0),
-    [rows]
-  );
-
-  // Category breakdown for Donut Chart
+  // Category breakdown for Donut Chart (derived from budget engine, NO transfers/lent)
   const categorySpendList = useMemo(() => {
-    const list = data.categories
-      .filter((c) => c.kind === "Expense" && !c.archived)
-      .map((c) => {
-        const amount = activeRows
-          .filter((r) => r.categoryId === c.id && r.type === "Expense")
-          .reduce((sum, r) => sum + r.amount, 0);
-        const count = activeRows.filter(
-          (r) => r.categoryId === c.id && r.type === "Expense"
-        ).length;
-        const pctOfTotal = totalExpenses > 0 ? Math.round((amount / totalExpenses) * 100) : 0;
+    return budgetMetrics.categoryRows
+      .filter((r) => r.spent > 0)
+      .map((r) => {
+        const pctOfTotal = periodMetrics.moneyOut > 0 ? Math.round((r.spent / periodMetrics.moneyOut) * 100) : 0;
         return {
-          ...c,
-          icon: c.icon || matchCategoryIcon(c.name),
-          amount,
-          count,
+          id: r.category.id,
+          name: r.category.name,
+          kind: "Expense" as const,
+          icon: r.category.icon || matchCategoryIcon(r.category.name),
+          color: r.category.color || "blue",
+          monthlyLimit: r.cap,
+          amount: r.spent,
+          count: 1,
           pctOfTotal,
           pct: pctOfTotal,
         };
       })
-      .filter((c) => c.amount > 0);
+      .sort((a, b) => b.amount - a.amount);
+  }, [budgetMetrics, periodMetrics.moneyOut]);
 
-    // Account for loan EMI debt payments in outflow donut
-    if (emiPaidInPeriod > 0) {
-      const emiPct = totalExpenses > 0 ? Math.round((emiPaidInPeriod / totalExpenses) * 100) : 0;
-      list.push({
-        id: "cat-emi-repayments",
-        name: "EMI & Debt Repayments",
-        kind: "Expense" as const,
-        icon: "🏛️",
-        color: "rose",
-        monthlyLimit: 0,
-        amount: emiPaidInPeriod,
-        count: activeRows.filter((r) => r.type === "EMI / Loan Payment").length,
-        pctOfTotal: emiPct,
-        pct: emiPct,
-      });
-    }
-
-    // Account for money lent in outflow donut
-    if (lentInPeriod > 0) {
-      const lentPct = totalExpenses > 0 ? Math.round((lentInPeriod / totalExpenses) * 100) : 0;
-      list.push({
-        id: "cat-money-lent",
-        name: "Money Lent / Advances",
-        kind: "Expense" as const,
-        icon: "🤝",
-        color: "violet",
-        monthlyLimit: 0,
-        amount: lentInPeriod,
-        count: activeRows.filter((r) => r.type === "Lend / Loan Given").length,
-        pctOfTotal: lentPct,
-        pct: lentPct,
-      });
-    }
-
-    return list.sort((a, b) => b.amount - a.amount);
-  }, [data.categories, activeRows, totalExpenses, emiPaidInPeriod, lentInPeriod]);
-
-  // Income Sources
+  // Income Sources (derived from period entries, ensuring sum equals totalIncome)
   const incomeSources = useMemo(() => {
-    return data.categories
-      .filter((c) => c.kind === "Income" && !c.archived)
+    const periodKey = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
+    const periodEntries = unified.entries.filter(
+      (e) => e.status === "posted" && e.kind === "income" && e.date.startsWith(periodKey)
+    );
+    return unified.categories
+      .filter((c) => c.kind === "income" && !c.archived)
       .map((c) => {
-        const amount = activeRows
-          .filter((r) => r.categoryId === c.id && r.type === "Income")
-          .reduce((sum, r) => sum + r.amount, 0);
-        const count = activeRows.filter(
-          (r) => r.categoryId === c.id && r.type === "Income"
-        ).length;
+        const catEntries = periodEntries.filter((e) => e.category_id === c.id);
+        const amount = catEntries.reduce((sum, e) => sum + e.amount, 0);
+        const count = catEntries.length;
         const pct = totalIncome > 0 ? Math.round((amount / totalIncome) * 100) : 0;
         return { ...c, amount, count, pct };
       })
       .filter((c) => c.amount > 0)
       .sort((a, b) => b.amount - a.amount);
-  }, [data.categories, activeRows, totalIncome]);
+  }, [unified, sharedPeriod, totalIncome]);
 
   // Investment & Loan summaries from real portfolio state + period transactions
   const holdingsSummary = useMemo(() => getHoldingsSummary(data.investments), [data.investments]);
@@ -897,7 +818,7 @@ export function ReportsPage({
                           Total Outstanding
                         </span>
                         <span className="wt-display text-sm sm:text-base font-extrabold text-foreground mt-0.5 block tabular-nums">
-                          {money(loansSummary.totalOutstanding)}
+                          <Metric id="total_debt" value={wealthMetrics.totalDebt} />
                         </span>
                         <span className="text-[10px] text-muted-foreground block">
                           Active balance
@@ -948,28 +869,31 @@ export function ReportsPage({
                     </div>
 
                     {/* Active Loans list if available */}
-                    {data.loans && data.loans.length > 0 && (
+                    {unified.loans && unified.loans.length > 0 && (
                       <div className="space-y-1.5 pt-1">
                         <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Active Loans ({data.loans.length})
+                          Active Loans ({unified.loans.length})
                         </p>
-                        {data.loans.map((loan) => (
-                          <div
-                            key={loan.id}
-                            className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-xs"
-                          >
-                            <div className="min-w-0">
-                              <p className="font-semibold text-foreground truncate">{loan.name}</p>
-                              <p className="text-[10px] text-muted-foreground">EMI: {money(loan.emiAmount)}/mo</p>
+                        {unified.loans.map((loan) => {
+                          const derived = getDerivedLoanState(loan, unified.entries, sharedPeriod);
+                          return (
+                            <div
+                              key={loan.id}
+                              className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-xs"
+                            >
+                              <div className="min-w-0">
+                                <p className="font-semibold text-foreground truncate">{loan.name}</p>
+                                <p className="text-[10px] text-muted-foreground">EMI: {money(loan.emi)}/mo</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                                  <Metric id={`loan_outstanding:${loan.id}`} value={derived.currentOutstanding} />
+                                </p>
+                                <span className="text-[10px] text-muted-foreground">Outstanding</span>
+                              </div>
                             </div>
-                            <div className="text-right shrink-0">
-                              <p className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
-                                {money(loan.currentOutstanding)}
-                              </p>
-                              <span className="text-[10px] text-muted-foreground">Outstanding</span>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>

@@ -2,7 +2,7 @@
 
 ## Phase 1: Data Truth
 - [x] 1.01: Create <Metric id value format/> component. Render value with data-metric="<id>" data-value="<raw number>". | Evidence: src/components/shared/Metric.tsx created; wired across Dashboard.tsx, AccountsPage.tsx, InvestmentsPage.tsx, LoansPage.tsx, CategoriesPage.tsx, FundsPage.tsx, ReportsPage.tsx, CirclePercentageGauge.tsx. All 51 vitest tests pass; tsc passes.
-- [ ] 1.02: Reports/Insights: delete all local calculations; read selectors only. | Evidence: 
+- [x] 1.02: Reports/Insights: delete all local calculations; read selectors only. | Evidence: src/features/reports/ReportsPage.tsx refactored to read getPeriodMetrics, getWealthMetrics, and getBudgetMetrics only. Money Lent removed from donut. Saved=20,908 (21%), Money out=79,342, 50/30/20=72/7/21 (71,981/7,361/20,908), split bar sums to 100%, total inflows equals rows above. All 51 vitest tests pass; tsc passes.
 - [ ] 1.03: Budgets page: read the budget engine only. | Evidence: 
 - [ ] 1.04: Reclassify Loans & Borrowings, Money Lent / Advances and Debt Recovery as kind=transfer. Budgets tabs Expense (8) | Income (4) | Transfers (3). | Evidence: 
 - [ ] 1.05: Transactions summary line: replace "TOTAL: +₹10,908" with "In ₹1,00,250 · Out ₹79,342 · Net +₹20,908" plus "Transfers ₹10,000 (not counted)". | Evidence: 
