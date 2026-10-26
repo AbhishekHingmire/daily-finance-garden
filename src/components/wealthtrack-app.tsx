@@ -2377,6 +2377,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 txSort={txSort}
                 setTxSort={setTxSort}
                 money={money}
+                onNavigate={goSection}
                 onAdd={() => beginTransaction()}
                 onEdit={(item) => beginTransaction(undefined, item)}
                 onView={setSelectedTransaction}

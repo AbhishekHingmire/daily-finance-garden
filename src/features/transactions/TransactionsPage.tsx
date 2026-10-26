@@ -51,6 +51,7 @@ export function TransactionsPage({
   onBulkDelete,
   onBulkReassign,
   onBulkReassignPriority,
+  onNavigate,
 }: {
   data: WealthState;
   rows: Transaction[];
@@ -82,6 +83,7 @@ export function TransactionsPage({
   onBulkDelete: (ids?: string[]) => void;
   onBulkReassign: (categoryId: string) => void;
   onBulkReassignPriority: (priority: "Need" | "Want") => void;
+  onNavigate?: (section: any) => void;
 }) {
   const [isFilterExpanded, setIsFilterExpanded] = React.useState<boolean>(false);
 
@@ -340,15 +342,20 @@ export function TransactionsPage({
               <Landmark size={15} />
             </span>
             <div className="min-w-0">
-              <p className="font-bold text-foreground flex items-center gap-2 flex-wrap">
-                <span>Active Loans & EMI Obligations</span>
-                <span className="rounded-full bg-amber-500/15 px-2 py-0.2 text-[10px] font-bold text-amber-700 dark:text-amber-300">
-                  {activeLoans.length} {activeLoans.length === 1 ? "Loan" : "Loans"} Active
-                </span>
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Total Outstanding: <strong className="text-foreground tabular-nums">{money(loansSummary.totalOutstanding)}</strong> · Monthly EMI: <strong className="text-foreground tabular-nums">{money(loansSummary.totalMonthlyEmi)}/mo</strong> · Paid in selection: <strong className="text-amber-700 dark:text-amber-300 tabular-nums">{money(periodEmi)}</strong> ({periodEmiCount} {periodEmiCount === 1 ? "payment" : "payments"})
-              </p>
+              <button
+                type="button"
+                onClick={() => onNavigate?.("Loans")}
+                className="group text-left cursor-pointer hover:opacity-90 transition-opacity"
+              >
+                <p className="font-bold text-foreground flex items-center gap-1.5 flex-wrap">
+                  <span className="hover:underline">
+                    {activeLoans.length} loans · {money(periodEmi)} EMIs paid this month ›
+                  </span>
+                </p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Monthly EMI: <strong className="text-foreground tabular-nums">{money(loansSummary.totalMonthlyEmi)}/mo</strong> · {periodEmiCount} {periodEmiCount === 1 ? "payment" : "payments"}
+                </p>
+              </button>
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
