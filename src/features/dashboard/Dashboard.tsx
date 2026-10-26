@@ -31,6 +31,7 @@ import { EmptyInline } from "@/components/shared/EmptyInline";
 import { TransactionRow } from "@/components/shared/TransactionRow";
 import { SalaryCountdownCard } from "./SalaryCountdownCard";
 import { Metric } from "@/components/shared/Metric";
+import { formatDate, formatPaydayLabel } from "@/lib/formatters";
 import { useSharedPeriod } from "@/lib/period-state";
 import { migrateLegacyState } from "@/lib/migration";
 import {
@@ -43,16 +44,6 @@ import {
   getWealthMetrics,
 } from "@/lib/metrics-service";
 import type { Section, Transaction, WealthState } from "@/lib/wealthtrack";
-
-function formatDate(value: string) {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return value;
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(date);
-}
 
 export function Dashboard({
   data,
@@ -486,7 +477,7 @@ export function Dashboard({
           </div>
           <div className="text-right">
             <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-bold">
-              {payday ? `Payday in ${payday.daysRemaining} days (${payday.nextDate.slice(0, 10)})` : "No upcoming payday"}
+              {payday ? formatPaydayLabel(payday.nextDate) : "No upcoming payday"}
             </span>
           </div>
         </div>

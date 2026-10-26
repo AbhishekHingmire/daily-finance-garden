@@ -1,3 +1,5 @@
+import { formatDate } from "./formatters";
+
 export type TransactionType =
   | "Expense"
   | "Income"
@@ -1125,12 +1127,5 @@ export function calculateNextSalaryInfo(
 }
 
 export function formatDisplayDate(dateStr: string): string {
-  const [y, m, d] = dateStr.slice(0, 10).split("-").map(Number);
-  const date = new Date(y, m - 1, d);
-  if (Number.isNaN(date.getTime())) return dateStr;
-  return new Intl.DateTimeFormat("en-IN", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).format(date);
+  return formatDate(dateStr);
 }
