@@ -2860,7 +2860,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     { label: "Wealth" as Section, title: "Wealth Hub", desc: "Accounts, Investments & Loans", icon: Wallet },
                     { label: "Plan" as Section, title: "Plan Hub", desc: "Budgets, Goals & Recurring", icon: ShieldCheck },
                     { label: "Reports" as Section, title: "Reports & Insights", desc: "Cash flow trends & analytics", icon: Activity },
-                    { label: "Preferences" as Section, title: "Preferences", desc: "Regional settings & currency", icon: SlidersHorizontal },
                   ]
                 : [
                     { label: "Loans" as Section, title: "Loans & Debt", desc: "Liabilities, EMIs & debt payoff", icon: Landmark },
@@ -2868,15 +2867,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     { label: "Recurring" as Section, title: "Recurring Bills", desc: "Scheduled auto-debits & SIPs", icon: CalendarDays },
                     { label: "Categories" as Section, title: "Categories & Budgets", desc: "50/30/20 caps & spend limits", icon: Tag },
                     { label: "Reports" as Section, title: "Reports & Analytics", desc: "Cash flow velocity & allocation", icon: Activity },
-                    { label: "Preferences" as Section, title: "Preferences", desc: "Regional, currency & reminders", icon: SlidersHorizontal },
                   ]
               ).map(({ label, title, desc, icon: Icon }) => {
                 const isSelected =
                   active === label ||
                   (label === "Wealth" && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active))) ||
                   (label === "Plan" && (active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active))) ||
-                  (label === "Fund Planner" && (active === "Funds" || active === "Fund Planner")) ||
-                  (label === "Preferences" && (active === "Preferences" || (active as string) === "Settings"));
+                  (label === "Fund Planner" && (active === "Funds" || active === "Fund Planner"));
 
                 return (
                   <button

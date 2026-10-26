@@ -625,30 +625,15 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
             {activeTab === "expense" && (
               <div>
                 <label className="wt-label">50/30/20 Classification</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setNeedWant("Need")}
-                    className={`h-9 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      needWant === "Need"
-                        ? "bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/40 shadow-2xs"
-                        : "border-border/70 text-muted-foreground hover:bg-muted/50"
-                    }`}
-                  >
-                    Need (Essential)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNeedWant("Want")}
-                    className={`h-9 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
-                      needWant === "Want"
-                        ? "bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/40 shadow-2xs"
-                        : "border-border/70 text-muted-foreground hover:bg-muted/50"
-                    }`}
-                  >
-                    Want (Lifestyle)
-                  </button>
-                </div>
+                <select
+                  value={needWant}
+                  onChange={(e) => setNeedWant(e.target.value as NeedWant)}
+                  className="wt-field cursor-pointer"
+                  aria-label="50/30/20 Priority Classification"
+                >
+                  <option value="Need">Need (Essential)</option>
+                  <option value="Want">Want (Lifestyle)</option>
+                </select>
               </div>
             )}
           </div>

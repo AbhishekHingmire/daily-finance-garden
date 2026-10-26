@@ -155,20 +155,23 @@ export function FundsPage({
       />
 
       {/* Navigation Switch Panels */}
-      <div className="inline-flex items-center gap-1.5 p-1 rounded-xl bg-muted/60 border border-border/80 w-fit">
+      <div className="w-full sm:w-fit grid grid-cols-2 sm:flex sm:items-center gap-1 p-1 rounded-xl bg-muted/60 border border-border/80">
         <button
           type="button"
           onClick={() => setActiveTab("funds")}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+          className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 rounded-lg text-xs font-bold transition-all min-w-0 ${
             activeTab === "funds"
               ? "bg-card text-foreground shadow-xs border border-border/80 font-extrabold ring-1 ring-border/20"
               : "text-muted-foreground hover:text-foreground hover:bg-card/50"
           }`}
         >
-          <ShieldCheck size={16} className={activeTab === "funds" ? "text-primary" : "text-muted-foreground"} />
-          <span>Emergency & Sinking Funds</span>
+          <ShieldCheck size={16} className={`shrink-0 ${activeTab === "funds" ? "text-primary" : "text-muted-foreground"}`} />
+          <span className="truncate whitespace-nowrap">
+            <span className="sm:hidden">Sinking Funds</span>
+            <span className="hidden sm:inline">Emergency & Sinking Funds</span>
+          </span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+            className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 ${
               activeTab === "funds"
                 ? "bg-primary/10 text-primary"
                 : "bg-muted text-muted-foreground"
@@ -180,16 +183,19 @@ export function FundsPage({
         <button
           type="button"
           onClick={() => setActiveTab("simulator")}
-          className={`flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-bold transition-all ${
+          className={`flex items-center justify-center sm:justify-start gap-1.5 sm:gap-2 px-2.5 sm:px-3.5 py-2 rounded-lg text-xs font-bold transition-all min-w-0 ${
             activeTab === "simulator"
               ? "bg-card text-foreground shadow-xs border border-border/80 font-extrabold ring-1 ring-border/20"
               : "text-muted-foreground hover:text-foreground hover:bg-card/50"
           }`}
         >
-          <Compass size={16} className={activeTab === "simulator" ? "text-primary" : "text-muted-foreground"} />
-          <span>Purchase & Life Goal Simulator</span>
+          <Compass size={16} className={`shrink-0 ${activeTab === "simulator" ? "text-primary" : "text-muted-foreground"}`} />
+          <span className="truncate whitespace-nowrap">
+            <span className="sm:hidden">Goal Simulator</span>
+            <span className="hidden sm:inline">Purchase & Life Goal Simulator</span>
+          </span>
           <span
-            className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+            className={`px-1.5 sm:px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 ${
               activeTab === "simulator"
                 ? "bg-primary/10 text-primary"
                 : "bg-muted text-muted-foreground"
@@ -326,19 +332,22 @@ export function FundsPage({
             </div>
 
             {/* Switch Panel: Ongoing Goals vs Completed Goals */}
-            <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-muted/60 border border-border/80 shrink-0">
+            <div className="w-full sm:w-fit grid grid-cols-2 sm:flex sm:items-center gap-1 p-1 rounded-xl bg-muted/60 border border-border/80 shrink-0">
               <button
                 type="button"
                 onClick={() => setGoalStatusFilter("ongoing")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`flex items-center justify-center sm:justify-start gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all min-w-0 ${
                   goalStatusFilter === "ongoing"
                     ? "bg-card text-foreground shadow-2xs border border-border/80 font-extrabold ring-1 ring-border/20"
                     : "text-muted-foreground hover:text-foreground hover:bg-card/50"
                 }`}
               >
-                <span>Ongoing Goals</span>
+                <span className="truncate whitespace-nowrap">
+                  <span className="sm:hidden">Ongoing</span>
+                  <span className="hidden sm:inline">Ongoing Goals</span>
+                </span>
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold shrink-0 ${
                     goalStatusFilter === "ongoing"
                       ? "bg-primary/10 text-primary"
                       : "bg-muted text-muted-foreground"
@@ -351,7 +360,7 @@ export function FundsPage({
               <button
                 type="button"
                 onClick={() => setGoalStatusFilter("completed")}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                className={`flex items-center justify-center sm:justify-start gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-bold transition-all min-w-0 ${
                   goalStatusFilter === "completed"
                     ? "bg-emerald-500/15 text-emerald-800 dark:text-emerald-300 shadow-2xs border border-emerald-500/30 font-extrabold ring-1 ring-emerald-500/30"
                     : "text-muted-foreground hover:text-foreground hover:bg-card/50"
@@ -359,15 +368,18 @@ export function FundsPage({
               >
                 <CheckCircle2
                   size={13}
-                  className={
+                  className={`shrink-0 ${
                     goalStatusFilter === "completed"
                       ? "text-emerald-600 dark:text-emerald-400"
                       : "text-muted-foreground"
-                  }
+                  }`}
                 />
-                <span>Completed Goals</span>
+                <span className="truncate whitespace-nowrap">
+                  <span className="sm:hidden">Completed</span>
+                  <span className="hidden sm:inline">Completed Goals</span>
+                </span>
                 <span
-                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold ${
+                  className={`px-1.5 py-0.2 rounded-full text-[10px] font-extrabold shrink-0 ${
                     goalStatusFilter === "completed"
                       ? "bg-emerald-500/20 text-emerald-800 dark:text-emerald-300"
                       : "bg-muted text-muted-foreground"
