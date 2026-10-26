@@ -1831,23 +1831,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     <div className="min-h-screen bg-background">
       <Toaster position="top-right" richColors />
       <div className="flex min-h-screen">
-        {/* Desktop Sidebar & Mobile Drawer Navigation */}
+        {/* Desktop Sidebar Navigation */}
         <aside
-          className={`${
-            mobileNav ? "fixed inset-y-0 left-0 z-40 flex w-[272px]" : "hidden"
-          } shrink-0 flex-col border-r border-border bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[248px]`}
+          className="hidden shrink-0 flex-col border-r border-border bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[248px]"
         >
           <div className="flex h-[72px] items-center justify-between border-b border-border px-5">
             <AppLogo />
-            <Button
-              className="lg:hidden"
-              variant="ghost"
-              size="icon"
-              aria-label="Close navigation"
-              onClick={() => setMobileNav(false)}
-            >
-              <X size={20} />
-            </Button>
           </div>
           <div className="px-4 pt-6">
             <p className="px-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
@@ -1888,14 +1877,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             </div>
           </div>
         </aside>
-
-        {mobileNav && (
-          <button
-            aria-label="Close navigation backdrop"
-            className="fixed inset-0 z-30 bg-foreground/30 backdrop-blur-2xs lg:hidden"
-            onClick={() => setMobileNav(false)}
-          />
-        )}
 
         {/* Main Content Area */}
         <div className="min-w-0 flex-1">
@@ -2427,53 +2408,152 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-20 grid grid-cols-5 border-t border-border bg-card/95 px-2 pb-[env(safe-area-inset-bottom)] pt-1 backdrop-blur-xs lg:hidden shadow-xs">
-        {["Overview", "Transactions", "Accounts", "Investments"].map((section) => {
-          const item = navItems.find((nav) => nav.label === section);
-          const Icon = item?.icon ?? LayoutDashboard;
+      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg">
+        {[
+          { label: "Home", section: "Overview" as Section, icon: LayoutDashboard },
+          { label: "Transactions", section: "Transactions" as Section, icon: ArrowLeftRight },
+          { label: "Accounts", section: "Accounts" as Section, icon: Wallet },
+          { label: "Investments", section: "Investments" as Section, icon: TrendingUp },
+        ].map(({ label, section, icon: Icon }) => {
           const isItemActive = active === section;
-          const sectionLabel = section === "Overview" ? "Home" : section;
           return (
             <button
               key={section}
               type="button"
-              aria-label={sectionLabel}
-              title={sectionLabel}
-              className={`flex h-11 items-center justify-center rounded-xl transition-colors ${
+              aria-label={label}
+              className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
                 isItemActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  ? "text-primary font-bold"
+                  : "text-muted-foreground hover:text-foreground font-medium"
               }`}
-              onClick={() => goSection(section as Section)}
+              onClick={() => {
+                setMobileNav(false);
+                goSection(section);
+              }}
             >
-              <Icon size={18} />
+              <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+                isItemActive ? "bg-primary/10 text-primary" : ""
+              }`}>
+                <Icon size={18} className={isItemActive ? "stroke-[2.3]" : "stroke-[1.8]"} />
+              </span>
+              <span className="text-[10px] leading-none tracking-tight">{label}</span>
             </button>
           );
         })}
-        <button
-          type="button"
-          aria-label="More sections"
-          title="More"
-          className={`flex h-11 items-center justify-center rounded-xl transition-colors ${
-            !["Overview", "Transactions", "Accounts", "Investments"].includes(active)
-              ? "bg-primary/10 text-primary"
-              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-          }`}
-          onClick={() => setMobileNav(true)}
-        >
-          <MoreHorizontal size={18} />
-        </button>
+        {(() => {
+          const isMoreActive = !["Overview", "Transactions", "Accounts", "Investments"].includes(active);
+          return (
+            <button
+              type="button"
+              aria-label="More features and settings"
+              className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+                isMoreActive
+                  ? "text-primary font-bold"
+                  : "text-muted-foreground hover:text-foreground font-medium"
+              }`}
+              onClick={() => setMobileNav(true)}
+            >
+              <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+                isMoreActive ? "bg-primary/10 text-primary" : ""
+              }`}>
+                <MoreHorizontal size={18} className={isMoreActive ? "stroke-[2.3]" : "stroke-[1.8]"} />
+              </span>
+              <span className="text-[10px] leading-none tracking-tight">More</span>
+            </button>
+          );
+        })()}
       </nav>
 
-      {/* Floating Mobile Add Button */}
-      <Button
-        aria-label="Add transaction"
-        title="Add transaction"
-        className="fixed bottom-16 right-4 z-20 size-13 rounded-full p-0 shadow-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-transform active:scale-95 sm:bottom-7 sm:right-7 lg:hidden"
-        onClick={() => beginTransaction()}
-      >
-        <Plus size={26} strokeWidth={2.6} />
-      </Button>
+      {/* Mobile "More" Drawer Sheet */}
+      {mobileNav && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden">
+          <div
+            className="fixed inset-0 bg-foreground/40 backdrop-blur-xs transition-opacity animate-in fade-in-50"
+            onClick={() => setMobileNav(false)}
+            aria-label="Close menu"
+          />
+          <div className="relative z-50 w-full max-h-[85vh] overflow-y-auto rounded-t-3xl border-t border-border bg-card p-5 shadow-2xl wt-scrollbar animate-in slide-in-from-bottom duration-200">
+            <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-muted-foreground/30" />
+            <div className="flex items-center justify-between pb-3 border-b border-border/70">
+              <div>
+                <h3 className="wt-display text-base font-bold text-foreground">More Tools & Navigation</h3>
+                <p className="text-xs text-muted-foreground">Access all financial tracking modules</p>
+              </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 rounded-full"
+                onClick={() => setMobileNav(false)}
+                aria-label="Close"
+              >
+                <X size={18} />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
+              {[
+                { label: "Loans" as Section, title: "Loans & Debt", desc: "Liabilities, EMIs & debt payoff", icon: Landmark },
+                { label: "Fund Planner" as Section, title: "Fund Planner", desc: "Emergency runway & sinking funds", icon: ShieldCheck },
+                { label: "Recurring" as Section, title: "Recurring Bills", desc: "Scheduled auto-debits & SIPs", icon: CalendarDays },
+                { label: "Categories" as Section, title: "Categories & Budgets", desc: "50/30/20 caps & spend limits", icon: Tag },
+                { label: "Reports" as Section, title: "Reports & Analytics", desc: "Cash flow velocity & allocation", icon: Activity },
+                { label: "Preferences" as Section, title: "Preferences", desc: "Regional, currency & reminders", icon: SlidersHorizontal },
+              ].map(({ label, title, desc, icon: Icon }) => {
+                const isSelected =
+                  active === label ||
+                  (label === "Fund Planner" && (active === "Funds" || active === "Fund Planner")) ||
+                  (label === "Preferences" && (active === "Preferences" || (active as string) === "Settings"));
+
+                return (
+                  <button
+                    key={label}
+                    type="button"
+                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
+                      isSelected
+                        ? "border-primary/50 bg-primary/10 shadow-xs"
+                        : "border-border/70 bg-card hover:bg-muted/40 hover:border-border"
+                    }`}
+                    onClick={() => {
+                      setMobileNav(false);
+                      goSection(label);
+                    }}
+                  >
+                    <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${
+                      isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                    }`}>
+                      <Icon size={18} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-xs font-bold ${isSelected ? "text-primary" : "text-foreground"}`}>
+                        {title}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">{desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-5 pt-4 border-t border-border/70 flex items-center justify-between">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <ShieldCheck size={15} className="text-emerald-500" />
+                <span className="font-semibold text-foreground">100% Offline & Private</span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-semibold"
+                onClick={() => {
+                  setMobileNav(false);
+                  goSection("Profile");
+                }}
+              >
+                <User size={14} className="mr-1.5" /> My Profile
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Search Modal */}
       {searchOpen && (

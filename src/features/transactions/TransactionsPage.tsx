@@ -5,6 +5,7 @@ import {
   Landmark,
   Plus,
   RotateCcw,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DateRangeFilter, matchesDateRange, type DateRangeValue } from "@/components/shared/DateRangeFilter";
@@ -229,6 +230,60 @@ export function TransactionsPage({
             ]}
           />
         </div>
+
+        {/* Active Filter Chips */}
+        {hasFilter && (
+          <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t border-border/50">
+            <span className="text-[11px] font-semibold text-muted-foreground mr-1">Active:</span>
+            {txType !== "All types" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-semibold">
+                Type: {txType}
+                <button type="button" onClick={() => setTxType("All types")} className="hover:opacity-80 cursor-pointer">
+                  <X size={11} />
+                </button>
+              </span>
+            )}
+            {txPriority !== "All priorities" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-semibold">
+                Priority: {txPriority}
+                <button type="button" onClick={() => setTxPriority("All priorities")} className="hover:opacity-80 cursor-pointer">
+                  <X size={11} />
+                </button>
+              </span>
+            )}
+            {txCategory !== "All categories" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-semibold">
+                Category: {data.categories.find((c) => c.id === txCategory)?.name || txCategory}
+                <button type="button" onClick={() => setTxCategory("All categories")} className="hover:opacity-80 cursor-pointer">
+                  <X size={11} />
+                </button>
+              </span>
+            )}
+            {txAccount !== "All accounts" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-semibold">
+                Account: {data.accounts.find((a) => a.id === txAccount)?.name || txAccount}
+                <button type="button" onClick={() => setTxAccount("All accounts")} className="hover:opacity-80 cursor-pointer">
+                  <X size={11} />
+                </button>
+              </span>
+            )}
+            {dateRange.preset !== "1m" && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-semibold">
+                Range: {dateRange.preset?.toUpperCase() || "Custom"}
+                <button type="button" onClick={() => setDateRange({ preset: "1m" })} className="hover:opacity-80 cursor-pointer">
+                  <X size={11} />
+                </button>
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="text-[11px] font-bold text-destructive hover:underline ml-1 cursor-pointer"
+            >
+              Clear all
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Dedicated Section for EMIs & Loan Obligations */}

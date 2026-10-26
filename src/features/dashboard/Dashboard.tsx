@@ -383,9 +383,55 @@ export function Dashboard({
         <DateRangeFilter value={dateRange} onChange={setDateRange} />
       </div>
 
-      {/* Cash Flow Performance Metric Cards */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between px-0.5">
+      {/* Consolidated Financial Snapshot: Immediate Answer to "How much money do I have?" */}
+      <div className="space-y-3 sm:space-y-4">
+        {/* Available Liquid Balance Hero Strip */}
+        <div className="rounded-2xl border border-border/80 bg-gradient-to-r from-card via-card to-primary/5 p-4 sm:p-5 wt-shadow hover:border-border transition-all">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                  <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  Available Liquid Cash
+                </span>
+                <span className="text-xs text-muted-foreground hidden sm:inline">
+                  Across {assetAccounts.length} active accounts
+                </span>
+              </div>
+              <div className="flex items-baseline gap-3">
+                <span className="wt-display text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight tabular-nums">
+                  {money(liquidAssets)}
+                </span>
+                <span className="text-xs text-muted-foreground sm:hidden">
+                  · {assetAccounts.length} accounts
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Instantly accessible funds in Bank, Cash & Wallets
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3 border-t border-border/60 pt-3 sm:border-t-0 sm:pt-0">
+              <div className="text-left sm:text-right text-xs">
+                <span className="text-muted-foreground block text-[11px]">Consolidated Net Worth</span>
+                <span className="font-extrabold text-foreground tabular-nums">
+                  {money(liquidAssets + effectiveInvestmentsVal - totalLiabilities)}
+                </span>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs font-semibold"
+                onClick={() => onNavigate("Accounts")}
+              >
+                <Wallet size={13} className="mr-1.5" /> View Accounts
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Period Cash Flow Movement Header */}
+        <div className="flex items-center justify-between px-0.5 pt-1">
           <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
             Period Cash Flow Movement
           </h3>

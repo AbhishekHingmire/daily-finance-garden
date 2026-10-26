@@ -198,11 +198,16 @@ export function AccountsPage({
       <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 sm:p-6 wt-shadow hover:border-border transition-all">
         <div className="flex flex-col gap-5 sm:gap-6 lg:flex-row lg:items-center lg:justify-between relative z-10">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300">
                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Total Net Worth
+                Consolidated Net Worth
               </span>
+              {totalLiabilities > 0 && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-muted border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                  True Net Worth (Assets − Debt): <strong className="text-foreground ml-0.5 tabular-nums">{money(totalAssets + effectiveInvestmentsVal - totalLiabilities)}</strong>
+                </span>
+              )}
               {savingsRate > 0 && (
                 <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary">
                   <Sparkles size={10} /> +{savingsRate}% Saved this period
@@ -214,7 +219,7 @@ export function AccountsPage({
               {money(totalNetWorth)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Consolidated wealth across active accounts and investments
+              Consolidated asset holdings across active accounts and investments
             </p>
           </div>
 
