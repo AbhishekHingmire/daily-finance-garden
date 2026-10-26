@@ -285,12 +285,12 @@ export function ReportsPage({
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Mobile Filter Toggle */}
+            {/* Filter Toggle (Consistent across Desktop and Mobile) */}
             <Button
               variant="outline"
               size="sm"
               onClick={() => setIsFilterExpanded((prev) => !prev)}
-              className={`h-7 sm:h-8 gap-1.5 px-2.5 text-xs font-bold transition-all sm:hidden cursor-pointer ${
+              className={`h-7 sm:h-8 gap-1.5 px-2.5 text-xs font-bold transition-all cursor-pointer ${
                 priorityFilter !== "All"
                   ? "border-primary/40 bg-primary/10 text-primary shadow-2xs"
                   : "text-muted-foreground hover:text-foreground border-border/80"
@@ -325,10 +325,10 @@ export function ReportsPage({
           </div>
         </div>
 
-        {/* Priority Filter: Collapsible on mobile, always visible on desktop */}
+        {/* Priority Filter: Collapsible across all screen sizes */}
         <div
           className={`${
-            isFilterExpanded ? "flex" : "hidden sm:flex"
+            isFilterExpanded ? "flex" : "hidden"
           } flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50 animate-in fade-in-50 duration-150`}
         >
           <div className="flex items-center gap-2">

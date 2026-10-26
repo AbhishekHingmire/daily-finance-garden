@@ -154,12 +154,12 @@ export function RecurringPage({
             Showing {filtered.length} schedule{filtered.length === 1 ? "" : "s"}
           </span>
 
-          {/* Mobile Filter Toggle */}
+          {/* Filter Toggle (Consistent across Desktop and Mobile) */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsFilterExpanded((prev) => !prev)}
-            className={`h-7.5 gap-1.5 px-2.5 text-xs font-bold transition-all sm:hidden cursor-pointer ${
+            className={`h-7.5 gap-1.5 px-2.5 text-xs font-bold transition-all cursor-pointer ${
               priorityFilter !== "All"
                 ? "border-primary/40 bg-primary/10 text-primary shadow-2xs"
                 : "text-muted-foreground hover:text-foreground border-border/80"
@@ -181,11 +181,11 @@ export function RecurringPage({
           </Button>
         </div>
 
-        {/* Priority Filter: Collapsible on mobile, always visible on desktop */}
+        {/* Priority Filter: Collapsible across all screen sizes */}
         <div
           className={`${
-            isFilterExpanded ? "flex" : "hidden sm:flex"
-          } items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50 animate-in fade-in-50 duration-150`}
+            isFilterExpanded ? "flex" : "hidden"
+          } items-center gap-2 pt-2 border-t border-border/50 animate-in fade-in-50 duration-150`}
         >
           <span className="text-[11px] font-semibold text-muted-foreground">Priority:</span>
           <select

@@ -55,7 +55,6 @@ import { WealthHub, type WealthSubtab } from "@/features/wealth/WealthHub";
 import { PlanHub, type PlanSubtab } from "@/features/plan/PlanHub";
 import { DataHealthModal } from "@/components/shared/DataHealthModal";
 import { GlobalAddSheet } from "@/components/shared/GlobalAddSheet";
-import { PeriodPill } from "@/components/shared/PeriodPill";
 import { useSharedPeriod } from "@/lib/period-state";
 import { getFeatureFlag } from "@/lib/feature-flags";
 import { entryToLegacyTransaction, migrateLegacyState } from "@/lib/migration";
@@ -107,12 +106,12 @@ const legacyNavItems: { label: Section; path: string; icon: typeof LayoutDashboa
   { label: "Reports", path: "/reports", icon: Activity },
 ];
 
-const v2NavItems: { label: Section; path: string; icon: typeof LayoutDashboard }[] = [
-  { label: "Overview", path: "/", icon: LayoutDashboard },
-  { label: "Transactions", path: "/transactions", icon: ArrowLeftRight },
-  { label: "Wealth", path: "/wealth", icon: Wallet },
-  { label: "Plan", path: "/plan", icon: ShieldCheck },
-  { label: "Reports", path: "/reports", icon: Activity },
+const v2NavItems: { label: Section; title: string; path: string; icon: typeof LayoutDashboard }[] = [
+  { label: "Overview", title: "Overview", path: "/", icon: LayoutDashboard },
+  { label: "Transactions", title: "Transactions", path: "/transactions", icon: ArrowLeftRight },
+  { label: "Wealth", title: "Wealth Hub", path: "/wealth", icon: Wallet },
+  { label: "Plan", title: "Plan Hub", path: "/plan", icon: ShieldCheck },
+  { label: "Reports", title: "Reports & Insights", path: "/reports", icon: Activity },
 ];
 
 function getInitials(email: string) {
@@ -2010,7 +2009,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       <div className="flex min-h-screen w-full max-w-full overflow-x-hidden">
         {/* Desktop Sidebar Navigation */}
         <aside
-          className="hidden shrink-0 flex-col border-r border-border bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[248px]"
+          className="hidden lg:flex fixed left-0 top-0 bottom-0 z-30 shrink-0 flex-col border-r border-border bg-card h-screen w-[248px] overflow-y-auto"
         >
           <div className="flex h-[72px] items-center justify-between border-b border-border px-5">
             <AppLogo />
@@ -2020,7 +2019,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               Workspace
             </p>
             <nav className="mt-3 space-y-1">
-              {(hubsV2 ? v2NavItems : legacyNavItems).map(({ label, icon: Icon }) => {
+              {(hubsV2 ? v2NavItems : legacyNavItems).map((item) => {
+                const { label, icon: Icon } = item;
+                const title = "title" in item ? (item as { title: string }).title : label;
                 const isItemActive =
                   active === label ||
                   (label === "Wealth" && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active))) ||
@@ -2038,7 +2039,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     onClick={() => goSection(label)}
                   >
                     <Icon size={20} />
-                    {label}
+                    {title}
                   </Button>
                 );
               })}
@@ -2058,7 +2059,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         </aside>
 
         {/* Main Content Area */}
-        <div className="min-w-0 flex-1 w-full max-w-full overflow-x-hidden">
+        <div className="min-w-0 flex-1 w-full max-w-full overflow-x-hidden lg:pl-[248px]">
           <header className="sticky top-0 z-20 flex h-[68px] w-full items-center justify-between gap-3 border-b border-border bg-background/95 px-3 sm:px-7 backdrop-blur-xs">
             <div className="flex min-w-0 items-center gap-3">
               <Button
@@ -2075,11 +2076,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 <span className="text-muted-foreground/40 font-bold">/</span>
                 <span className="font-bold text-foreground">
                   {active === "Overview"
-                    ? "Dashboard"
+                    ? "Overview"
                     : active === "Wealth"
-                    ? `Wealth › ${wealthSubtab.charAt(0).toUpperCase() + wealthSubtab.slice(1)}`
+                    ? `Wealth Hub › ${wealthSubtab.charAt(0).toUpperCase() + wealthSubtab.slice(1)}`
                     : active === "Plan"
-                    ? `Plan › ${planSubtab.charAt(0).toUpperCase() + planSubtab.slice(1)}`
+                    ? `Plan Hub › ${planSubtab.charAt(0).toUpperCase() + planSubtab.slice(1)}`
+                    : active === "Reports"
+                    ? "Reports & Insights"
                     : active}
                 </span>
               </div>
@@ -2110,11 +2113,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     ⌘K
                   </kbd>
                 </button>
-              </div>
-
-              {/* Shared Period Pill in Header */}
-              <div className="hidden md:flex items-center">
-                <PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />
               </div>
               <Button
                 variant="ghost"
@@ -2689,7 +2687,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-1 sm:px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center w-full max-w-full overflow-visible">
           <button
             type="button"
-            aria-label="Home"
+            aria-label="Overview"
             className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
               active === "Overview" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
@@ -2700,7 +2698,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             }`}>
               <LayoutDashboard size={18} className={active === "Overview" ? "stroke-[2.3]" : "stroke-[1.8]"} />
             </span>
-            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Home</span>
+            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Overview</span>
           </button>
 
           <button
@@ -2734,7 +2732,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
           <button
             type="button"
-            aria-label="Wealth"
+            aria-label="Wealth Hub"
             className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
               active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active)
                 ? "text-primary font-bold"
@@ -2747,12 +2745,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             }`}>
               <Wallet size={18} className={active === "Wealth" ? "stroke-[2.3]" : "stroke-[1.8]"} />
             </span>
-            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Wealth</span>
+            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Wealth Hub</span>
           </button>
 
           <button
             type="button"
-            aria-label="Plan"
+            aria-label="Plan Hub"
             className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
               active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active)
                 ? "text-primary font-bold"
@@ -2765,13 +2763,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             }`}>
               <ShieldCheck size={18} className={active === "Plan" ? "stroke-[2.3]" : "stroke-[1.8]"} />
             </span>
-            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Plan</span>
+            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Plan Hub</span>
           </button>
         </nav>
       ) : (
         <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-1 sm:px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center w-full max-w-full overflow-visible">
           {[
-            { label: "Home", section: "Overview" as Section, icon: LayoutDashboard },
+            { label: "Overview", section: "Overview" as Section, icon: LayoutDashboard },
             { label: "Transactions", section: "Transactions" as Section, icon: ArrowLeftRight },
             { label: "Accounts", section: "Accounts" as Section, icon: Wallet },
             { label: "Investments", section: "Investments" as Section, icon: TrendingUp },

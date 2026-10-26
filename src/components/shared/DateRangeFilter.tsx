@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Calendar, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
+import { Calendar, ChevronDown, ChevronLeft, ChevronRight, SlidersHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export type DateRangePreset = "month" | "year" | "custom" | "1m" | "6m" | "12m";
@@ -157,6 +157,41 @@ export function DateRangeFilter({
   }, [value, currentYear, activeMonth]);
 
   const canGoNextYear = currentYear < maxYear;
+  const canGoPrevMonth = currentYear > 2020 || (activeMonth ?? 10) > 1;
+  const canGoNextMonth = currentYear < maxYear || ((activeMonth ?? 10) < maxMonth);
+
+  const handlePrevMonth = () => {
+    const curM = activeMonth ?? 10;
+    if (curM > 1) {
+      handleMonthSelect(curM - 2);
+    } else if (currentYear > 2020) {
+      const prevYear = currentYear - 1;
+      onChange({
+        preset: "month",
+        year: prevYear,
+        month: 12,
+        customFrom: `${prevYear}-12-01`,
+        customTo: `${prevYear}-12-31`,
+      });
+    }
+  };
+
+  const handleNextMonth = () => {
+    const curM = activeMonth ?? 10;
+    if (currentYear === maxYear && curM >= maxMonth) return;
+    if (curM < 12) {
+      handleMonthSelect(curM);
+    } else if (currentYear < maxYear) {
+      const nextYear = currentYear + 1;
+      onChange({
+        preset: "month",
+        year: nextYear,
+        month: 1,
+        customFrom: `${nextYear}-01-01`,
+        customTo: `${nextYear}-01-31`,
+      });
+    }
+  };
 
   return (
     <div className={`flex flex-col gap-2 max-w-full ${className}`}>
@@ -168,10 +203,11 @@ export function DateRangeFilter({
             onClick={() => changeYear(-1)}
             className="flex size-6 sm:size-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors cursor-pointer"
             title="Previous Year"
+            aria-label="Previous Year"
           >
             <ChevronLeft size={13} />
           </button>
-          <span className="px-1.5 sm:px-2 text-xs font-black tracking-tight text-foreground">
+          <span className="px-1.5 sm:px-2 text-xs font-black tracking-tight text-foreground select-none">
             {currentYear}
           </span>
           <button
@@ -184,110 +220,88 @@ export function DateRangeFilter({
                 : "opacity-30 cursor-not-allowed pointer-events-none text-muted-foreground/40"
             }`}
             title={canGoNextYear ? "Next Year" : "Future years cannot be selected"}
+            aria-label="Next Year"
           >
             <ChevronRight size={13} />
           </button>
         </div>
 
-        {/* Mobile & Tablet Compact View (< lg): Single-Row Compact Month Dropdown */}
-        <div className="flex lg:hidden items-center gap-1.5 flex-1 min-w-0 max-w-full">
-          <select
-            className="wt-field h-7 sm:h-8 py-0 pl-2.5 pr-7 text-xs font-bold bg-card border border-border/80 rounded-xl cursor-pointer flex-1 max-w-[220px] truncate"
-            value={
-              value.preset === "year"
-                ? "year"
-                : value.preset === "custom"
-                ? "custom"
-                : String(activeMonth || 10)
-            }
-            onChange={(e) => {
-              const val = e.target.value;
-              if (val === "year") {
-                handleYearSelect();
-              } else if (val === "custom") {
-                handleCustomToggle();
-              } else {
-                handleMonthSelect(Number(val) - 1);
-              }
-            }}
-            aria-label="Select timeframe month"
+        {/* Month Stepper & Dropdown Selector (Unified across Desktop and Mobile) */}
+        <div className="inline-flex items-center rounded-xl border border-border/80 bg-card p-0.5 sm:p-1 shadow-2xs shrink-0">
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            disabled={!canGoPrevMonth}
+            className={`flex size-6 sm:size-7 items-center justify-center rounded-lg transition-colors ${
+              canGoPrevMonth
+                ? "text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+                : "opacity-30 cursor-not-allowed pointer-events-none text-muted-foreground/40"
+            }`}
+            title="Previous Month"
+            aria-label="Previous Month"
           >
-            {MONTH_NAMES.map((name, idx) => {
-              const m = idx + 1;
-              const isFuture = currentYear === maxYear && m > maxMonth;
-              return (
-                <option key={name} value={m} disabled={isFuture}>
-                  {name} {currentYear} {isFuture ? "(Future)" : ""}
-                </option>
-              );
-            })}
-            <option value="year">Full Year {currentYear}</option>
-            <option value="custom">Custom Date Range...</option>
-          </select>
+            <ChevronLeft size={13} />
+          </button>
 
-          {/* Quick toggle buttons for All Year and Custom on Tablet (hidden on narrow mobile to avoid horizontal clipping) */}
-          <div className="hidden sm:inline-flex items-center rounded-xl border border-border/80 bg-muted/60 p-0.5 shadow-2xs shrink-0">
-            <button
-              type="button"
-              onClick={handleYearSelect}
-              className={`rounded-lg px-2 py-1 text-[10px] font-bold transition-all cursor-pointer ${
+          <div className="relative inline-flex items-center">
+            <select
+              className="wt-field h-6 sm:h-7 py-0 pl-2 pr-6 text-xs font-bold bg-transparent border-none focus:ring-0 focus:outline-none cursor-pointer appearance-none text-foreground"
+              value={
                 value.preset === "year"
-                  ? "bg-card text-foreground shadow-xs border border-border/60"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
+                  ? "year"
+                  : value.preset === "custom"
+                  ? "custom"
+                  : String(activeMonth || 10)
+              }
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === "year") {
+                  handleYearSelect();
+                } else if (val === "custom") {
+                  handleCustomToggle();
+                } else {
+                  handleMonthSelect(Number(val) - 1);
+                }
+              }}
+              aria-label="Select timeframe month"
             >
-              All {currentYear}
-            </button>
-            <button
-              type="button"
-              onClick={handleCustomToggle}
-              className={`rounded-lg px-2 py-1 text-[10px] font-bold transition-all cursor-pointer ${
-                value.preset === "custom"
-                  ? "bg-primary text-primary-foreground shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              Custom
-            </button>
+              {MONTH_NAMES.map((name, idx) => {
+                const m = idx + 1;
+                const isFuture = currentYear === maxYear && m > maxMonth;
+                return (
+                  <option key={name} value={m} disabled={isFuture}>
+                    {FULL_MONTH_NAMES[idx]} {currentYear} {isFuture ? "(Future)" : ""}
+                  </option>
+                );
+              })}
+              <option value="year">Full Year {currentYear}</option>
+              <option value="custom">Custom Date Range...</option>
+            </select>
+            <ChevronDown size={12} className="pointer-events-none absolute right-1 text-muted-foreground" />
           </div>
+
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            disabled={!canGoNextMonth}
+            className={`flex size-6 sm:size-7 items-center justify-center rounded-lg transition-colors ${
+              canGoNextMonth
+                ? "text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+                : "opacity-30 cursor-not-allowed pointer-events-none text-muted-foreground/40"
+            }`}
+            title={canGoNextMonth ? "Next Month" : "Future month cannot be selected"}
+            aria-label="Next Month"
+          >
+            <ChevronRight size={13} />
+          </button>
         </div>
 
-        {/* Desktop View (lg+): Full 12 Months Pills Row safely contained */}
-        <div className="hidden lg:inline-flex max-w-full overflow-x-auto items-center rounded-xl border border-border/80 bg-muted/60 p-1 shadow-2xs no-scrollbar shrink-0">
-          {MONTH_NAMES.map((name, idx) => {
-            const m = idx + 1;
-            const isSelected =
-              (value.preset === "month" || value.preset === "1m") &&
-              (activeMonth === m);
-            const isFutureMonth = currentYear === maxYear && m > maxMonth;
-
-            return (
-              <button
-                key={name}
-                type="button"
-                disabled={isFutureMonth}
-                onClick={() => handleMonthSelect(idx)}
-                title={isFutureMonth ? "Future month is not yet available" : `${name} ${currentYear}`}
-                className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all shrink-0 ${
-                  isFutureMonth
-                    ? "opacity-35 cursor-not-allowed pointer-events-none text-muted-foreground/50"
-                    : isSelected
-                    ? "bg-card text-foreground shadow-xs border border-border/60 cursor-pointer"
-                    : "text-muted-foreground hover:text-foreground hover:bg-background/40 cursor-pointer"
-                }`}
-              >
-                {name}
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Desktop View (lg+): Full Year & Custom Range Buttons */}
-        <div className="hidden lg:inline-flex items-center rounded-xl border border-border/80 bg-muted/60 p-1 shadow-2xs shrink-0">
+        {/* Quick Toggles: All Year & Custom */}
+        <div className="inline-flex items-center rounded-xl border border-border/80 bg-muted/60 p-0.5 sm:p-1 shadow-2xs shrink-0">
           <button
             type="button"
             onClick={handleYearSelect}
-            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+            className={`rounded-lg px-2 sm:px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
               value.preset === "year"
                 ? "bg-card text-foreground shadow-xs border border-border/60"
                 : "text-muted-foreground hover:text-foreground"
@@ -298,7 +312,7 @@ export function DateRangeFilter({
           <button
             type="button"
             onClick={handleCustomToggle}
-            className={`rounded-lg px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
+            className={`rounded-lg px-2 sm:px-2.5 py-1 text-[11px] font-bold transition-all cursor-pointer ${
               value.preset === "custom"
                 ? "bg-primary text-primary-foreground shadow-xs"
                 : "text-muted-foreground hover:text-foreground"

@@ -316,7 +316,7 @@ export function AccountActivityPartialView({
                 variant="outline"
                 size="sm"
                 onClick={() => setIsFilterExpanded((prev) => !prev)}
-                className={`h-8 gap-1 px-2 text-xs font-bold transition-all sm:hidden cursor-pointer ${
+                className={`h-8 gap-1 px-2 text-xs font-bold transition-all cursor-pointer ${
                   hasActiveFilters
                     ? "border-primary/40 bg-primary/10 text-primary shadow-2xs"
                     : "text-muted-foreground hover:text-foreground border-border/80"
@@ -336,7 +336,7 @@ export function AccountActivityPartialView({
                 />
               </Button>
 
-              <div className={`${isFilterExpanded ? "flex" : "hidden sm:flex"} items-center gap-1.5 animate-in fade-in-50 duration-150`}>
+              <div className={`${isFilterExpanded ? "flex" : "hidden"} items-center gap-1.5 animate-in fade-in-50 duration-150`}>
                 <select
                   className="wt-field h-8 text-xs py-0 pl-2 pr-7 font-semibold bg-background w-auto min-w-[95px] sm:min-w-[115px] cursor-pointer"
                   value={filterType}
