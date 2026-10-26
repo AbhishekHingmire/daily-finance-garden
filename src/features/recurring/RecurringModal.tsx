@@ -198,7 +198,7 @@ export function RecurringModal({
             />
           ) : (
             <SelectField
-              label="Priority Classification"
+              label="Need or want?"
               value={form.need ?? "Need"}
               onChange={(need) => setForm((f) => ({ ...f, need: need as "Need" | "Want" }))}
               options={[

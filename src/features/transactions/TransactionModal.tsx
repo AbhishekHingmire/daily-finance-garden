@@ -114,7 +114,7 @@ export function TransactionModal({
 
   return (
     <Modal
-      title={edit ? "Edit Transaction" : "Quick Add Transaction"}
+      title={edit ? "Edit transaction" : "Add transaction"}
       description="Enter amount and category. Everything else is optional."
       onClose={onClose}
     >
@@ -346,7 +346,7 @@ export function TransactionModal({
                 {/* Priority Classification Dropdown */}
                 <div>
                   <label className="block">
-                    <span className="wt-label">Priority Classification</span>
+                    <span className="wt-label">Need or want?</span>
                     <select
                       className="wt-field text-xs font-semibold"
                       value={form.need ?? "Need"}

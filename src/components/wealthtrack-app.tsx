@@ -58,6 +58,7 @@ import { PageContainer } from "@/components/shared/PageContainer";
 import { runDataHealthChecks } from "@/lib/data-health";
 import { GlobalAddSheet } from "@/components/shared/GlobalAddSheet";
 import { useSharedPeriod } from "@/lib/period-state";
+import { NAV_ITEMS, SECONDARY_NAV_ITEMS, getBreadcrumbForSection } from "@/lib/nav-config";
 import { getFeatureFlag } from "@/lib/feature-flags";
 import { entryToLegacyTransaction, migrateLegacyState } from "@/lib/migration";
 import { getWealthRepository } from "@/services/api";
@@ -2040,13 +2041,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               Workspace
             </p>
             <nav className="mt-1 lg:mt-3 space-y-1">
-              {(hubsV2 ? v2NavItems : legacyNavItems).map((item) => {
-                const { label, icon: Icon } = item;
-                const title = "title" in item ? (item as { title: string }).title : label;
+              {(hubsV2 ? NAV_ITEMS : legacyNavItems).map((item) => {
+                const label = "section" in item ? item.section : item.label;
+                const title = item.label;
+                const Icon = item.icon;
                 const isItemActive =
                   active === label ||
                   (label === "Wealth" && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active))) ||
                   (label === "Plan" && (active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active))) ||
+                  (label === "Reports" && (active === "Reports" || active === "Insights")) ||
                   (label === "Fund Planner" && (active === "Funds" || active === "Fund Planner")) ||
                   (label === "Preferences" && (active === "Preferences" || (active as string) === "Settings"));
 
@@ -2109,13 +2112,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 <span className="text-muted-foreground/40 font-bold">/</span>
                 <span className="font-bold text-foreground">
                   {active === "Overview"
-                    ? "Overview"
+                    ? "Home"
                     : active === "Wealth"
-                    ? `Wealth Hub › ${wealthSubtab.charAt(0).toUpperCase() + wealthSubtab.slice(1)}`
+                    ? `Wealth › ${wealthSubtab.charAt(0).toUpperCase() + wealthSubtab.slice(1)}`
                     : active === "Plan"
-                    ? `Plan Hub › ${planSubtab.charAt(0).toUpperCase() + planSubtab.slice(1)}`
+                    ? `Plan › ${planSubtab.charAt(0).toUpperCase() + planSubtab.slice(1)}`
                     : active === "Reports"
-                    ? "Reports & Insights"
+                    ? "Insights"
                     : active}
                 </span>
               </div>

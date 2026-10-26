@@ -629,12 +629,12 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
 
             {activeTab === "expense" && (
               <div>
-                <label className="wt-label">50/30/20 Classification</label>
+                <label className="wt-label">Need or want?</label>
                 <select
                   value={needWant}
                   onChange={(e) => setNeedWant(e.target.value as NeedWant)}
                   className="wt-field cursor-pointer"
-                  aria-label="50/30/20 Priority Classification"
+                  aria-label="Need or want?"
                 >
                   <option value="Need">Need (Essential)</option>
                   <option value="Want">Want (Lifestyle)</option>

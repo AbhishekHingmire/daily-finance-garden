@@ -268,7 +268,7 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
 
             <div className="grid gap-3 sm:grid-cols-2">
               <SelectField
-                label="Priority Classification"
+                label="Need or want?"
                 value={formNeed}
                 onChange={(v) => setFormNeed(v as "Need" | "Want")}
                 options={[

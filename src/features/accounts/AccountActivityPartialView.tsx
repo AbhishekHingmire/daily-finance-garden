@@ -272,7 +272,7 @@ export function AccountActivityPartialView({
               onClick={() => onAddTransaction(account.id)}
               className="h-8 gap-1.5 text-xs font-semibold shadow-xs"
             >
-              <Plus size={14} /> Add Transaction
+              <Plus size={14} /> Add transaction
             </Button>
             <Button
               size="sm"

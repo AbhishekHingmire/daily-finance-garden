@@ -106,7 +106,7 @@ export function CategoryModal({
         </div>
         {form.kind === "Expense" && (
           <SelectField
-            label="Default Priority Classification"
+            label="Need or want?"
             value={form.defaultNeed ?? "Need"}
             onChange={(val) => setForm((f) => ({ ...f, defaultNeed: val as "Need" | "Want" }))}
             options={[

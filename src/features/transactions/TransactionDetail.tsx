@@ -118,7 +118,7 @@ export function TransactionDetail({
 
           {transaction.type === "Expense" && (
             <div>
-              <span className="text-muted-foreground font-medium block">Priority Classification</span>
+              <span className="text-muted-foreground font-medium block">Need or want?</span>
               <div className="mt-1">
                 <span
                   className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${

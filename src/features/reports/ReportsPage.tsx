@@ -413,15 +413,12 @@ export function ReportsPage({
                 <div className="flex items-center justify-between pb-3 border-b border-border/60">
                   <div>
                     <h3 className="wt-display text-base font-bold text-foreground">
-                      Expense Allocation Donut
+                      Where your money went
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       Visual distribution across major expense categories
                     </p>
                   </div>
-                  <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
-                    Donut Chart
-                  </span>
                 </div>
               </div>
 
@@ -443,15 +440,12 @@ export function ReportsPage({
                 <div className="flex items-center justify-between pb-3 border-b border-border/60">
                   <div>
                     <h3 className="wt-display text-base font-bold text-foreground">
-                      50 / 30 / 20 Diagnostic
+                      Needs, wants & savings
                     </h3>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       50% Needs · 30% Wants · 20% Wealth compounding
                     </p>
                   </div>
-                  <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                    Rule Check
-                  </span>
                 </div>
 
                 {/* 3 Circular Percentage Gauge Charts */}
@@ -585,7 +579,7 @@ export function ReportsPage({
                   </span>
                   <div>
                     <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
-                      Income Streams
+                      Where your income came from
                     </h3>
                     <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                       Sources of funds deposited
@@ -671,7 +665,7 @@ export function ReportsPage({
                   </span>
                   <div>
                     <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
-                      Investment Deployment
+                      Investments
                     </h3>
                     <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                       Wealth-building allocations
@@ -788,7 +782,7 @@ export function ReportsPage({
                   </span>
                   <div>
                     <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
-                      Debt & Loan Servicing
+                      Loans & EMIs
                     </h3>
                     <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
                       EMIs serviced & loan advances
