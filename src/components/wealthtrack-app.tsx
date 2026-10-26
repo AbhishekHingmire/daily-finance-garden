@@ -2110,7 +2110,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         </aside>
 
         {/* Main Content Area */}
-        <div className="min-w-0 flex-1 w-full md:pl-[72px] lg:pl-[248px] overflow-x-hidden">
+        <div className="min-w-0 flex-1 w-full md:pl-[72px] lg:pl-[248px]">
           <header className="fixed top-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-topbar flex h-[56px] md:h-[64px] pt-[env(safe-area-inset-top)] md:pt-0 items-center justify-between gap-3 border-b border-border bg-background px-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               {["Reports", "Insights", "Profile", "Preferences", "Settings", "Help"].includes(active) ? (
@@ -2416,7 +2416,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             </div>
           </header>
 
-          <main className="w-full max-w-full overflow-x-hidden pt-[calc(56px+env(safe-area-inset-top))] md:pt-[64px] pb-[calc(64px+env(safe-area-inset-bottom)+1.5rem)] md:pb-12">
+          <main className="w-full max-w-full pt-[calc(56px+env(safe-area-inset-top))] md:pt-[64px] pb-[calc(64px+env(safe-area-inset-bottom)+1.5rem)] md:pb-12">
             <PageContainer>
               {active === "Overview" && (
               <Dashboard
