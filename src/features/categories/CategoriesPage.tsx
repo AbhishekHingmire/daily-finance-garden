@@ -3,6 +3,7 @@ import { AlertCircle, CheckCircle2, ChevronDown, Pencil, Plus, SlidersHorizontal
 import { Button } from "@/components/ui/button";
 import { ActionMenu } from "@/components/shared/ActionMenu";
 import { PageHeading } from "@/components/shared/PageHeading";
+import { Metric } from "@/components/shared/Metric";
 import { useSharedPeriod } from "@/lib/period-state";
 import { migrateLegacyState } from "@/lib/migration";
 import { getBudgetMetrics } from "@/lib/metrics-service";
@@ -82,13 +83,13 @@ export function CategoriesPage({
             </div>
             <div className="flex items-baseline gap-2 mt-1">
               <h2 className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
-                {money(budgetMetrics.budgetedSpend)}
+                <Metric id="money_out" value={budgetMetrics.budgetedSpend} />
               </h2>
               <span className="text-sm font-semibold text-muted-foreground">
                 of {money(budgetMetrics.totalCap)}
               </span>
               <span className="ml-2 text-xs font-extrabold text-primary">
-                ({budgetMetrics.budgetUsedPct}% used)
+                (<Metric id="budget_used_pct" value={budgetMetrics.budgetUsedPct} format="percent" /> used)
               </span>
             </div>
           </div>
@@ -264,7 +265,7 @@ export function CategoriesPage({
                       {category.kind === "Income" ? "Deposited this month" : "Spent this month"}
                     </span>
                     <span className="font-semibold text-foreground tabular-nums">
-                      {money(spent)}
+                      <Metric id={`category_total:${category.id}`} value={spent} />
                     </span>
                   </div>
 

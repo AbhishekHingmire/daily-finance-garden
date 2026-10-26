@@ -23,6 +23,7 @@ import { CirclePercentageGauge } from "@/components/shared/CirclePercentageGauge
 import { NetWealthLineChart } from "@/components/shared/NetWealthLineChart";
 import { EmptyInline } from "@/components/shared/EmptyInline";
 import { PageHeading } from "@/components/shared/PageHeading";
+import { Metric } from "@/components/shared/Metric";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
 import {
   getHoldingsSummary,
@@ -387,10 +388,10 @@ export function ReportsPage({
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Net Surplus Retained
+                Saved
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                <Sparkles size={10} /> {savingsRate}% Saved
+                <Sparkles size={10} /> <Metric id="savings_rate" value={savingsRate} format="percent" /> Saved
               </span>
             </div>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
@@ -398,7 +399,7 @@ export function ReportsPage({
             </p>
           </div>
           <p className="wt-display text-base sm:text-3xl font-extrabold text-foreground tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
-            {money(netSavings)}
+            <Metric id="saved" value={netSavings} />
           </p>
         </div>
 
@@ -407,18 +408,18 @@ export function ReportsPage({
           <div className="min-w-0">
             <div className="flex items-center justify-between sm:w-full">
               <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Period Inflows
+                Money In
               </span>
               <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
                 <ArrowDownLeft size={15} />
               </span>
             </div>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              All salary, dividends & cash inflows
+              Salary, freelance & other income
             </p>
           </div>
           <p className="wt-display text-base sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
-            +{money(totalIncome)}
+            <Metric id="money_in" value={totalIncome} signed />
           </p>
         </div>
 
@@ -427,7 +428,7 @@ export function ReportsPage({
           <div className="min-w-0">
             <div className="flex items-center justify-between sm:w-full">
               <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Period Outflows
+                Money Out
               </span>
               <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
                 <ArrowUpRight size={15} />
@@ -438,7 +439,7 @@ export function ReportsPage({
             </p>
           </div>
           <p className="wt-display text-base sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
-            −{money(totalExpenses)}
+            <Metric id="money_out" value={totalExpenses} />
           </p>
         </div>
       </div>
@@ -522,6 +523,9 @@ export function ReportsPage({
                     percentage={needsPct}
                     target="< 50%"
                     amountFormatted={money(needsSpend)}
+                    metricId="needs_pct"
+                    amountMetricId="needs_amt"
+                    amountMetricValue={needsSpend}
                     statusText={needsPct <= 50 ? "✓ Optimal" : "⚠ High"}
                     statusVariant={needsPct <= 50 ? "success" : "warning"}
                     strokeColor="#3b82f6"
@@ -532,6 +536,9 @@ export function ReportsPage({
                     percentage={wantsPct}
                     target="< 30%"
                     amountFormatted={money(wantsSpend)}
+                    metricId="wants_pct"
+                    amountMetricId="wants_amt"
+                    amountMetricValue={wantsSpend}
                     statusText={wantsPct <= 30 ? "✓ Disciplined" : "⚠ High"}
                     statusVariant={wantsPct <= 30 ? "success" : "danger"}
                     strokeColor="#f59e0b"
@@ -542,6 +549,9 @@ export function ReportsPage({
                     percentage={savingsPct}
                     target="> 20%"
                     amountFormatted={money(netSavings)}
+                    metricId="savings_pct"
+                    amountMetricId="saved"
+                    amountMetricValue={netSavings}
                     statusText={savingsPct >= 20 ? "★ Compounding" : "Boost"}
                     statusVariant={savingsPct >= 20 ? "success" : "info"}
                     strokeColor="#10b981"
@@ -931,7 +941,7 @@ export function ReportsPage({
                             <span className="text-[10px] text-muted-foreground">Advances given to peers</span>
                           </div>
                           <span className="wt-display text-sm sm:text-base font-extrabold text-violet-600 dark:text-violet-400 tabular-nums">
-                            {money(lentInPeriod)}
+                            <Metric id="lent_out" value={lentInPeriod} />
                           </span>
                         </div>
                       )}

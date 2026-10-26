@@ -1,3 +1,5 @@
+import { Metric } from "@/components/shared/Metric";
+
 export function CirclePercentageGauge({
   label,
   percentage,
@@ -7,15 +9,21 @@ export function CirclePercentageGauge({
   statusVariant = "success",
   strokeColor = "#10b981",
   subLabel,
+  metricId,
+  amountMetricId,
+  amountMetricValue,
 }: {
   label: string;
   percentage: number;
   target: string;
-  amountFormatted: string;
+  amountFormatted?: string;
   statusText: string;
   statusVariant?: "success" | "warning" | "danger" | "info";
   strokeColor?: string;
   subLabel?: string;
+  metricId?: string;
+  amountMetricId?: string;
+  amountMetricValue?: number;
 }) {
   const radius = 38;
   const circumference = 2 * Math.PI * radius;
@@ -73,7 +81,11 @@ export function CirclePercentageGauge({
         {/* Center Percentage */}
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="wt-display text-lg font-extrabold text-foreground tabular-nums">
-            {percentage}%
+            {metricId ? (
+              <Metric id={metricId} value={percentage} format="percent" />
+            ) : (
+              `${percentage}%`
+            )}
           </span>
           <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-tight">
             Of Total
@@ -84,7 +96,11 @@ export function CirclePercentageGauge({
       {/* Amount and Subtitle */}
       <div className="w-full pt-1">
         <span className="wt-display text-base font-extrabold text-foreground tabular-nums block">
-          {amountFormatted}
+          {amountMetricId ? (
+            <Metric id={amountMetricId} value={amountMetricValue ?? 0} />
+          ) : (
+            amountFormatted
+          )}
         </span>
         <span className="text-[11px] text-muted-foreground block mt-0.5">
           {target}

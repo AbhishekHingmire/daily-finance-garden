@@ -1,7 +1,7 @@
 # WealthTrack Round 2 Redesign Checklist (SPEC_R2)
 
 ## Phase 1: Data Truth
-- [ ] 1.01: Create <Metric id value format/> component. Render value with data-metric="<id>" data-value="<raw number>". | Evidence: 
+- [x] 1.01: Create <Metric id value format/> component. Render value with data-metric="<id>" data-value="<raw number>". | Evidence: src/components/shared/Metric.tsx created; wired across Dashboard.tsx, AccountsPage.tsx, InvestmentsPage.tsx, LoansPage.tsx, CategoriesPage.tsx, FundsPage.tsx, ReportsPage.tsx, CirclePercentageGauge.tsx. All 51 vitest tests pass; tsc passes.
 - [ ] 1.02: Reports/Insights: delete all local calculations; read selectors only. | Evidence: 
 - [ ] 1.03: Budgets page: read the budget engine only. | Evidence: 
 - [ ] 1.04: Reclassify Loans & Borrowings, Money Lent / Advances and Debt Recovery as kind=transfer. Budgets tabs Expense (8) | Income (4) | Transfers (3). | Evidence: 

@@ -20,6 +20,7 @@ import { PageHeading } from "@/components/shared/PageHeading";
 import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import { AccountActivityPartialView } from "./AccountActivityPartialView";
 import { ReconcileModal } from "./ReconcileModal";
+import { Metric } from "@/components/shared/Metric";
 import { migrateLegacyState } from "@/lib/migration";
 import { getWealthMetrics } from "@/lib/metrics-service";
 import {
@@ -215,33 +216,27 @@ export function AccountsPage({
         }
       />
 
-      {/* Portfolio Consolidated Assets & Wealth Hero Card */}
+      {/* Portfolio Net Worth & Wealth Hero Card */}
       <div className="relative overflow-hidden rounded-2xl border border-border/70 bg-card p-4 sm:p-6 wt-shadow hover:border-border transition-all space-y-4">
         <div className="flex flex-col gap-5 sm:gap-6 lg:flex-row lg:items-center lg:justify-between relative z-10">
           <div>
             <div className="flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400">
-                <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                Consolidated Assets & Wealth
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/10 border border-primary/20 px-2.5 py-0.5 text-[11px] font-semibold text-primary">
+                <span className="size-1.5 rounded-full bg-primary animate-pulse" />
+                Net Worth
               </span>
               <span className="inline-flex items-center gap-1 rounded-full bg-muted border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground flex-wrap max-w-full">
-                <span>Cash: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.liquidCash)}</strong></span>
+                <span>Assets: <strong className="text-foreground ml-0.5 tabular-nums"><Metric id="total_assets" value={wealthMetrics.totalAssets} /></strong></span>
                 <span>·</span>
-                <span>Investments: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.investmentsValue)}</strong></span>
-                {wealthMetrics.receivablesValue > 0 && (
-                  <>
-                    <span>·</span>
-                    <span>Lent: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.receivablesValue)}</strong></span>
-                  </>
-                )}
+                <span>Loans: <strong className="text-foreground ml-0.5 tabular-nums"><Metric id="total_debt" value={wealthMetrics.totalDebt} /></strong></span>
               </span>
             </div>
 
             <p className="wt-display mt-1.5 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight tabular-nums truncate max-w-full">
-              {money(wealthMetrics.totalAssets)}
+              <Metric id="net_worth" value={wealthMetrics.netWorth} />
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
-              Total funds you own: {money(wealthMetrics.liquidCash)} liquid cash + {money(wealthMetrics.investmentsValue)} investments{wealthMetrics.receivablesValue > 0 ? ` + ${money(wealthMetrics.receivablesValue)} receivables` : ""}.
+              Your loans are counted in full; a home or car you own isn't tracked as an asset yet.
             </p>
           </div>
 
@@ -252,7 +247,7 @@ export function AccountsPage({
                 Cash
               </span>
               <p className="text-xs sm:text-sm font-bold text-foreground tabular-nums mt-1 truncate">
-                {money(wealthMetrics.liquidCash)}
+                <Metric id="cash" value={wealthMetrics.liquidCash} />
               </p>
               <span className="text-[10px] text-muted-foreground block mt-0.5">
                 {activeAccounts.length} accounts
@@ -267,7 +262,7 @@ export function AccountsPage({
                 Investments
               </span>
               <p className="text-xs sm:text-sm font-bold text-foreground tabular-nums mt-1 truncate">
-                {money(wealthMetrics.investmentsValue)}
+                <Metric id="invested" value={wealthMetrics.investmentsValue} />
               </p>
               <span className="text-[10px] text-primary block mt-0.5">
                 {(data.investments ?? []).length} holdings ›
@@ -279,7 +274,7 @@ export function AccountsPage({
                 Lent Out
               </span>
               <p className="text-xs sm:text-sm font-bold text-foreground tabular-nums mt-1 truncate">
-                {money(wealthMetrics.receivablesValue)}
+                <Metric id="lent_out" value={wealthMetrics.receivablesValue} />
               </p>
               <span className="text-[10px] text-emerald-600 dark:text-emerald-400 block mt-0.5">
                 Receivables
@@ -294,7 +289,7 @@ export function AccountsPage({
                 Debt (Liabilities)
               </span>
               <p className="text-xs sm:text-sm font-bold text-rose-600 dark:text-rose-400 tabular-nums mt-1 truncate">
-                {money(wealthMetrics.totalDebt)}
+                <Metric id="total_debt" value={wealthMetrics.totalDebt} />
               </p>
               <span className="text-[10px] text-rose-600 dark:text-rose-400 block mt-0.5">
                 {(data.loans ?? []).length} loans ›
@@ -407,7 +402,7 @@ export function AccountsPage({
                     {isCard ? "Outstanding Balance" : "Current Balance"}
                   </span>
                   <p className="wt-display mt-0.5 text-xl sm:text-2xl font-bold text-foreground tabular-nums truncate">
-                    {money(balance)}
+                    <Metric id={`account_balance:${account.id}`} value={balance} />
                   </p>
                 </div>
               </div>

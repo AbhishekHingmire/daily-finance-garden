@@ -28,6 +28,7 @@ import { CashFlowVelocityChart } from "@/components/shared/CashFlowVelocityChart
 import { EmptyInline } from "@/components/shared/EmptyInline";
 import { TransactionRow } from "@/components/shared/TransactionRow";
 import { SalaryCountdownCard } from "./SalaryCountdownCard";
+import { Metric } from "@/components/shared/Metric";
 import { useSharedPeriod } from "@/lib/period-state";
 import { migrateLegacyState } from "@/lib/migration";
 import {
@@ -179,26 +180,44 @@ export function Dashboard({
 
             <div className="flex items-baseline gap-3">
               <span className="text-3xl sm:text-4xl font-black text-foreground tracking-tight tabular-nums">
-                {money(wealthMetrics.liquidCash)}
+                <Metric id="cash" value={wealthMetrics.liquidCash} />
               </span>
             </div>
 
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium pt-0.5">
-              <span>Total Assets</span>
-              <span className="font-bold text-foreground tabular-nums">
-                {money(wealthMetrics.totalAssets)}
-              </span>
-              <ChevronRight size={14} className="text-primary group-hover:translate-x-0.5 transition-transform" />
+            <div className="flex items-center gap-3 text-xs pt-0.5">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onNavigate("Wealth");
+                }}
+                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
+              >
+                <span>Net worth</span>
+                <Metric id="net_worth" value={wealthMetrics.netWorth} />
+                <ChevronRight size={13} />
+              </button>
+              <span className="text-muted-foreground/50">·</span>
+              <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
+                <span>Total Assets</span>
+                <span className="font-bold text-foreground tabular-nums">
+                  <Metric id="total_assets" value={wealthMetrics.totalAssets} />
+                </span>
+              </div>
             </div>
 
             {/* Second line: Set aside vs Free to spend */}
             <div className="flex items-center gap-2 pt-1 text-xs">
               <span className="text-muted-foreground">
-                <strong className="text-foreground">{money(wealthMetrics.earmarkedCash)}</strong> set aside for goals
+                <strong className="text-foreground">
+                  <Metric id="goals_set_aside" value={wealthMetrics.earmarkedCash} />
+                </strong> set aside for goals
               </span>
               <span className="text-muted-foreground/50">·</span>
               <span className="text-muted-foreground">
-                <strong className="text-foreground">{money(wealthMetrics.freeToSpend)}</strong> free to spend
+                <strong className="text-foreground">
+                  <Metric id="free_to_spend" value={wealthMetrics.freeToSpend} />
+                </strong> free to spend
               </span>
             </div>
 
@@ -213,7 +232,9 @@ export function Dashboard({
           <div className="flex flex-col sm:items-end justify-between self-stretch shrink-0 border-t border-border/60 pt-3 sm:border-t-0 sm:pt-0">
             <div className="hidden sm:block text-right">
               <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-bold">Investments</span>
-              <p className="text-sm font-black text-foreground tabular-nums">{money(wealthMetrics.investmentsValue)}</p>
+              <p className="text-sm font-black text-foreground tabular-nums">
+                <Metric id="invested" value={wealthMetrics.investmentsValue} />
+              </p>
             </div>
             <Button
               variant="outline"
@@ -249,9 +270,9 @@ export function Dashboard({
               <ArrowDownLeft size={16} className="text-emerald-500 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
-              +{money(periodMetrics.moneyIn)}
+              <Metric id="money_in" value={periodMetrics.moneyIn} signed />
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Salary & freelance receivables</p>
+            <p className="text-[11px] text-muted-foreground mt-1">Salary, freelance & other income</p>
           </div>
 
           {/* Tile 2: Money Out */}
@@ -267,10 +288,10 @@ export function Dashboard({
               <ArrowUpRight size={16} className="text-rose-500 group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-2xl font-extrabold text-foreground tabular-nums">
-              −{money(periodMetrics.moneyOut)}
+              <Metric id="money_out" value={periodMetrics.moneyOut} />
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">
-              incl. <strong className="text-foreground">{money(periodMetrics.emisInPeriod)}</strong> EMIs
+              incl. <strong className="text-foreground"><Metric id="monthly_emi_total" value={periodMetrics.emisInPeriod} /></strong> EMIs
             </p>
           </div>
 
@@ -287,8 +308,10 @@ export function Dashboard({
               <PiggyBank size={16} className="text-primary group-hover:scale-110 transition-transform" />
             </div>
             <div className="text-2xl font-extrabold text-foreground tabular-nums">
-              {money(periodMetrics.saved)}
-              <span className="ml-2 text-sm font-bold text-primary">({periodMetrics.savingsRatePct ?? 0}%)</span>
+              <Metric id="saved" value={periodMetrics.saved} />
+              <span className="ml-2 text-sm font-bold text-primary">
+                (<Metric id="savings_rate" value={periodMetrics.savingsRatePct ?? 0} format="percent" />)
+              </span>
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">Kept in cash + investments + lent</p>
           </div>
@@ -342,20 +365,32 @@ export function Dashboard({
             <div className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-blue-500" />
               <span className="text-muted-foreground">Needs:</span>
-              <strong className="text-foreground">{periodMetrics.split503020.needsPct}%</strong>
-              <span className="text-[10px] text-muted-foreground">({money(periodMetrics.needs)})</span>
+              <strong className="text-foreground">
+                <Metric id="needs_pct" value={periodMetrics.split503020.needsPct} format="percent" />
+              </strong>
+              <span className="text-[10px] text-muted-foreground">
+                (<Metric id="needs_amt" value={periodMetrics.needs} />)
+              </span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-violet-500" />
               <span className="text-muted-foreground">Wants:</span>
-              <strong className="text-foreground">{periodMetrics.split503020.wantsPct}%</strong>
-              <span className="text-[10px] text-muted-foreground">({money(periodMetrics.wants)})</span>
+              <strong className="text-foreground">
+                <Metric id="wants_pct" value={periodMetrics.split503020.wantsPct} format="percent" />
+              </strong>
+              <span className="text-[10px] text-muted-foreground">
+                (<Metric id="wants_amt" value={periodMetrics.wants} />)
+              </span>
             </div>
             <div className="flex items-center gap-1.5">
               <span className="size-2 rounded-full bg-emerald-500" />
               <span className="text-muted-foreground">Savings:</span>
-              <strong className="text-foreground">{periodMetrics.split503020.savingsPct}%</strong>
-              <span className="text-[10px] text-muted-foreground">({money(periodMetrics.saved)})</span>
+              <strong className="text-foreground">
+                <Metric id="savings_pct" value={periodMetrics.split503020.savingsPct} format="percent" />
+              </strong>
+              <span className="text-[10px] text-muted-foreground">
+                (<Metric id="saved" value={periodMetrics.saved} />)
+              </span>
             </div>
           </div>
         </div>
@@ -365,25 +400,25 @@ export function Dashboard({
           <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
             <span className="text-[10px] uppercase font-bold text-muted-foreground block">Cash runway</span>
             <span className="text-sm font-extrabold text-foreground tabular-nums">
-              {runwayMetrics.cashRunwayMonths} months
+              <Metric id="runway_months" value={runwayMetrics.cashRunwayMonths} format="months" />
             </span>
           </div>
           <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
             <span className="text-[10px] uppercase font-bold text-muted-foreground block">Emergency cover</span>
             <span className="text-sm font-extrabold text-foreground tabular-nums">
-              {runwayMetrics.emergencyCoverageMonths} months
+              <Metric id="emergency_cover_months" value={runwayMetrics.emergencyCoverageMonths} format="months" />
             </span>
           </div>
           <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
             <span className="text-[10px] uppercase font-bold text-muted-foreground block">EMI load</span>
             <span className="text-sm font-extrabold text-foreground tabular-nums">
-              {emiToIncomePct}% of income
+              <Metric id="emi_load_pct" value={emiToIncomePct} format="percent" />
             </span>
           </div>
           <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
             <span className="text-[10px] uppercase font-bold text-muted-foreground block">Budget used</span>
             <span className="text-sm font-extrabold text-foreground tabular-nums">
-              {budgetMetrics.budgetUsedPct}%
+              <Metric id="budget_used_pct" value={budgetMetrics.budgetUsedPct} format="percent" />
             </span>
           </div>
         </div>
@@ -478,7 +513,9 @@ export function Dashboard({
                     <span className="font-bold text-foreground">{r.category.name}</span>
                   </div>
                   <div className="text-right tabular-nums">
-                    <span className="font-bold text-foreground">{money(r.spent)}</span>
+                    <span className="font-bold text-foreground">
+                      <Metric id={`category_total:${r.category.id}`} value={r.spent} />
+                    </span>
                     {r.cap > 0 && (
                       <span className="text-muted-foreground ml-1">/ {money(r.cap)}</span>
                     )}
@@ -564,7 +601,7 @@ export function Dashboard({
                         <div style={{ width: `${pct}%` }} className="h-full bg-emerald-500 rounded-full" />
                       </div>
                       <div className="flex justify-between text-[11px] text-muted-foreground">
-                        <span>{money(g.opening_amount)}</span>
+                        <span><Metric id={`goal_current:${g.id}`} value={g.opening_amount} /></span>
                         <span>Target: {money(g.target)}</span>
                       </div>
                     </div>

@@ -20,6 +20,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { ActionMenu } from "@/components/shared/ActionMenu";
+import { Metric } from "@/components/shared/Metric";
 import {
   getLoansSummary,
   safeAmount,
@@ -103,7 +104,7 @@ export function LoansPage({
 
             <div className="flex flex-wrap items-baseline gap-2.5 sm:gap-3">
               <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground tabular-nums whitespace-nowrap">
-                {money(summary.totalOutstanding)}
+                <Metric id="total_debt" value={summary.totalOutstanding} />
               </h2>
 
               <div className="flex items-center gap-1 sm:gap-1.5 rounded-full bg-emerald-500/15 px-2.5 sm:px-3 py-0.5 sm:py-1 text-[11px] sm:text-xs font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0">
@@ -116,7 +117,7 @@ export function LoansPage({
               <div>
                 <span className="block text-[10px] sm:text-[11px] font-medium">Monthly EMI Outflow</span>
                 <span className="font-bold text-destructive text-xs sm:text-sm whitespace-nowrap">
-                  {money(summary.totalMonthlyEmi)}/mo
+                  <Metric id="monthly_emi_total" value={summary.totalMonthlyEmi} />/mo
                 </span>
               </div>
               <div className="h-5 sm:h-6 w-px bg-border" />
@@ -303,7 +304,7 @@ export function LoansPage({
                         Outstanding
                       </span>
                       <span className="text-sm font-extrabold text-foreground">
-                        {money(outstanding)}
+                        <Metric id={`loan_outstanding:${loan.id}`} value={outstanding} />
                       </span>
                     </div>
 

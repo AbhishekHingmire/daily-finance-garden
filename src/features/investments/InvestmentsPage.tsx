@@ -18,6 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { ActionMenu } from "@/components/shared/ActionMenu";
+import { Metric } from "@/components/shared/Metric";
 import {
   getHoldingsSummary,
   safeAmount,
@@ -127,7 +128,7 @@ export function InvestmentsPage({
 
             <div className="flex flex-wrap items-baseline gap-2.5 sm:gap-3">
               <h2 className="text-2xl sm:text-4xl font-extrabold tracking-tight text-foreground tabular-nums whitespace-nowrap">
-                {money(summary.currentValue)}
+                <Metric id="portfolio_value" value={summary.currentValue} />
               </h2>
 
               <div
@@ -157,7 +158,7 @@ export function InvestmentsPage({
               <div>
                 <span className="block text-[10px] sm:text-[11px] font-medium">Invested Capital</span>
                 <span className="font-bold text-foreground text-xs sm:text-sm whitespace-nowrap">
-                  {money(summary.totalInvested)}
+                  <Metric id="invested" value={summary.totalInvested} />
                 </span>
               </div>
               <div className="h-5 sm:h-6 w-px bg-border" />

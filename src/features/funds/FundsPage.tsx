@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { ActionMenu } from "@/components/shared/ActionMenu";
 import { EmptyInline } from "@/components/shared/EmptyInline";
+import { Metric } from "@/components/shared/Metric";
 import { FundModal } from "./FundModal";
 import { PlanModal } from "./PlanModal";
 import {
@@ -464,7 +465,7 @@ export function FundsPage({
                       <div className="mt-4">
                         <div className="flex items-baseline justify-between text-xs">
                           <span className="wt-display text-lg font-extrabold text-foreground tabular-nums">
-                            {money(fund.currentAmount)}
+                            <Metric id={`goal_current:${fund.id}`} value={fund.currentAmount} />
                           </span>
                           <span className="text-xs font-semibold text-muted-foreground tabular-nums">
                             Target: {money(fund.targetAmount)} ({pct}%)
