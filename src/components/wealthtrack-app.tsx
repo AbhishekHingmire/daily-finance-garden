@@ -172,7 +172,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     if (typeof window !== "undefined") {
       const p = window.location.pathname.replace(/^\//, "").toLowerCase();
       if (p === "funds" || p === "fund-planner") return "goals";
-      if (p === "recurring") return "recurring";
     }
     return "budgets";
   });
@@ -238,7 +237,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       if (path === "funds" || path === "fund-planner") return getFeatureFlag("hubs_v2") ? "Plan" : "Fund Planner";
       if (path === "categories") return getFeatureFlag("hubs_v2") ? "Plan" : "Categories";
       if (path === "reports" || path === "insights") return "Reports";
-      if (path === "recurring") return getFeatureFlag("hubs_v2") ? "Plan" : "Recurring";
+      if (path === "recurring") return "Recurring";
       if (path === "profile") return "Profile";
       if (path === "preferences" || path === "settings") return "Preferences";
     }
@@ -518,12 +517,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           setActive("Fund Planner");
         }
       } else if (path === "recurring") {
-        if (hubsV2) {
-          setActive("Plan");
-          setPlanSubtab("recurring");
-        } else {
-          setActive("Recurring");
-        }
+        setActive("Recurring");
       } else if (path === "reports" || path === "insights") setActive("Reports");
       else if (path === "settings" || path === "preferences") setActive("Preferences");
       else if (path === "profile") setActive("Profile");
@@ -1016,9 +1010,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         targetSection = "Plan";
       } else if (targetSection === "Fund Planner" || (targetSection as string) === "Funds") {
         setPlanSubtab("goals");
-        targetSection = "Plan";
-      } else if (targetSection === "Recurring") {
-        setPlanSubtab("recurring");
         targetSection = "Plan";
       } else if (targetSection === "Reports" || targetSection === "Insights") {
         targetSection = "Reports";
@@ -2587,21 +2578,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 onDeletePlan={handleDeletePlan}
                 onQuickDepositFund={handleQuickDepositFund}
                 onSkipFundMonth={handleSkipFundMonth}
-                onAddRecurring={() => {
-                  setEditingRecurring(null);
-                  setModal("recurring");
-                }}
-                onEditRecurring={(item) => {
-                  setEditingRecurring(item);
-                  setModal("recurring");
-                }}
-                onDeleteRecurring={(item) => requestDelete("recurring", item.id, item.name, item.amount)}
-                onToggleRecurring={handleToggleRecurring}
-                onNavigateToLoans={() => {
-                  goSection("Wealth");
-                  setWealthSubtab("loans");
-                }}
-                onRecordEmiPayment={handleRecordLoanEmiPaymentById}
               />
             )}
 
@@ -2872,14 +2848,14 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           type="button"
           aria-label="Plan"
           className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
-            active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active)
+            active === "Plan" || ["Categories", "Fund Planner", "Funds"].includes(active)
               ? "text-primary font-bold"
               : "text-muted-foreground hover:text-foreground font-medium"
           }`}
           onClick={() => goSection("Plan")}
         >
           <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-            active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active) ? "bg-primary/10 text-primary" : ""
+            active === "Plan" || ["Categories", "Fund Planner", "Funds"].includes(active) ? "bg-primary/10 text-primary" : ""
           }`}>
             <ShieldCheck size={18} className={active === "Plan" ? "stroke-[2.3]" : "stroke-[1.8]"} />
           </span>

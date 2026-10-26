@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { CalendarDays, ShieldCheck, Tag } from "lucide-react";
+import { ShieldCheck, Tag } from "lucide-react";
 import { CategoriesPage } from "@/features/categories/CategoriesPage";
 import { FundsPage } from "@/features/funds/FundsPage";
-import { RecurringPage } from "@/features/recurring/RecurringPage";
-import type { Category, CustomFund, PurchasePlan, RecurringItem, WealthState } from "@/lib/wealthtrack";
+import type { Category, CustomFund, PurchasePlan, WealthState } from "@/lib/wealthtrack";
 
-export type PlanSubtab = "budgets" | "goals" | "recurring";
+export type PlanSubtab = "budgets" | "goals";
 
 export interface PlanHubProps {
   initialSubtab?: PlanSubtab;
@@ -22,12 +21,6 @@ export interface PlanHubProps {
   onDeletePlan: (planId: string) => void;
   onQuickDepositFund: (fundId: string, amount: number) => void;
   onSkipFundMonth?: (fundId: string, monthStr: string) => void;
-  onAddRecurring: () => void;
-  onEditRecurring: (item: RecurringItem) => void;
-  onDeleteRecurring: (item: RecurringItem) => void;
-  onToggleRecurring: (item: RecurringItem) => void;
-  onNavigateToLoans?: () => void;
-  onRecordEmiPayment?: (loanId: string) => void;
 }
 
 export function PlanHub({
@@ -45,17 +38,11 @@ export function PlanHub({
   onDeletePlan,
   onQuickDepositFund,
   onSkipFundMonth,
-  onAddRecurring,
-  onEditRecurring,
-  onDeleteRecurring,
-  onToggleRecurring,
-  onNavigateToLoans,
-  onRecordEmiPayment,
 }: PlanHubProps) {
   const [tab, setTab] = useState<PlanSubtab>(() => {
     if (typeof window !== "undefined") {
       const stored = localStorage.getItem("wt_plan_subtab") as PlanSubtab;
-      if (stored && ["budgets", "goals", "recurring"].includes(stored)) {
+      if (stored && ["budgets", "goals"].includes(stored)) {
         return initialSubtab || stored;
       }
     }
@@ -78,7 +65,6 @@ export function PlanHub({
   const tabs: { id: PlanSubtab; label: string; mobileLabel: string; icon: typeof Tag; count?: number }[] = [
     { id: "budgets", label: "Budgets & Categories", mobileLabel: "Budgets", icon: Tag, count: data.categories.length },
     { id: "goals", label: "Goals", mobileLabel: "Goals", icon: ShieldCheck, count: (data.funds ?? []).length },
-    { id: "recurring", label: "Recurring", mobileLabel: "Recurring", icon: CalendarDays, count: (data.recurring ?? []).length },
   ];
 
   return (
@@ -142,19 +128,6 @@ export function PlanHub({
           onDeletePlan={onDeletePlan}
           onQuickDepositFund={onQuickDepositFund}
           onSkipFundMonth={onSkipFundMonth}
-        />
-      )}
-
-      {tab === "recurring" && (
-        <RecurringPage
-          data={data}
-          money={money}
-          onAdd={onAddRecurring}
-          onEdit={onEditRecurring}
-          onDelete={onDeleteRecurring}
-          onToggle={onToggleRecurring}
-          onNavigateToLoans={onNavigateToLoans}
-          onRecordEmiPayment={onRecordEmiPayment}
         />
       )}
     </div>

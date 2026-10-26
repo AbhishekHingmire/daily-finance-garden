@@ -46,7 +46,7 @@ test.describe("Recurring & Loans Sync & Navigation Verification", () => {
     await page.screenshot({ path: "recurring-mobile-synced.png" });
   });
 
-  test("Mobile Drawer: shows dedicated Recurring card and clean labels", async ({ page }) => {
+  test("Mobile Drawer: shows dedicated Recurring card and clicking it navigates to separate Recurring page", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto("http://localhost:8081/", { waitUntil: "networkidle" });
     await page.waitForTimeout(400);
@@ -60,6 +60,47 @@ test.describe("Recurring & Loans Sync & Navigation Verification", () => {
     await expect(page.locator("h3:has-text('Navigation & Tools')")).toBeVisible();
     await expect(page.locator("text=Scheduled bills, loan EMIs & subscriptions")).toBeVisible();
 
+    // Click Recurring card inside drawer
+    const recurringDrawerItem = page.locator("div.relative.z-sheet button:has-text('Recurring')");
+    await recurringDrawerItem.click();
+    await page.waitForTimeout(400);
+
+    // Should open separate Recurring page
+    await expect(page.locator("h1:has-text('Recurring')")).toBeVisible();
+    await expect(page).toHaveURL(/.*\/recurring/);
+
     await page.screenshot({ path: "drawer-mobile-nav.png" });
+  });
+
+  test("Desktop Sidebar: clicking Recurring opens separate Recurring page directly", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("http://localhost:8081/", { waitUntil: "networkidle" });
+    await page.waitForTimeout(400);
+
+    // Click Recurring in desktop sidebar
+    const recurringSidebarBtn = page.locator("aside button[title='Recurring']");
+    await recurringSidebarBtn.click();
+    await page.waitForTimeout(400);
+
+    // Should open separate Recurring page
+    await expect(page.locator("h1:has-text('Recurring')")).toBeVisible();
+    await expect(page).toHaveURL(/.*\/recurring/);
+  });
+
+  test("Plan Page: Recurring panel is removed, only Budgets and Goals tabs remain", async ({ page }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto("http://localhost:8081/plan", { waitUntil: "networkidle" });
+    await page.waitForTimeout(400);
+
+    // Check Plan title in breadcrumb or subtab
+    await expect(page.locator("text=Budgets & Categories").first()).toBeVisible();
+
+    // Verify subtabs: Budgets & Categories and Goals exist
+    await expect(page.locator("button:has-text('Budgets & Categories')")).toBeVisible();
+    await expect(page.locator("button:has-text('Goals')")).toBeVisible();
+
+    // Verify that Recurring tab is NOT inside Plan subtabs
+    const planTabContainer = page.locator(".sticky").first();
+    await expect(planTabContainer.locator("button:has-text('Recurring')")).toHaveCount(0);
   });
 });
