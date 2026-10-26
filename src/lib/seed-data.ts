@@ -29,7 +29,7 @@ export function getCanonicalSeedAccounts(): Account[] {
       type: "bank",
       institution: "HDFC Bank",
       identifier: "•••• 4281",
-      opening_balance: 410000,
+      opening_balance: 400000,
       notes: "Main primary salary & expense account",
     },
     {

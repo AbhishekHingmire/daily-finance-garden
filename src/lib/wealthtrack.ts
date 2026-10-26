@@ -291,8 +291,8 @@ export const STORAGE_KEY = "wealthtrack-demo-v1";
 
 export function createInitialState(): WealthState {
   const accounts: Account[] = [
-    { id: "acc-hdfc", name: "Everyday account", kind: "Bank account", institution: "HDFC Bank", identifier: "•••• 4281", openingBalance: 125000, notes: "Main account" },
-    { id: "acc-sbi", name: "Savings", kind: "Bank account", institution: "State Bank of India", identifier: "•••• 9016", openingBalance: 48750, notes: "Savings account" },
+    { id: "acc-hdfc", name: "Everyday account", kind: "Bank account", institution: "HDFC Bank", identifier: "•••• 4281", openingBalance: 400000, notes: "Main account" },
+    { id: "acc-sbi", name: "Savings", kind: "Bank account", institution: "State Bank of India", identifier: "•••• 9016", openingBalance: 80831, notes: "Savings account" },
     { id: "acc-cash", name: "Cash wallet", kind: "Cash", institution: "Cash", identifier: "", openingBalance: 3800, notes: "" },
     { id: "acc-paytm", name: "Paytm wallet", kind: "Digital wallet", institution: "Paytm", identifier: "", openingBalance: 4150, notes: "" },
   ];

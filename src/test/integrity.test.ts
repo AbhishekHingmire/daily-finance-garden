@@ -45,14 +45,14 @@ describe("Section 5: Integrity Tests (I1–I16)", () => {
         sumLiquid += balances.get(acc.id) || 0;
       }
     }
-    expect(sumLiquid).toBe(509689);
-    expect(wealthMetrics.liquidCash).toBe(509689);
+    expect(sumLiquid).toBe(499689);
+    expect(wealthMetrics.liquidCash).toBe(499689);
     expect(sumLiquid).toBe(wealthMetrics.liquidCash);
   });
 
   it("I2: Net worth identical on Dashboard link, Wealth hero, Insights Wealth tab", () => {
     const expected = wealthMetrics.totalAssets - wealthMetrics.totalDebt;
-    expect(wealthMetrics.netWorth).toBe(-2257811);
+    expect(wealthMetrics.netWorth).toBe(-2267811);
     expect(wealthMetrics.netWorth).toBe(expected);
   });
 
@@ -191,13 +191,13 @@ describe("Section 5: Integrity Tests (I1–I16)", () => {
     expect(periodMetrics.split503020.wantsPct).toBe(7);
     expect(periodMetrics.split503020.savingsPct).toBe(21);
 
-    expect(wealthMetrics.liquidCash).toBe(509689);
-    expect(wealthMetrics.totalAssets).toBe(1002189);
+    expect(wealthMetrics.liquidCash).toBe(499689);
+    expect(wealthMetrics.totalAssets).toBe(992189);
     expect(wealthMetrics.receivablesValue).toBe(10000);
     expect(wealthMetrics.totalDebt).toBe(3260000);
-    expect(wealthMetrics.netWorth).toBe(-2257811);
+    expect(wealthMetrics.netWorth).toBe(-2267811);
 
-    expect(runway.cashRunwayMonths).toBe(7.1);
+    expect(runway.cashRunwayMonths).toBe(6.9);
     expect(runway.emergencyCoverageMonths).toBe(1.7);
 
     const emiLoad = Math.round((periodMetrics.emisInPeriod / periodMetrics.moneyIn) * 100);

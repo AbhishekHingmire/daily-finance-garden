@@ -22,7 +22,7 @@ import { AccountActivityPartialView } from "./AccountActivityPartialView";
 import { ReconcileModal } from "./ReconcileModal";
 import { Metric } from "@/components/shared/Metric";
 import { migrateLegacyState } from "@/lib/migration";
-import { getWealthMetrics } from "@/lib/metrics-service";
+import { getWealthMetrics, getAccountBalances } from "@/lib/metrics-service";
 import {
   getAccountBalance,
   getAllAccountBalances,
@@ -70,9 +70,10 @@ export function AccountsPage({
 }) {
   const [reconcilingAccount, setReconcilingAccount] = useState<Account | null>(null);
 
+  const unified = useMemo(() => migrateLegacyState(data), [data]);
   const accountBalances = useMemo(
-    () => getAllAccountBalances(data.accounts, data.transactions),
-    [data.accounts, data.transactions]
+    () => getAccountBalances(unified.accounts, unified.entries),
+    [unified]
   );
 
   const activeAccounts = useMemo(
@@ -124,7 +125,6 @@ export function AccountsPage({
     ? holdingsValuation
     : (investmentSummary.currentValue ?? investmentSummary.contributions);
 
-  const unified = useMemo(() => migrateLegacyState(data), [data]);
   const wealthMetrics = useMemo(
     () =>
       getWealthMetrics(
