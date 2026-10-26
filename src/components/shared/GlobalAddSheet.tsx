@@ -244,6 +244,11 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
       return;
     }
 
+    if (activeTab !== "transfer" && !categoryId) {
+      toast.error("Please select a category");
+      return;
+    }
+
     if (activeTab === "transfer") {
       if (toRefKind === "account" && (!toRefId || toRefId === accountId)) {
         toast.error("Please select a different destination account");

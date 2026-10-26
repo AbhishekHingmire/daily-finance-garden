@@ -133,6 +133,12 @@ export function TransactionsPage({
     return { periodEmi: emi, periodEmiCount: count };
   }, [periodTransactions]);
 
+  const unclassifiedEntries = React.useMemo(() => {
+    return data.transactions.filter(
+      (t) => !t.categoryId && t.type !== "Transfer" && t.type !== "Adjustment"
+    );
+  }, [data.transactions]);
+
   return (
     <div className="space-y-6">
       <PageHeading
@@ -166,6 +172,26 @@ export function TransactionsPage({
           </div>
         }
       />
+
+      {/* Review items for unclassified transactions if any */}
+      {unclassifiedEntries.length > 0 && (
+        <div className="flex items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3 sm:px-4 text-xs">
+          <div className="flex items-center gap-2">
+            <span className="text-base">⚠️</span>
+            <span className="font-semibold text-amber-900 dark:text-amber-200">
+              Review items: {unclassifiedEntries.length} transaction{unclassifiedEntries.length > 1 ? "s require" : " requires"} a category.
+            </span>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-7 text-xs border-amber-500/40 text-amber-800 dark:text-amber-200 font-semibold"
+            onClick={() => onEdit(unclassifiedEntries[0])}
+          >
+            Review now
+          </Button>
+        </div>
+      )}
 
       {/* Top Filter Bar: Compact Responsive Date Range Filter & Dropdown Filters */}
       <div className="rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 wt-shadow hover:border-border transition-colors space-y-2.5">

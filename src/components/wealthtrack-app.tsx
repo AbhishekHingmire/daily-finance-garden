@@ -1076,7 +1076,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     if (!accountById(transactionForm.accountId ?? "")) errors.accountId = "Choose an available account.";
     if (type === "Transfer" && !transactionForm.destinationAccountId) errors.destinationAccountId = "Choose a destination account.";
     if (type === "Transfer" && transactionForm.accountId === transactionForm.destinationAccountId) errors.destinationAccountId = "Choose a different destination.";
-    if (type !== "Transfer" && type !== "Adjustment" && type !== "Investment" && !categoryById(transactionForm.categoryId ?? "")) errors.categoryId = "Choose a category.";
+    if (type !== "Transfer" && (!transactionForm.categoryId || !categoryById(transactionForm.categoryId))) errors.categoryId = "Category is required.";
 
     setTransactionErrors(errors);
     if (Object.keys(errors).length) return;
