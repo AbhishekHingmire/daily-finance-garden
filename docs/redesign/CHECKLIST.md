@@ -21,6 +21,13 @@
 - [x] 1.18: Data check panel (Preferences › Data & Storage). Rename to "Data check". Plain title, ✓/✗, Expected vs shown, Fix button, show all checks I1-I16 + U1-U3. Amber dot on avatar menu if any fails. | Evidence: src/lib/data-health.ts evaluates all 19 checks (I1-I16 and U1-U3); src/components/shared/DataHealthModal.tsx renamed to Data check, removed Section 0/I1-I16/canonical copy, displays plain title, ✓/✗, Expected vs shown, and Fix button; PreferencesPage.tsx hosts Data check panel in Data & Storage; wealthtrack-app.tsx avatar menu displays Data check with conditional amber alert dot; all 54 vitest tests pass; tsc passes cleanly. 
 - [x] 1.19: Replace the word "ledger" in all user-facing copy with "transactions". Replace "receivables" under Money in with "Salary, freelance & other income". | Evidence: Replaced all user-facing ledger occurrences across wealthtrack-app.tsx, Dashboard.tsx, AccountsPage.tsx, ReconcileModal.tsx, OnboardingFlow.tsx, and data-health.ts with 'transactions'; verified Money In sub-copy renders 'Salary, freelance & other income' on Dashboard and Reports; all 54 vitest tests pass. 
 
+### Phase 1 Verification Sign-Off (EP6)
+- **CI Metrics Guard (`npm run check:metrics`)**: PASSED cleanly.
+- **Typecheck (`npx tsc --noEmit`)**: PASSED with 0 errors.
+- **Unit Tests (`npm test -- --run`)**: PASSED (54/54 tests passed).
+- **Playwright e2e (`npx playwright test`)**: PASSED (Cross-screen metric parity and seed snapshot across all routes).
+- **Screenshots Captured**: 42 screenshots across 6 routes x 7 viewports saved to `docs/redesign/screens/phase-1/`. 
+
 ## Phase 2: App Shell and Layout
 - [ ] 2.0: Breakpoints: xs 360-479, sm 480-767, md 768-1023, lg 1024-1439, xl 1440+. | Evidence: 
 - [ ] 2.1: FIXED TOP BAR (all sizes). Investigate root cause and document. One scroll container (window). Desktop/mobile fixed dimensions and safe areas. | Evidence: 
