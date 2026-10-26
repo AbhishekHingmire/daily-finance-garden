@@ -190,6 +190,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // ⌘K or Ctrl+K opens search anywhere
+      if ((e.metaKey || e.ctrlKey) && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        setSearchOpen(true);
+        return;
+      }
+
       const target = e.target as HTMLElement | null;
       const isInput =
         target?.tagName === "INPUT" ||
@@ -198,9 +205,18 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         target?.isContentEditable;
       if (isInput) return;
 
+      // N opens add entry sheet
       if ((e.key === "n" || e.key === "N") && !e.metaKey && !e.ctrlKey && !e.altKey) {
         e.preventDefault();
         setGlobalAddOpen(true);
+        return;
+      }
+
+      // / opens search
+      if (e.key === "/" && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setSearchOpen(true);
+        return;
       }
     };
     window.addEventListener("keydown", handleKeyDown);
@@ -2193,12 +2209,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <div className="relative hidden sm:block">
                 <button
                   type="button"
-                  className="flex h-9 w-52 items-center justify-between rounded-xl border border-border/80 bg-muted/40 hover:bg-muted/70 px-3 text-left text-xs text-muted-foreground transition-all shadow-2xs group"
+                  className="flex h-9 w-80 lg:w-96 items-center justify-between rounded-xl border border-border/80 bg-muted/40 hover:bg-muted/70 px-3.5 text-left text-xs text-muted-foreground transition-all shadow-2xs group"
                   onClick={() => setSearchOpen(true)}
+                  aria-label="Search transactions, accounts…"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <Search size={14} className="shrink-0 text-muted-foreground group-hover:text-foreground" />
-                    <span className="truncate">Search workspace...</span>
+                    <span className="truncate">Search transactions, accounts…</span>
                   </div>
                   <kbd className="ml-2 shrink-0 rounded-md border border-border/80 bg-card px-1.5 py-0.5 text-[10px] font-semibold text-muted-foreground shadow-2xs">
                     ⌘K
@@ -3027,6 +3044,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       {/* Search Modal */}
       {searchOpen && (
         <Modal
+          fullScreenMobile
           title="Search WealthTrack"
           description="Instant search across transactions, accounts, and categories."
           onClose={() => setSearchOpen(false)}

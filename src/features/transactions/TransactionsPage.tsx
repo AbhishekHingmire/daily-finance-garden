@@ -395,7 +395,7 @@ export function TransactionsPage({
         onBulkDelete={(ids) => onBulkDelete(ids)}
         selectedIds={selectedIds}
         onSelectedIdsChange={setSelectedIds}
-        searchPlaceholder="Search description, merchant, tags, notes…"
+        searchPlaceholder="Search description, merchant, notes…"
       />
     </div>
   );

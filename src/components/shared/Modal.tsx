@@ -8,12 +8,14 @@ export function Modal({
   onClose,
   children,
   wide = false,
+  fullScreenMobile = false,
 }: {
   title: string;
   description?: string;
   onClose: () => void;
   children: React.ReactNode;
   wide?: boolean;
+  fullScreenMobile?: boolean;
 }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -25,7 +27,9 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-modal flex items-end justify-center bg-foreground/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-5"
+      className={`fixed inset-0 z-modal flex justify-center bg-foreground/35 p-0 backdrop-blur-[2px] sm:items-center sm:p-5 ${
+        fullScreenMobile ? "items-stretch sm:items-center" : "items-end sm:items-center"
+      }`}
       role="dialog"
       aria-modal="true"
       aria-labelledby="modal-title"
@@ -35,9 +39,11 @@ export function Modal({
     >
       <section
         role="document"
-        className={`max-h-[92dvh] w-full overflow-y-auto wt-scrollbar rounded-t-2xl border border-border bg-card p-5 wt-shadow sm:rounded-2xl sm:p-6 ${
-          wide ? "max-w-2xl" : "max-w-lg"
-        }`}
+        className={`w-full overflow-y-auto wt-scrollbar border border-border bg-card p-5 wt-shadow sm:rounded-2xl sm:p-6 ${
+          fullScreenMobile
+            ? "h-full sm:h-auto max-h-none sm:max-h-[92dvh] rounded-none"
+            : "max-h-[92dvh] rounded-t-2xl"
+        } ${wide ? "max-w-2xl" : "max-w-lg"}`}
       >
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>

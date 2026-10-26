@@ -348,7 +348,7 @@ export function TransactionTable({
               </Button>
 
               {/* Desktop Search Input (Always visible on sm and up) */}
-              <div className="relative hidden sm:block w-36 sm:w-44 md:w-52 shrink min-w-[110px]">
+              <div className="relative hidden sm:block w-60 sm:w-72 md:w-80 shrink min-w-[180px]">
                 <Search size={14} className="absolute left-3 top-2.5 text-muted-foreground" />
                 <input
                   type="text"
