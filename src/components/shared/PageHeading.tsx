@@ -23,7 +23,7 @@ export function PageHeading({
           {title}
         </h1>
         {description && (
-          <p className="mt-0.5 max-w-2xl text-xs sm:text-[13px] text-muted-foreground leading-relaxed">
+          <p className="mt-0.5 text-xs sm:text-[13px] text-muted-foreground leading-relaxed">
             {description}
           </p>
         )}

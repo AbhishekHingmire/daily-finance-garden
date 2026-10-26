@@ -54,6 +54,7 @@ import { SettingsPage } from "@/features/settings/SettingsPage";
 import { WealthHub, type WealthSubtab } from "@/features/wealth/WealthHub";
 import { PlanHub, type PlanSubtab } from "@/features/plan/PlanHub";
 import { DataHealthModal } from "@/components/shared/DataHealthModal";
+import { PageContainer } from "@/components/shared/PageContainer";
 import { runDataHealthChecks } from "@/lib/data-health";
 import { GlobalAddSheet } from "@/components/shared/GlobalAddSheet";
 import { useSharedPeriod } from "@/lib/period-state";
@@ -2379,8 +2380,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             </div>
           </header>
 
-          <main className="w-full ml-0 md:ml-[72px] lg:ml-[248px] pt-[calc(56px+env(safe-area-inset-top))] md:pt-[64px] pb-[calc(64px+env(safe-area-inset-bottom)+1.5rem)] md:pb-12 px-3 sm:px-6">
-            {active === "Overview" && (
+          <main className="w-full ml-0 md:ml-[72px] lg:ml-[248px] pt-[calc(56px+env(safe-area-inset-top))] md:pt-[64px] pb-[calc(64px+env(safe-area-inset-bottom)+1.5rem)] md:pb-12">
+            <PageContainer>
+              {active === "Overview" && (
               <Dashboard
                 data={data}
                 money={money}
@@ -2696,6 +2698,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 }
               />
             )}
+            </PageContainer>
           </main>
         </div>
       </div>

@@ -923,7 +923,7 @@ export function ReportsPage({
 
       {/* Expanded Large Chart Modal Popup */}
       {expandedChart && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in-50 duration-200">
+        <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in-50 duration-200">
           <div className="relative w-full max-w-5xl max-h-[92vh] overflow-y-auto wt-scrollbar rounded-3xl border border-border bg-card p-5 sm:p-7 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-border/70 pb-3">
               <div>

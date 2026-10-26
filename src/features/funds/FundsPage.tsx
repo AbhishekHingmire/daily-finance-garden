@@ -212,7 +212,7 @@ export function FundsPage({
           {/* Emergency Fund Resilience Cockpit Card */}
           <div className="relative rounded-xl sm:rounded-2xl border border-border/80 bg-linear-to-br from-card via-card to-emerald-500/5 p-4 sm:p-6 wt-shadow">
             {/* Top Right Action Menu */}
-            <div className="absolute top-3.5 right-3.5 sm:top-5 sm:right-5 z-10">
+            <div className="absolute top-3.5 right-3.5 sm:top-5 sm:right-5">
               <ActionMenu
                 items={[
                   {
@@ -771,7 +771,7 @@ export function FundsPage({
 
       {/* Quick Deposit Modal */}
       {depositFund && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-modal flex items-center justify-center bg-background/80 backdrop-blur-xs p-4">
           <div className="w-full max-w-sm rounded-2xl border border-border bg-card p-5 wt-shadow space-y-4">
             <div className="flex items-center justify-between pb-2 border-b border-border">
               <div className="flex items-center gap-2">
