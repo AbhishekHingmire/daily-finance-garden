@@ -33,7 +33,7 @@ export function NetWealthLineChart({
     const targetMonth = dateRange.month ?? 10;
     const isCurrentMonth = targetYear === 2026 && targetMonth === 10;
     const daysInMonth = new Date(targetYear, targetMonth, 0).getDate();
-    const maxDay = isCurrentMonth ? 22 : daysInMonth;
+    const maxDay = isCurrentMonth ? 26 : daysInMonth;
 
     if (isMonthly) {
       const monthPrefix = `${targetYear}-${String(targetMonth).padStart(2, "0")}`;
@@ -56,19 +56,17 @@ export function NetWealthLineChart({
         const inflow = dayTxs
           .filter(
             (t) =>
-              t.type === "Income" ||
-              t.type === "Borrow / Loan Taken" ||
-              t.type === "Debt Recovery" ||
-              t.type === "Refund"
+              (t.type === "Income" || t.type === "Refund") &&
+              t.categoryId !== "cat-borrow" &&
+              t.categoryId !== "cat-debt-recovery"
           )
           .reduce((sum, t) => sum + t.amount, 0);
 
         const outflow = dayTxs
           .filter(
             (t) =>
-              t.type === "Expense" ||
-              t.type === "EMI / Loan Payment" ||
-              t.type === "Lend / Loan Given"
+              (t.type === "Expense" || t.type === "EMI / Loan Payment") &&
+              t.categoryId !== "cat-lend"
           )
           .reduce((sum, t) => sum + t.amount, 0);
 
@@ -79,7 +77,7 @@ export function NetWealthLineChart({
           label: `${monthName} ${d}`,
           shortLabel: String(d),
           fullLabel: `${d} ${FULL_MONTH_NAMES[targetMonth - 1]} ${targetYear}${
-            d === maxDay && isCurrentMonth ? " · Today" : ""
+            d === 26 && isCurrentMonth ? " · Today" : ""
           }`,
           value: runningTotal,
           delta: netDay,
@@ -101,19 +99,17 @@ export function NetWealthLineChart({
       const inflow = mTxs
         .filter(
           (t) =>
-            t.type === "Income" ||
-            t.type === "Borrow / Loan Taken" ||
-            t.type === "Debt Recovery" ||
-            t.type === "Refund"
+            (t.type === "Income" || t.type === "Refund") &&
+            t.categoryId !== "cat-borrow" &&
+            t.categoryId !== "cat-debt-recovery"
         )
         .reduce((sum, t) => sum + t.amount, 0);
 
       const outflow = mTxs
         .filter(
           (t) =>
-            t.type === "Expense" ||
-            t.type === "EMI / Loan Payment" ||
-            t.type === "Lend / Loan Given"
+            (t.type === "Expense" || t.type === "EMI / Loan Payment") &&
+            t.categoryId !== "cat-lend"
         )
         .reduce((sum, t) => sum + t.amount, 0);
 
@@ -178,7 +174,8 @@ export function NetWealthLineChart({
       (pt, idx) =>
         idx === 0 ||
         idx === coords.length - 1 ||
-        (pt.day && pt.day % 5 === 0)
+        (pt.day && pt.day % 5 === 0) ||
+        pt.day === 26
     );
 
     return {
@@ -191,20 +188,23 @@ export function NetWealthLineChart({
     };
   }, [points]);
 
-  // Y-axis tick calculations matching CashFlowVelocityChart
+  // Y-axis tick calculations matching CashFlowVelocityChart (U+2212 minus sign)
   const yAxisTicks = useMemo(() => {
     const t1 = maxVal;
     const t2 = minVal + (maxVal - minVal) * 0.66;
     const t3 = minVal + (maxVal - minVal) * 0.33;
     const t4 = minVal;
     const formatTick = (val: number) => {
-      if (Math.abs(val) >= 100000) {
-        return `₹${(val / 100000).toFixed(1)}L`;
+      const isNeg = val < 0;
+      const abs = Math.abs(val);
+      const sign = isNeg ? "\u2212" : "";
+      if (abs >= 100000) {
+        return `${sign}₹${(abs / 100000).toFixed(1).replace(/\.0$/, "")}L`;
       }
-      if (Math.abs(val) >= 1000) {
-        return `₹${Math.round(val / 1000)}k`;
+      if (abs >= 1000) {
+        return `${sign}₹${Math.round(abs / 1000)}k`;
       }
-      return `₹${Math.round(val)}`;
+      return `${sign}₹${Math.round(abs)}`;
     };
     return [
       { val: t1, label: formatTick(t1) },
@@ -439,7 +439,7 @@ export function NetWealthLineChart({
                     isHovered ? "text-primary font-black" : ""
                   }`}
                 >
-                  {pt.day === 1 ? "Day 1" : pt.shortLabel || pt.label}
+                  {pt.day === 1 ? "Day 1" : pt.day === 26 ? "Today (26)" : pt.shortLabel || pt.label}
                 </span>
               );
             })}
