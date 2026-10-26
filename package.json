@@ -12,7 +12,8 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "check:metrics": "node scripts/check-no-local-metrics.js"
   },
   "overrides": {
     "rolldown": "1.2.1"
