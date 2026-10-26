@@ -2134,26 +2134,69 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               })}
             </nav>
           </div>
-          <div className="hidden lg:block mt-auto p-4">
-            <div className="rounded-xl border border-border bg-muted/50 p-3.5">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={16} className="text-success" />
-                <span className="text-xs font-bold text-foreground">100% Offline & Private</span>
-              </div>
-              <p className="mt-1 text-[11px] leading-relaxed text-muted-foreground">
-                All records stored only in your local browser cache. Access your Profile and Preferences from the top-right user menu.
-              </p>
-            </div>
-          </div>
-          <div className="lg:hidden mt-auto p-2 flex flex-col items-center gap-2">
+          <div className="hidden lg:flex flex-col mt-auto p-3 border-t border-border/70 gap-1">
             <Button
-              variant="ghost"
+              variant={active === "Preferences" || (active as string) === "Settings" ? "secondary" : "ghost"}
+              className={`h-9 w-full justify-start gap-2.5 px-3 text-xs ${
+                active === "Preferences" || (active as string) === "Settings"
+                  ? "font-bold text-primary shadow-2xs"
+                  : "text-muted-foreground font-medium"
+              }`}
+              onClick={() => goSection("Preferences")}
+            >
+              <Settings2 size={16} className="shrink-0" />
+              <span>Preferences</span>
+            </Button>
+
+            <Button
+              variant={active === "Profile" ? "secondary" : "ghost"}
+              className={`h-9 w-full justify-start gap-2.5 px-3 text-xs ${
+                active === "Profile"
+                  ? "font-bold text-primary shadow-2xs"
+                  : "text-muted-foreground font-medium"
+              }`}
+              onClick={() => goSection("Profile")}
+            >
+              <User size={16} className="shrink-0" />
+              <span>Profile</span>
+            </Button>
+
+            <button
+              type="button"
+              onClick={() => goSection("Help")}
+              className="mt-1 flex items-center gap-1.5 px-3 py-1.5 text-[11px] text-muted-foreground hover:text-foreground rounded-lg transition-colors group cursor-pointer text-left"
+            >
+              <ShieldCheck size={14} className="text-emerald-500 shrink-0" />
+              <span className="truncate group-hover:underline">Your data stays on this device</span>
+            </button>
+          </div>
+          <div className="lg:hidden mt-auto p-2 flex flex-col items-center gap-1 border-t border-border/70">
+            <Button
+              variant={active === "Preferences" || (active as string) === "Settings" ? "secondary" : "ghost"}
               size="icon"
               title="Preferences"
               onClick={() => goSection("Preferences")}
               className="size-10 text-muted-foreground hover:text-foreground"
             >
-              <SlidersHorizontal size={18} />
+              <Settings2 size={18} />
+            </Button>
+            <Button
+              variant={active === "Profile" ? "secondary" : "ghost"}
+              size="icon"
+              title="Profile"
+              onClick={() => goSection("Profile")}
+              className="size-10 text-muted-foreground hover:text-foreground"
+            >
+              <User size={18} />
+            </Button>
+            <Button
+              variant={active === "Help" ? "secondary" : "ghost"}
+              size="icon"
+              title="Help & Privacy (Your data stays on this device)"
+              onClick={() => goSection("Help")}
+              className="size-10 text-emerald-600 dark:text-emerald-400 hover:text-foreground"
+            >
+              <ShieldCheck size={18} />
             </Button>
           </div>
         </aside>
