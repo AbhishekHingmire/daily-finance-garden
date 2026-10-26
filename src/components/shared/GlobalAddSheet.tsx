@@ -314,7 +314,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-foreground/40 backdrop-blur-xs p-0 sm:items-center sm:p-4 animate-in fade-in-50 duration-150"
+      className="fixed inset-0 z-sheet flex items-end justify-center bg-foreground/40 backdrop-blur-xs p-0 sm:items-center sm:p-4 animate-in fade-in-50 duration-150"
       role="dialog"
       aria-modal="true"
     >

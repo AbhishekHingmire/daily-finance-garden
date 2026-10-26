@@ -2024,7 +2024,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       <div className="flex min-h-screen w-full">
         {/* Sidebar Navigation: Tablet icon rail (72px) / Desktop full sidebar (248px) */}
         <aside
-          className="hidden md:flex fixed left-0 top-0 bottom-0 z-[40] shrink-0 flex-col border-r border-border bg-card h-[100dvh] overflow-y-auto w-[72px] lg:w-[248px]"
+          className="hidden md:flex fixed left-0 top-0 bottom-0 z-sidebar shrink-0 flex-col border-r border-border bg-card h-[100dvh] overflow-y-auto w-[72px] lg:w-[248px]"
         >
           <div className="flex h-[64px] items-center justify-center lg:justify-between border-b border-border px-3 lg:px-5">
             <div className="hidden lg:block">
@@ -2092,7 +2092,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
         {/* Main Content Area */}
         <div className="min-w-0 flex-1 w-full">
-          <header className="fixed top-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-[50] flex h-[56px] md:h-[64px] pt-[env(safe-area-inset-top)] md:pt-0 items-center justify-between gap-3 border-b border-border bg-background px-3 sm:px-6">
+          <header className="fixed top-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-topbar flex h-[56px] md:h-[64px] pt-[env(safe-area-inset-top)] md:pt-0 items-center justify-between gap-3 border-b border-border bg-background px-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <Button
                 variant="ghost"
@@ -2166,11 +2166,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 {notificationOpen && (
                   <>
                     <div
-                      className="fixed inset-0 z-40"
+                      className="fixed inset-0 z-topbar"
                       onClick={() => setNotificationOpen(false)}
                       aria-label="Close notifications menu"
                     />
-                    <div className="absolute right-0 top-12 z-50 w-[min(340px,calc(100vw-24px))] rounded-xl border border-border bg-card p-2 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
+                    <div className="absolute right-0 top-12 z-topbar w-[min(340px,calc(100vw-24px))] rounded-xl border border-border bg-card p-2 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
                       <div className="flex items-center justify-between px-2.5 py-2">
                         <p className="font-bold text-xs text-foreground uppercase tracking-wider">
                           Notifications
@@ -2275,11 +2275,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 {profileOpen && (
                   <>
                     <div
-                      className="fixed inset-0 z-40"
+                      className="fixed inset-0 z-topbar"
                       onClick={() => setProfileOpen(false)}
                       aria-label="Close user menu"
                     />
-                    <div className="absolute right-0 top-12 z-50 w-56 rounded-xl border border-border bg-card p-1.5 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
+                    <div className="absolute right-0 top-12 z-topbar w-56 rounded-xl border border-border bg-card p-1.5 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
                       <div className="border-b border-border px-3 py-2">
                         <p className="text-xs font-bold text-foreground">
                           {data.profile?.fullName || "Local Profile"}
@@ -2706,7 +2706,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         onClick={() => setGlobalAddOpen(true)}
         aria-label="Add transaction"
         title="Add transaction"
-        className="hidden lg:flex fixed bottom-6 right-6 z-40 items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-primary-foreground/20"
+        className="hidden lg:flex fixed bottom-6 right-6 z-topbar items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-primary-foreground/20"
       >
         <Plus size={16} className="stroke-[2.5]" />
         <span>New Transaction</span>
@@ -2714,7 +2714,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
       {/* Mobile Bottom Navigation Bar */}
       {hubsV2 ? (
-        <nav className="fixed inset-x-0 bottom-0 z-[50] grid grid-cols-5 border-t border-border bg-card px-1 sm:px-2 pb-[env(safe-area-inset-bottom)] h-[calc(64px+env(safe-area-inset-bottom))] md:hidden shadow-lg items-center w-full max-w-full overflow-visible">
+        <nav className="fixed inset-x-0 bottom-0 z-topbar grid grid-cols-5 border-t border-border bg-card px-1 sm:px-2 pb-[env(safe-area-inset-bottom)] h-[calc(64px+env(safe-area-inset-bottom))] md:hidden shadow-lg items-center w-full max-w-full overflow-visible">
           <button
             type="button"
             aria-label="Overview"
@@ -2752,7 +2752,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             type="button"
             aria-label="Add transaction"
             onClick={() => setGlobalAddOpen(true)}
-            className="relative z-10 flex flex-col items-center justify-center -mt-5 py-0 group cursor-pointer w-full min-w-0 overflow-visible"
+            className="flex flex-col items-center justify-center -mt-5 py-0 group cursor-pointer w-full min-w-0 overflow-visible"
           >
             <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 group-active:scale-95 transition-transform ring-4 ring-card shrink-0">
               <Plus size={20} className="stroke-[2.5]" />
@@ -2799,7 +2799,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           </button>
         </nav>
       ) : (
-        <nav className="fixed inset-x-0 bottom-0 z-[50] grid grid-cols-5 border-t border-border bg-card px-1 sm:px-2 pb-[env(safe-area-inset-bottom)] h-[calc(64px+env(safe-area-inset-bottom))] md:hidden shadow-lg items-center w-full max-w-full overflow-visible">
+        <nav className="fixed inset-x-0 bottom-0 z-topbar grid grid-cols-5 border-t border-border bg-card px-1 sm:px-2 pb-[env(safe-area-inset-bottom)] h-[calc(64px+env(safe-area-inset-bottom))] md:hidden shadow-lg items-center w-full max-w-full overflow-visible">
           {[
             { label: "Overview", section: "Overview" as Section, icon: LayoutDashboard },
             { label: "Transactions", section: "Transactions" as Section, icon: ArrowLeftRight },
@@ -2858,13 +2858,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
       {/* Mobile "More" Drawer Sheet */}
       {mobileNav && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end lg:hidden">
+        <div className="fixed inset-0 z-sheet flex flex-col justify-end lg:hidden">
           <div
             className="fixed inset-0 bg-foreground/40 backdrop-blur-xs transition-opacity animate-in fade-in-50"
             onClick={() => setMobileNav(false)}
             aria-label="Close menu"
           />
-          <div className="relative z-50 w-full max-h-[85vh] overflow-y-auto rounded-t-3xl border-t border-border bg-card p-5 shadow-2xl wt-scrollbar animate-in slide-in-from-bottom duration-200">
+          <div className="relative z-sheet w-full max-h-[85vh] overflow-y-auto rounded-t-3xl border-t border-border bg-card p-5 shadow-2xl wt-scrollbar animate-in slide-in-from-bottom duration-200">
             <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-muted-foreground/30" />
             <div className="flex items-center justify-between pb-3 border-b border-border/70">
               <div>

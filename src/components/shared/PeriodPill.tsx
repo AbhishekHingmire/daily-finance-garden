@@ -108,7 +108,7 @@ export const PeriodPill: React.FC<PeriodPillProps> = ({
 
       {/* Month-Grid Popover Dropdown */}
       {isOpen && (
-        <div className="absolute left-0 sm:left-auto sm:right-0 top-10 z-50 w-64 rounded-2xl border border-border bg-card p-3.5 shadow-xl animate-in fade-in-50 zoom-in-95 duration-150">
+        <div className="absolute left-0 sm:left-auto sm:right-0 top-10 z-topbar w-64 rounded-2xl border border-border bg-card p-3.5 shadow-xl animate-in fade-in-50 zoom-in-95 duration-150">
           {/* Year Navigator */}
           <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-border/60">
             <button

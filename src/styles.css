@@ -10,6 +10,12 @@
   --breakpoint-md: 768px;
   --breakpoint-lg: 1024px;
   --breakpoint-xl: 1440px;
+  --z-sidebar: 40;
+  --z-subnav: 45;
+  --z-topbar: 50;
+  --z-sheet: 60;
+  --z-modal: 70;
+  --z-toast: 80;
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -223,6 +229,13 @@ select {
     display: none;
   }
 }
+
+@utility z-sidebar { z-index: 40; }
+@utility z-subnav { z-index: 45; }
+@utility z-topbar { z-index: 50; }
+@utility z-sheet { z-index: 60; }
+@utility z-modal { z-index: 70; }
+@utility z-toast { z-index: 80; }
 
 html {
   scroll-padding-top: 64px;
