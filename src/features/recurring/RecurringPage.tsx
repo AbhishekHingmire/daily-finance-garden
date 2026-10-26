@@ -2,8 +2,10 @@ import { useState } from "react";
 import {
   ArrowDownLeft,
   CalendarDays,
+  ChevronDown,
   Pencil,
   Plus,
+  SlidersHorizontal,
   Trash2,
   TrendingUp,
 } from "lucide-react";
@@ -38,6 +40,7 @@ export function RecurringPage({
   onToggle: (item: RecurringItem) => void;
 }) {
   const [priorityFilter, setPriorityFilter] = useState("All");
+  const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
 
   const filtered = data.recurring.filter((item) => {
     if (priorityFilter !== "All" && item.need !== priorityFilter) return false;
@@ -145,13 +148,45 @@ export function RecurringPage({
       </div>
 
       {/* Filter Toolbar */}
-      <div className="flex items-center justify-between gap-4 border-b border-border/60 pb-3">
-        <span className="text-xs font-bold text-muted-foreground">
-          Showing {filtered.length} schedule{filtered.length === 1 ? "" : "s"}
-        </span>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
+        <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+          <span className="text-xs font-bold text-muted-foreground">
+            Showing {filtered.length} schedule{filtered.length === 1 ? "" : "s"}
+          </span>
 
-        {/* Priority Filter */}
-        <div className="flex items-center gap-2">
+          {/* Mobile Filter Toggle */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsFilterExpanded((prev) => !prev)}
+            className={`h-7.5 gap-1.5 px-2.5 text-xs font-bold transition-all sm:hidden cursor-pointer ${
+              priorityFilter !== "All"
+                ? "border-primary/40 bg-primary/10 text-primary shadow-2xs"
+                : "text-muted-foreground hover:text-foreground border-border/80"
+            }`}
+            aria-expanded={isFilterExpanded}
+            aria-label="Toggle priority filter"
+          >
+            <SlidersHorizontal size={12} className={priorityFilter !== "All" ? "text-primary" : "text-muted-foreground"} />
+            <span>Filter</span>
+            {priorityFilter !== "All" && (
+              <span className="grid size-4 place-items-center rounded-full bg-primary text-[9.5px] font-bold text-primary-foreground leading-none">
+                1
+              </span>
+            )}
+            <ChevronDown
+              size={13}
+              className={`transition-transform duration-200 ${isFilterExpanded ? "rotate-180" : ""}`}
+            />
+          </Button>
+        </div>
+
+        {/* Priority Filter: Collapsible on mobile, always visible on desktop */}
+        <div
+          className={`${
+            isFilterExpanded ? "flex" : "hidden sm:flex"
+          } items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50 animate-in fade-in-50 duration-150`}
+        >
           <span className="text-[11px] font-semibold text-muted-foreground">Priority:</span>
           <select
             className="wt-field h-8 text-xs py-0 pl-2.5 pr-8 w-auto min-w-[155px] font-semibold cursor-pointer"

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from "react";
-import { AlertCircle, CheckCircle2, Pencil, Plus, Tag, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, ChevronDown, Pencil, Plus, SlidersHorizontal, Tag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActionMenu } from "@/components/shared/ActionMenu";
 import { PageHeading } from "@/components/shared/PageHeading";
@@ -30,6 +30,7 @@ export function CategoriesPage({
   money: (amount: number) => string;
 }) {
   const [priorityFilter, setPriorityFilter] = useState("All");
+  const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
   const [sharedPeriod] = useSharedPeriod();
 
   const unified = useMemo(() => migrateLegacyState(data), [data]);
@@ -112,36 +113,69 @@ export function CategoriesPage({
       </div>
 
       {/* Filter and Switcher Toolbar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3 sm:pb-4">
-        <div className="flex flex-wrap gap-1.5 sm:gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3 sm:pb-4">
+        <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+            <Button
+              variant={kind === "All" ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs font-medium"
+              onClick={() => setKind("All")}
+            >
+              All ({data.categories.filter((c) => !c.archived).length})
+            </Button>
+            <Button
+              variant={kind === "Expense" ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs font-medium"
+              onClick={() => setKind("Expense")}
+            >
+              Expense ({expenseCategories.length})
+            </Button>
+            <Button
+              variant={kind === "Income" ? "default" : "outline"}
+              size="sm"
+              className="h-8 text-xs font-medium"
+              onClick={() => setKind("Income")}
+            >
+              Income ({incomeCategories.length})
+            </Button>
+          </div>
+
+          {/* Mobile Filter Toggle */}
           <Button
-            variant={kind === "All" ? "default" : "outline"}
+            variant="outline"
             size="sm"
-            className="h-8 text-xs font-medium"
-            onClick={() => setKind("All")}
+            onClick={() => setIsFilterExpanded((prev) => !prev)}
+            className={`h-8 gap-1.5 px-2.5 text-xs font-bold transition-all sm:hidden cursor-pointer ${
+              priorityFilter !== "All"
+                ? "border-primary/40 bg-primary/10 text-primary shadow-2xs"
+                : "text-muted-foreground hover:text-foreground border-border/80"
+            }`}
+            aria-expanded={isFilterExpanded}
+            aria-label="Toggle classification filter"
           >
-            All Categories ({data.categories.filter((c) => !c.archived).length})
-          </Button>
-          <Button
-            variant={kind === "Expense" ? "default" : "outline"}
-            size="sm"
-            className="h-8 text-xs font-medium"
-            onClick={() => setKind("Expense")}
-          >
-            Expense ({expenseCategories.length})
-          </Button>
-          <Button
-            variant={kind === "Income" ? "default" : "outline"}
-            size="sm"
-            className="h-8 text-xs font-medium"
-            onClick={() => setKind("Income")}
-          >
-            Income ({incomeCategories.length})
+            <SlidersHorizontal size={12} className={priorityFilter !== "All" ? "text-primary" : "text-muted-foreground"} />
+            <span>Filter</span>
+            {priorityFilter !== "All" && (
+              <span className="grid size-4 place-items-center rounded-full bg-primary text-[9.5px] font-bold text-primary-foreground leading-none">
+                1
+              </span>
+            )}
+            <ChevronDown
+              size={13}
+              className={`transition-transform duration-200 ${isFilterExpanded ? "rotate-180" : ""}`}
+            />
           </Button>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium text-muted-foreground">
+        {/* Priority Filter: Collapsible on mobile, always visible on desktop */}
+        <div
+          className={`${
+            isFilterExpanded ? "flex" : "hidden sm:flex"
+          } items-center gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border/50 animate-in fade-in-50 duration-150`}
+        >
+          <span className="text-[11px] font-medium text-muted-foreground shrink-0">
             Classification:
           </span>
           <select

@@ -1,11 +1,13 @@
 import { useState } from "react";
 import {
   ArrowLeftRight,
+  ChevronDown,
   CreditCard,
   Landmark,
   Pencil,
   Plus,
   Scale,
+  SlidersHorizontal,
   Trash2,
   TrendingUp,
   Wallet,
@@ -55,6 +57,8 @@ export function AccountActivityPartialView({
 }) {
   const [filterType, setFilterType] = useState("All");
   const [filterPriority, setFilterPriority] = useState("All");
+  const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
+  const hasActiveFilters = filterType !== "All" || filterPriority !== "All";
 
   const balance = getAccountBalance(account, data.transactions);
   const allAccountTxs = data.transactions.filter(
@@ -307,32 +311,59 @@ export function AccountActivityPartialView({
           searchPlaceholder="Search this account's transactions…"
           headerActions={
             <div className="flex items-center gap-1.5">
-              <select
-                className="wt-field h-8 text-xs py-0 pl-2 pr-7 font-semibold bg-background w-auto min-w-[100px] sm:min-w-[115px] cursor-pointer"
-                value={filterType}
-                onChange={(e) => setFilterType(e.target.value)}
-                aria-label="Filter by type"
+              {/* Mobile Filter Toggle */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsFilterExpanded((prev) => !prev)}
+                className={`h-8 gap-1 px-2 text-xs font-bold transition-all sm:hidden cursor-pointer ${
+                  hasActiveFilters
+                    ? "border-primary/40 bg-primary/10 text-primary shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground border-border/80"
+                }`}
+                aria-expanded={isFilterExpanded}
+                aria-label="Toggle filters"
               >
-                <option value="All">All Types</option>
-                <option value="Expense">Expense</option>
-                <option value="Income">Income</option>
-                <option value="EMI / Loan Payment">EMI</option>
-                <option value="Borrow / Loan Taken">Borrowed</option>
-                <option value="Lend / Loan Given">Lent</option>
-                <option value="Debt Recovery">Recovery</option>
-                <option value="Transfer">Transfer</option>
-                <option value="Adjustment">Adjustment</option>
-              </select>
-              <select
-                className="wt-field h-8 text-xs py-0 pl-2 pr-7 font-semibold bg-background w-auto min-w-[100px] sm:min-w-[110px] cursor-pointer"
-                value={filterPriority}
-                onChange={(e) => setFilterPriority(e.target.value)}
-                aria-label="Priority Classification"
-              >
-                <option value="All">All Priorities</option>
-                <option value="Need">Need</option>
-                <option value="Want">Want</option>
-              </select>
+                <SlidersHorizontal size={12} className={hasActiveFilters ? "text-primary" : "text-muted-foreground"} />
+                {hasActiveFilters && (
+                  <span className="grid size-4 place-items-center rounded-full bg-primary text-[9.5px] font-bold text-primary-foreground leading-none">
+                    {(filterType !== "All" ? 1 : 0) + (filterPriority !== "All" ? 1 : 0)}
+                  </span>
+                )}
+                <ChevronDown
+                  size={12}
+                  className={`transition-transform duration-200 ${isFilterExpanded ? "rotate-180" : ""}`}
+                />
+              </Button>
+
+              <div className={`${isFilterExpanded ? "flex" : "hidden sm:flex"} items-center gap-1.5 animate-in fade-in-50 duration-150`}>
+                <select
+                  className="wt-field h-8 text-xs py-0 pl-2 pr-7 font-semibold bg-background w-auto min-w-[95px] sm:min-w-[115px] cursor-pointer"
+                  value={filterType}
+                  onChange={(e) => setFilterType(e.target.value)}
+                  aria-label="Filter by type"
+                >
+                  <option value="All">All Types</option>
+                  <option value="Expense">Expense</option>
+                  <option value="Income">Income</option>
+                  <option value="EMI / Loan Payment">EMI</option>
+                  <option value="Borrow / Loan Taken">Borrowed</option>
+                  <option value="Lend / Loan Given">Lent</option>
+                  <option value="Debt Recovery">Recovery</option>
+                  <option value="Transfer">Transfer</option>
+                  <option value="Adjustment">Adjustment</option>
+                </select>
+                <select
+                  className="wt-field h-8 text-xs py-0 pl-2 pr-7 font-semibold bg-background w-auto min-w-[95px] sm:min-w-[110px] cursor-pointer"
+                  value={filterPriority}
+                  onChange={(e) => setFilterPriority(e.target.value)}
+                  aria-label="Priority Classification"
+                >
+                  <option value="All">All Priorities</option>
+                  <option value="Need">Need</option>
+                  <option value="Want">Want</option>
+                </select>
+              </div>
             </div>
           }
         />

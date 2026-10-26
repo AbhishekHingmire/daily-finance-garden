@@ -1,10 +1,12 @@
 import React from "react";
 import {
+  ChevronDown,
   Download,
   FileUp,
   Landmark,
   Plus,
   RotateCcw,
+  SlidersHorizontal,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -81,6 +83,17 @@ export function TransactionsPage({
   onBulkReassign: (categoryId: string) => void;
   onBulkReassignPriority: (priority: "Need" | "Want") => void;
 }) {
+  const [isFilterExpanded, setIsFilterExpanded] = React.useState<boolean>(false);
+
+  const activeDropdownFiltersCount = React.useMemo(() => {
+    let count = 0;
+    if (txType !== "All types") count++;
+    if (txPriority !== "All priorities") count++;
+    if (txCategory !== "All categories") count++;
+    if (txAccount !== "All accounts") count++;
+    return count;
+  }, [txType, txPriority, txCategory, txAccount]);
+
   const clearFilters = () => {
     setSearch("");
     setTxType("All types");
@@ -154,24 +167,57 @@ export function TransactionsPage({
 
       {/* Top Filter Bar: Compact Responsive Date Range Filter & Dropdown Filters */}
       <div className="rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 wt-shadow hover:border-border transition-colors space-y-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2.5">
+        <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-2.5">
           <div className="flex-1 min-w-0">
             <DateRangeFilter value={dateRange} onChange={setDateRange} />
           </div>
-          {hasFilter && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Mobile Filter Expand / Collapse Button */}
             <Button
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-7 sm:h-8 gap-1 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground shrink-0"
-              onClick={clearFilters}
+              onClick={() => setIsFilterExpanded((prev) => !prev)}
+              className={`h-7 sm:h-8 gap-1.5 px-2.5 text-xs font-bold transition-all sm:hidden cursor-pointer ${
+                activeDropdownFiltersCount > 0
+                  ? "border-primary/40 bg-primary/10 text-primary shadow-2xs"
+                  : "text-muted-foreground hover:text-foreground border-border/80"
+              }`}
+              aria-expanded={isFilterExpanded}
+              aria-label={isFilterExpanded ? "Collapse filter options" : "Expand filter options"}
             >
-              <RotateCcw size={12} /> Reset
+              <SlidersHorizontal size={13} className={activeDropdownFiltersCount > 0 ? "text-primary" : "text-muted-foreground"} />
+              <span>Filters</span>
+              {activeDropdownFiltersCount > 0 && (
+                <span className="grid size-4 place-items-center rounded-full bg-primary text-[9.5px] font-bold text-primary-foreground leading-none">
+                  {activeDropdownFiltersCount}
+                </span>
+              )}
+              <ChevronDown
+                size={13}
+                className={`transition-transform duration-200 ${isFilterExpanded ? "rotate-180" : ""}`}
+              />
             </Button>
-          )}
+
+            {hasFilter && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 sm:h-8 gap-1 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                onClick={clearFilters}
+                title="Reset all filters"
+              >
+                <RotateCcw size={12} /> Reset
+              </Button>
+            )}
+          </div>
         </div>
 
-        {/* 4 Compact Dropdown Selectors: 2 Columns on Mobile, 4 Columns on Desktop */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5">
+        {/* 4 Compact Dropdown Selectors: Collapsible on mobile, always visible on desktop */}
+        <div
+          className={`${
+            isFilterExpanded ? "grid" : "hidden sm:grid"
+          } grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-2.5 pt-0.5 animate-in fade-in-50 duration-150`}
+        >
           <SelectField
             compact
             label="Type"

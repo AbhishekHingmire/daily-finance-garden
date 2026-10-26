@@ -3,10 +3,13 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Award,
+  ChevronDown,
   Compass,
   Download,
   Landmark,
+  RotateCcw,
   ShieldCheck,
+  SlidersHorizontal,
   Sparkles,
   TrendingUp,
   Wallet,
@@ -47,6 +50,7 @@ export function ReportsPage({
   onCategory?: (id: string) => void;
 }) {
   const [priorityFilter, setPriorityFilter] = useState("All");
+  const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
   const [expandedChart, setExpandedChart] = useState<"velocity" | "trend" | null>(null);
   const [activeTab, setActiveTab] = useState<"all" | "cashflow" | "spending" | "rule" | "debt" | "wealth">("all");
 
@@ -274,21 +278,80 @@ export function ReportsPage({
         }
       />
 
-      {/* Date Range & Priority Filter Controls */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <DateRangeFilter value={dateRange} onChange={setDateRange} />
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold text-muted-foreground">Priority:</span>
-          <select
-            className="wt-field h-8 w-auto min-w-[155px] text-xs py-0 pl-2.5 pr-8 font-semibold cursor-pointer"
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            aria-label="Priority Classification Filter"
-          >
-            <option value="All">All Priorities</option>
-            <option value="Need">Need (Essential)</option>
-            <option value="Want">Want (Discretionary)</option>
-          </select>
+      {/* Date Range & Priority Filter Controls: Collapsible on mobile */}
+      <div className="rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 wt-shadow hover:border-border transition-colors space-y-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex-1 min-w-0">
+            <DateRangeFilter value={dateRange} onChange={setDateRange} />
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            {/* Mobile Filter Toggle */}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsFilterExpanded((prev) => !prev)}
+              className={`h-7 sm:h-8 gap-1.5 px-2.5 text-xs font-bold transition-all sm:hidden cursor-pointer ${
+                priorityFilter !== "All"
+                  ? "border-primary/40 bg-primary/10 text-primary shadow-2xs"
+                  : "text-muted-foreground hover:text-foreground border-border/80"
+              }`}
+              aria-expanded={isFilterExpanded}
+              aria-label={isFilterExpanded ? "Collapse filters" : "Expand filters"}
+            >
+              <SlidersHorizontal size={12} className={priorityFilter !== "All" ? "text-primary" : "text-muted-foreground"} />
+              <span>Filters</span>
+              {priorityFilter !== "All" && (
+                <span className="grid size-4 place-items-center rounded-full bg-primary text-[9.5px] font-bold text-primary-foreground leading-none">
+                  1
+                </span>
+              )}
+              <ChevronDown
+                size={13}
+                className={`transition-transform duration-200 ${isFilterExpanded ? "rotate-180" : ""}`}
+              />
+            </Button>
+
+            {priorityFilter !== "All" && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 sm:h-8 gap-1 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
+                onClick={() => setPriorityFilter("All")}
+                title="Reset priority filter"
+              >
+                <RotateCcw size={12} /> Reset
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Priority Filter: Collapsible on mobile, always visible on desktop */}
+        <div
+          className={`${
+            isFilterExpanded ? "flex" : "hidden sm:flex"
+          } flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50 animate-in fade-in-50 duration-150`}
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold text-muted-foreground">Priority Classification:</span>
+            <select
+              className="wt-field h-8 w-auto min-w-[155px] text-xs py-0 pl-2.5 pr-8 font-semibold cursor-pointer"
+              value={priorityFilter}
+              onChange={(e) => setPriorityFilter(e.target.value)}
+              aria-label="Priority Classification Filter"
+            >
+              <option value="All">All Priorities</option>
+              <option value="Need">Need (Essential)</option>
+              <option value="Want">Want (Discretionary)</option>
+            </select>
+          </div>
+          {priorityFilter !== "All" && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-semibold">
+              Filter: {priorityFilter}
+              <button type="button" onClick={() => setPriorityFilter("All")} className="hover:opacity-80 cursor-pointer">
+                <X size={11} />
+              </button>
+            </span>
+          )}
         </div>
       </div>
 
