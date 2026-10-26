@@ -29,7 +29,7 @@
 - **Screenshots Captured**: 42 screenshots across 6 routes x 7 viewports saved to `docs/redesign/screens/phase-1/`. 
 
 ## Phase 2: App Shell and Layout
-- [ ] 2.0: Breakpoints: xs 360-479, sm 480-767, md 768-1023, lg 1024-1439, xl 1440+. | Evidence: 
+- [x] 2.0: Breakpoints: xs 360-479, sm 480-767, md 768-1023, lg 1024-1439, xl 1440+. | Evidence: src/styles.css configured with Tailwind @theme breakpoint tokens (--breakpoint-xs: 360px, sm: 480px, md: 768px, lg: 1024px, xl: 1440px) and src/lib/breakpoints.ts created; vitest and tsc pass. 
 - [ ] 2.1: FIXED TOP BAR (all sizes). Investigate root cause and document. One scroll container (window). Desktop/mobile fixed dimensions and safe areas. | Evidence: 
 - [ ] 2.2: Z-index tokens: sidebar 40, subnav 45, topbar 50, sheet 60, modal 70, toast 80. No other z-index values in codebase. | Evidence: 
 - [ ] 2.3: PageContainer used by EVERY page: max-width 1280px content area, centred, gutters 16px (<768), 24px (md), 32px (lg+). No page sets own max-width. | Evidence: 
