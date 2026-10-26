@@ -120,44 +120,55 @@ export function TransactionTable({
     });
   }, [searchedTransactions, sortOrder]);
 
-  // Dynamic Net, Inflow, and Outflow Totals for the currently displayed transactions
-  const { totalNet, totalInflow, totalOutflow } = useMemo(() => {
+  // Dynamic Net, Inflow, Outflow, and Transfer Totals for the currently displayed transactions
+  const { totalNet, totalInflow, totalOutflow, totalTransfers } = useMemo(() => {
     let inflow = 0;
     let outflow = 0;
-    let net = 0;
-    for (const tx of sortedTransactions) {
-      const isInvestmentOutflow =
-        tx.type === "Investment" &&
-        (!tx.investmentAction ||
-          INVESTMENT_OUTFLOW_ACTIONS.includes(tx.investmentAction));
+    let transfers = 0;
 
-      const isPositive =
+    for (const tx of sortedTransactions) {
+      const cat = data?.categories?.find((c) => c.id === tx.categoryId);
+      const isTransferCategory =
+        cat?.kind === "Transfer" ||
+        tx.categoryId === "cat-lend" ||
+        tx.categoryId === "cat-borrow" ||
+        tx.categoryId === "cat-debt-recovery";
+
+      const isTransfer =
+        isTransferCategory ||
+        tx.type === "Transfer" ||
+        tx.type === "Lend / Loan Given" ||
+        tx.type === "Debt Recovery" ||
+        tx.type === "Borrow / Loan Taken" ||
+        tx.type === "Investment";
+
+      if (isTransfer) {
+        transfers += Math.abs(tx.amount);
+        continue;
+      }
+
+      const isIncome =
         tx.type === "Income" ||
         tx.type === "Refund" ||
-        tx.type === "Borrow / Loan Taken" ||
-        tx.type === "Debt Recovery" ||
-        (tx.type === "Adjustment" && tx.amount > 0) ||
-        (tx.type === "Investment" &&
-          !isInvestmentOutflow &&
-          tx.investmentAction !== "Valuation");
+        cat?.kind === "Income" ||
+        (tx.type === "Adjustment" && tx.amount > 0);
 
-      const isNegative =
+      const isExpense =
         tx.type === "Expense" ||
         tx.type === "EMI / Loan Payment" ||
-        tx.type === "Lend / Loan Given" ||
-        isInvestmentOutflow ||
+        cat?.kind === "Expense" ||
         (tx.type === "Adjustment" && tx.amount < 0);
 
-      if (isPositive) {
+      if (isIncome) {
         inflow += Math.abs(tx.amount);
-        net += Math.abs(tx.amount);
-      } else if (isNegative) {
+      } else if (isExpense) {
         outflow += Math.abs(tx.amount);
-        net -= Math.abs(tx.amount);
       }
     }
-    return { totalNet: net, totalInflow: inflow, totalOutflow: outflow };
-  }, [sortedTransactions]);
+
+    const net = inflow - outflow;
+    return { totalNet: net, totalInflow: inflow, totalOutflow: outflow, totalTransfers: transfers };
+  }, [sortedTransactions, data?.categories]);
 
   // Pagination State (Default 15 records per page as requested)
   const [pageSize, setPageSize] = useState<number>(15);
@@ -283,29 +294,38 @@ export function TransactionTable({
                 )}
               </div>
 
-              {/* Transaction count & Net Total Pill - NO flex-wrap so it never breaks apart */}
-              <div className="flex items-center gap-1.5 shrink-0 whitespace-nowrap">
+              {/* Transaction count & Summary line */}
+              <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
                 <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
                   {sortedTransactions.length} tx{sortedTransactions.length !== 1 ? "s" : ""}
                 </span>
                 <span className="text-muted-foreground/40 hidden sm:inline">·</span>
                 <div
-                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold tabular-nums border shrink-0 ${
-                    totalNet > 0
-                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/20"
-                      : totalNet < 0
-                      ? "bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/20"
-                      : "bg-muted text-muted-foreground border-border"
-                  }`}
+                  className="inline-flex items-center flex-wrap gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tabular-nums border border-border/80 bg-muted/30 text-foreground shrink-0"
                 >
-                  <span className="text-[9.5px] uppercase font-medium text-muted-foreground hidden md:inline">Total:</span>
-                  <span>
-                    {totalNet > 0
-                      ? `+${money(totalNet)}`
-                      : totalNet < 0
-                      ? `−${money(Math.abs(totalNet))}`
-                      : money(0)}
+                  <span>In {money(totalInflow)}</span>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span>Out {money(totalOutflow)}</span>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span
+                    className={
+                      totalNet > 0
+                        ? "text-emerald-700 dark:text-emerald-400 font-bold"
+                        : totalNet < 0
+                        ? "text-rose-700 dark:text-rose-400 font-bold"
+                        : "text-muted-foreground font-bold"
+                    }
+                  >
+                    Net {totalNet > 0 ? `+${money(totalNet)}` : totalNet < 0 ? `−${money(Math.abs(totalNet))}` : money(0)}
                   </span>
+                  {totalTransfers > 0 && (
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="text-muted-foreground font-medium">
+                        Transfers {money(totalTransfers)} (not counted)
+                      </span>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
