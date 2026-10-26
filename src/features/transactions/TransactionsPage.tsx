@@ -144,15 +144,6 @@ export function TransactionsPage({
       <PageHeading
         title="Transactions"
         description="Every financial movement, categorized and accounted for."
-        primaryAction={
-          <Button
-            size="sm"
-            className="h-9 gap-1.5 text-xs font-semibold shadow-xs"
-            onClick={onAdd}
-          >
-            <Plus size={15} /> Add transaction
-          </Button>
-        }
         moreMenuItems={[
           {
             label: "Bulk Import",

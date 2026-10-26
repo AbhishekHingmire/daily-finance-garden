@@ -338,25 +338,6 @@ export function RecurringPage({
           )}
         </div>
       </div>
-
-      {/* Add Recurring Schedule Card */}
-      <button
-        type="button"
-        onClick={onAdd}
-        className="w-full rounded-2xl border-2 border-dashed border-border/70 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 p-5 transition-all flex flex-col sm:flex-row items-center justify-center text-center sm:text-left gap-3.5 group cursor-pointer"
-      >
-        <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all shadow-2xs shrink-0">
-          <Plus size={20} />
-        </div>
-        <div>
-          <span className="text-sm font-bold text-foreground block group-hover:text-primary transition-colors">
-            Add Recurring Schedule
-          </span>
-          <span className="text-[11px] text-muted-foreground block mt-0.5">
-            Subscriptions, Utility Bills, Salary Income, or Investment SIPs
-          </span>
-        </div>
-      </button>
     </div>
   );
 }

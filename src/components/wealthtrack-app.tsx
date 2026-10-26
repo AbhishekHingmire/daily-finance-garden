@@ -188,6 +188,25 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     return () => window.removeEventListener("wt_feature_flags_changed", onFlagChange);
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.tagName === "SELECT" ||
+        target?.isContentEditable;
+      if (isInput) return;
+
+      if ((e.key === "n" || e.key === "N") && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.preventDefault();
+        setGlobalAddOpen(true);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const [active, setActive] = useState<Section>(() => {
     if (initialSection) return normalizeSection(initialSection);
     if (typeof window !== "undefined") {
@@ -2038,7 +2057,34 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <AppLogo small />
             </div>
           </div>
-          <div className="px-2 lg:px-4 pt-4 lg:pt-6">
+          <div className="px-2 lg:px-4 pt-3 pb-1">
+            <div className="hidden lg:block">
+              <Button
+                onClick={() => setGlobalAddOpen(true)}
+                className="w-full flex items-center justify-between h-9 rounded-xl px-3 font-semibold text-xs bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+                title="Add entry (N)"
+              >
+                <div className="flex items-center gap-2">
+                  <Plus size={15} className="stroke-[2.5]" />
+                  <span>Add entry</span>
+                </div>
+                <kbd className="rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                  N
+                </kbd>
+              </Button>
+            </div>
+            <div className="lg:hidden flex justify-center">
+              <Button
+                size="icon"
+                onClick={() => setGlobalAddOpen(true)}
+                className="size-9 rounded-xl bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+                title="Add entry (N)"
+              >
+                <Plus size={18} className="stroke-[2.5]" />
+              </Button>
+            </div>
+          </div>
+          <div className="px-2 lg:px-4 pt-2 lg:pt-3">
             <p className="hidden lg:block px-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               Workspace
             </p>
@@ -2167,6 +2213,19 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 onClick={() => setSearchOpen(true)}
               >
                 <Search size={22} />
+              </Button>
+
+              {/* Primary + Add Button (Desktop / Tablet) */}
+              <Button
+                onClick={() => setGlobalAddOpen(true)}
+                className="hidden md:flex items-center gap-1.5 h-9 rounded-xl px-3 font-semibold text-xs bg-primary text-primary-foreground shadow-xs hover:bg-primary/90"
+                title="Add entry (N)"
+              >
+                <Plus size={15} className="stroke-[2.5]" />
+                <span>Add</span>
+                <kbd className="ml-1 rounded bg-primary-foreground/20 px-1.5 py-0.5 text-[10px] font-semibold text-primary-foreground">
+                  N
+                </kbd>
               </Button>
 
               {/* Notifications Dropdown */}
@@ -2727,18 +2786,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           </main>
         </div>
       </div>
-
-      {/* Desktop Floating Action Button (Quick New Transaction) */}
-      <button
-        type="button"
-        onClick={() => setGlobalAddOpen(true)}
-        aria-label="Add transaction"
-        title="Add transaction"
-        className="hidden lg:flex fixed bottom-6 right-6 z-topbar items-center gap-2 rounded-full bg-primary px-4 py-2.5 text-xs font-bold text-primary-foreground shadow-lg shadow-primary/25 hover:shadow-xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-primary-foreground/20"
-      >
-        <Plus size={16} className="stroke-[2.5]" />
-        <span>New Transaction</span>
-      </button>
 
       {/* Mobile Bottom Navigation Bar */}
       <nav className="fixed inset-x-0 bottom-0 z-topbar grid grid-cols-5 border-t border-border bg-card px-1 sm:px-2 pb-[env(safe-area-inset-bottom)] h-[calc(64px+env(safe-area-inset-bottom))] md:hidden shadow-lg items-center w-full max-w-full overflow-visible">

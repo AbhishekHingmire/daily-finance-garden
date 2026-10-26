@@ -205,13 +205,6 @@ export function AccountsPage({
             <Plus size={15} /> Add account
           </Button>
         }
-        moreMenuItems={[
-          {
-            label: "Transfer",
-            icon: <ArrowLeftRight size={14} />,
-            onClick: () => onTransfer(activeAccounts[0]),
-          },
-        ]}
       />
 
       {/* Portfolio Net Worth & Wealth Hero Card */}
@@ -416,25 +409,6 @@ export function AccountsPage({
             </div>
           );
         })}
-
-        {/* Add Bank / Account Card */}
-        <button
-          type="button"
-          onClick={onAdd}
-          className="rounded-xl border-2 border-dashed border-border/70 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 p-5 transition-all flex flex-col items-center justify-center text-center gap-2.5 min-h-[170px] group cursor-pointer"
-        >
-          <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all shadow-2xs">
-            <Plus size={20} />
-          </div>
-          <div>
-            <span className="text-sm font-bold text-foreground block group-hover:text-primary transition-colors">
-              Add New Account
-            </span>
-            <span className="text-[11px] text-muted-foreground block mt-0.5">
-              Bank, Credit Card, or Wallet
-            </span>
-          </div>
-        </button>
       </div>
 
       {/* Account Activity Partial View */}
