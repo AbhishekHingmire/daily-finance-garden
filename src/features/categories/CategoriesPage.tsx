@@ -57,7 +57,7 @@ export function CategoriesPage({
   const incomeCategories = data.categories.filter((c) => !c.archived && c.kind === "Income");
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6">
       <PageHeading
         title="Budgets & Categories"
         description="Organize your spending into smart 50/30/20 Need vs. Want classifications with monthly budget caps."

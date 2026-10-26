@@ -270,7 +270,7 @@ export function DateRangeFilter({
                 const isFuture = currentYear === maxYear && m > maxMonth;
                 return (
                   <option key={name} value={m} disabled={isFuture}>
-                    {FULL_MONTH_NAMES[idx]} {currentYear} {isFuture ? "(Future)" : ""}
+                    {name} {currentYear} {isFuture ? "(Future)" : ""}
                   </option>
                 );
               })}

@@ -2089,16 +2089,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             </div>
 
             <div className="flex items-center gap-2.5">
-              {/* Desktop Global Add Button */}
-              <Button
-                size="sm"
-                onClick={() => setGlobalAddOpen(true)}
-                className="hidden sm:inline-flex h-9 gap-1.5 px-3.5 text-xs font-bold shadow-xs bg-primary text-primary-foreground hover:bg-primary/90 cursor-pointer"
-              >
-                <Plus size={16} className="stroke-[2.5]" />
-                <span>New Transaction</span>
-              </Button>
-
               <div className="relative hidden sm:block">
                 <button
                   type="button"
@@ -2722,12 +2712,14 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             type="button"
             aria-label="Add transaction"
             onClick={() => setGlobalAddOpen(true)}
-            className="relative z-10 flex flex-col items-center justify-center -mt-4 py-0.5 group cursor-pointer w-full min-w-0 overflow-visible"
+            className="relative z-10 flex flex-col items-center justify-center -mt-5 py-0 group cursor-pointer w-full min-w-0 overflow-visible"
           >
-            <span className="grid size-12 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 group-active:scale-95 transition-transform ring-4 ring-card">
-              <Plus size={22} className="stroke-[2.5]" />
+            <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 group-active:scale-95 transition-transform ring-4 ring-card shrink-0">
+              <Plus size={20} className="stroke-[2.5]" />
             </span>
-            <span className="text-[9.5px] sm:text-[10px] font-bold text-foreground mt-0.5">Add</span>
+            <span className="text-[10px] font-bold text-foreground mt-1 leading-none tracking-tight select-none">
+              Add
+            </span>
           </button>
 
           <button

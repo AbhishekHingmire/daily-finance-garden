@@ -104,7 +104,8 @@
 html {
   font-size: 86.625%;
   min-width: 320px;
-  max-width: 100%;
+  max-width: 100vw;
+  width: 100%;
   overflow-x: hidden;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
@@ -114,13 +115,19 @@ body {
   margin: 0;
   min-width: 320px;
   width: 100%;
-  max-width: 100%;
+  max-width: 100vw;
   overflow-x: hidden;
   background: var(--color-background);
   color: var(--color-foreground);
   letter-spacing: -0.01em;
 }
 button, input, select, textarea { font: inherit; }
+/* Prevent mobile browser unwanted auto-zoom on input focus */
+@media screen and (max-width: 768px) {
+  input, select, textarea {
+    font-size: 16px !important;
+  }
+}
 ::selection { background: color-mix(in oklab, var(--primary) 20%, transparent); }
 
 @utility wt-shadow { box-shadow: var(--shadow-soft); }
