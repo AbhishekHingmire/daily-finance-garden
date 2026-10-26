@@ -1,8 +1,11 @@
-import { useState } from "react";
-import { Pencil, Plus, Trash2 } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { AlertCircle, CheckCircle2, Pencil, Plus, Tag, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActionMenu } from "@/components/shared/ActionMenu";
 import { PageHeading } from "@/components/shared/PageHeading";
+import { useSharedPeriod } from "@/lib/period-state";
+import { migrateLegacyState } from "@/lib/migration";
+import { getBudgetMetrics } from "@/lib/metrics-service";
 import {
   getCategorySpend,
   type Category,
@@ -27,10 +30,18 @@ export function CategoriesPage({
   money: (amount: number) => string;
 }) {
   const [priorityFilter, setPriorityFilter] = useState("All");
+  const [sharedPeriod] = useSharedPeriod();
 
-  const currentMonthKey = new Date().toISOString().slice(0, 7);
-  const monthlyTransactions = data.transactions.filter(
-    (t) => t.date.slice(0, 7) === currentMonthKey
+  const unified = useMemo(() => migrateLegacyState(data), [data]);
+  const budgetMetrics = useMemo(
+    () => getBudgetMetrics(unified.categories, unified.entries, sharedPeriod),
+    [unified, sharedPeriod]
+  );
+
+  const periodKey = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
+  const periodTransactions = useMemo(
+    () => data.transactions.filter((t) => t.date.slice(0, 7) === periodKey),
+    [data.transactions, periodKey]
   );
 
   const categories = data.categories.filter((c) => {
@@ -41,10 +52,13 @@ export function CategoriesPage({
     return true;
   });
 
+  const expenseCategories = data.categories.filter((c) => !c.archived && c.kind === "Expense");
+  const incomeCategories = data.categories.filter((c) => !c.archived && c.kind === "Income");
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeading
-        title="Categories"
+        title="Budgets & Categories"
         description="Organize your spending into smart 50/30/20 Need vs. Want classifications with monthly budget caps."
         actions={
           <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 text-xs font-semibold shadow-xs">
@@ -52,6 +66,50 @@ export function CategoriesPage({
           </Button>
         }
       />
+
+      {/* Top Budget Summary Hero Card */}
+      <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                Overall Budget Performance
+              </span>
+              <span className="rounded-full bg-primary/10 text-primary px-2 py-0.2 text-[10px] font-bold">
+                {sharedPeriod.month === 10 ? "October 2026" : `${sharedPeriod.month}/${sharedPeriod.year}`}
+              </span>
+            </div>
+            <div className="flex items-baseline gap-2 mt-1">
+              <h2 className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
+                {money(budgetMetrics.budgetedSpend)}
+              </h2>
+              <span className="text-sm font-semibold text-muted-foreground">
+                of {money(budgetMetrics.totalCap)}
+              </span>
+              <span className="ml-2 text-xs font-extrabold text-primary">
+                ({budgetMetrics.budgetUsedPct}% used)
+              </span>
+            </div>
+          </div>
+          <div className="text-left sm:text-right text-xs text-muted-foreground">
+            <span className="block">Uncapped / not budgeted:</span>
+            <strong className="text-foreground">{money(budgetMetrics.notBudgetedSpend)}</strong>
+          </div>
+        </div>
+
+        <div className="h-2.5 w-full rounded-full bg-muted overflow-hidden">
+          <div
+            style={{ width: `${Math.min(100, budgetMetrics.budgetUsedPct)}%` }}
+            className={`h-full rounded-full transition-all duration-500 ${
+              budgetMetrics.budgetUsedPct > 100
+                ? "bg-rose-500"
+                : budgetMetrics.budgetUsedPct > 75
+                ? "bg-amber-500"
+                : "bg-emerald-500"
+            }`}
+          />
+        </div>
+      </div>
 
       {/* Filter and Switcher Toolbar */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3 sm:pb-4">
@@ -70,7 +128,7 @@ export function CategoriesPage({
             className="h-8 text-xs font-medium"
             onClick={() => setKind("Expense")}
           >
-            Expense ({data.categories.filter((c) => !c.archived && c.kind === "Expense").length})
+            Expense ({expenseCategories.length})
           </Button>
           <Button
             variant={kind === "Income" ? "default" : "outline"}
@@ -78,7 +136,7 @@ export function CategoriesPage({
             className="h-8 text-xs font-medium"
             onClick={() => setKind("Income")}
           >
-            Income ({data.categories.filter((c) => !c.archived && c.kind === "Income").length})
+            Income ({incomeCategories.length})
           </Button>
         </div>
 
@@ -102,10 +160,10 @@ export function CategoriesPage({
       {/* Categories Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {categories.map((category) => {
-          const spent = getCategorySpend(category.id, monthlyTransactions);
-          const hasBudget = category.monthlyLimit > 0;
+          const spent = getCategorySpend(category.id, periodTransactions);
+          const hasBudget = category.kind === "Expense" && category.monthlyLimit > 0;
           const percent = hasBudget
-            ? Math.min(100, Math.round((spent / category.monthlyLimit) * 100))
+            ? Math.round((spent / category.monthlyLimit) * 100)
             : 0;
           const overBudget = hasBudget && spent > category.monthlyLimit;
 
@@ -176,20 +234,32 @@ export function CategoriesPage({
                     </span>
                   </div>
 
-                  {hasBudget && category.kind === "Expense" && (
+                  {hasBudget && (
                     <div className="mt-2.5">
                       <div className="flex justify-between text-xs text-muted-foreground">
                         <span>Cap: {money(category.monthlyLimit)}</span>
-                        <span className={overBudget ? "font-semibold text-destructive" : ""}>
+                        <span
+                          className={
+                            overBudget
+                              ? "font-bold text-rose-600 dark:text-rose-400"
+                              : percent > 75
+                              ? "font-bold text-amber-600 dark:text-amber-400"
+                              : "font-semibold text-foreground"
+                          }
+                        >
                           {percent}%
                         </span>
                       </div>
                       <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/60">
                         <div
                           className={`h-full rounded-full transition-all duration-300 ${
-                            overBudget ? "bg-destructive" : "bg-primary"
+                            overBudget
+                              ? "bg-rose-500"
+                              : percent > 75
+                              ? "bg-amber-500"
+                              : "bg-emerald-500"
                           }`}
-                          style={{ width: `${percent}%` }}
+                          style={{ width: `${Math.min(100, percent)}%` }}
                         />
                       </div>
                     </div>

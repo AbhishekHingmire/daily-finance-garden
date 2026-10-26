@@ -26,6 +26,9 @@ describe("App routing", () => {
     "/preferences",
     "/profile",
     "/overview",
+    "/wealth",
+    "/plan",
+    "/insights",
   ])("matches modular route for %s", (path) => {
     const matches = router.matchRoutes(path);
     expect(matches.at(-1)?.routeId).not.toBe(rootRouteId);

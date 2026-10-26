@@ -14,15 +14,18 @@ import { Route as SplatRouteImport } from './routes/$'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as FundsRouteImport } from './routes/funds'
+import { Route as InsightsRouteImport } from './routes/insights'
 import { Route as InvestmentsRouteImport } from './routes/investments'
 import { Route as LoansRouteImport } from './routes/loans'
 import { Route as OverviewRouteImport } from './routes/overview'
+import { Route as PlanRouteImport } from './routes/plan'
 import { Route as PreferencesRouteImport } from './routes/preferences'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RecurringRouteImport } from './routes/recurring'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TransactionsRouteImport } from './routes/transactions'
+import { Route as WealthRouteImport } from './routes/wealth'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -49,6 +52,11 @@ const FundsRoute = FundsRouteImport.update({
   path: '/funds',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InsightsRoute = InsightsRouteImport.update({
+  id: '/insights',
+  path: '/insights',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const InvestmentsRoute = InvestmentsRouteImport.update({
   id: '/investments',
   path: '/investments',
@@ -62,6 +70,11 @@ const LoansRoute = LoansRouteImport.update({
 const OverviewRoute = OverviewRouteImport.update({
   id: '/overview',
   path: '/overview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanRoute = PlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PreferencesRoute = PreferencesRouteImport.update({
@@ -94,6 +107,11 @@ const TransactionsRoute = TransactionsRouteImport.update({
   path: '/transactions',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WealthRoute = WealthRouteImport.update({
+  id: '/wealth',
+  path: '/wealth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -101,15 +119,18 @@ export interface FileRoutesByFullPath {
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
   '/funds': typeof FundsRoute
+  '/insights': typeof InsightsRoute
   '/investments': typeof InvestmentsRoute
   '/loans': typeof LoansRoute
   '/overview': typeof OverviewRoute
+  '/plan': typeof PlanRoute
   '/preferences': typeof PreferencesRoute
   '/profile': typeof ProfileRoute
   '/recurring': typeof RecurringRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
+  '/wealth': typeof WealthRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -117,15 +138,18 @@ export interface FileRoutesByTo {
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
   '/funds': typeof FundsRoute
+  '/insights': typeof InsightsRoute
   '/investments': typeof InvestmentsRoute
   '/loans': typeof LoansRoute
   '/overview': typeof OverviewRoute
+  '/plan': typeof PlanRoute
   '/preferences': typeof PreferencesRoute
   '/profile': typeof ProfileRoute
   '/recurring': typeof RecurringRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
+  '/wealth': typeof WealthRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -134,15 +158,18 @@ export interface FileRoutesById {
   '/accounts': typeof AccountsRoute
   '/categories': typeof CategoriesRoute
   '/funds': typeof FundsRoute
+  '/insights': typeof InsightsRoute
   '/investments': typeof InvestmentsRoute
   '/loans': typeof LoansRoute
   '/overview': typeof OverviewRoute
+  '/plan': typeof PlanRoute
   '/preferences': typeof PreferencesRoute
   '/profile': typeof ProfileRoute
   '/recurring': typeof RecurringRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
   '/transactions': typeof TransactionsRoute
+  '/wealth': typeof WealthRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -152,15 +179,18 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/categories'
     | '/funds'
+    | '/insights'
     | '/investments'
     | '/loans'
     | '/overview'
+    | '/plan'
     | '/preferences'
     | '/profile'
     | '/recurring'
     | '/reports'
     | '/settings'
     | '/transactions'
+    | '/wealth'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -168,15 +198,18 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/categories'
     | '/funds'
+    | '/insights'
     | '/investments'
     | '/loans'
     | '/overview'
+    | '/plan'
     | '/preferences'
     | '/profile'
     | '/recurring'
     | '/reports'
     | '/settings'
     | '/transactions'
+    | '/wealth'
   id:
     | '__root__'
     | '/'
@@ -184,15 +217,18 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/categories'
     | '/funds'
+    | '/insights'
     | '/investments'
     | '/loans'
     | '/overview'
+    | '/plan'
     | '/preferences'
     | '/profile'
     | '/recurring'
     | '/reports'
     | '/settings'
     | '/transactions'
+    | '/wealth'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -201,15 +237,18 @@ export interface RootRouteChildren {
   AccountsRoute: typeof AccountsRoute
   CategoriesRoute: typeof CategoriesRoute
   FundsRoute: typeof FundsRoute
+  InsightsRoute: typeof InsightsRoute
   InvestmentsRoute: typeof InvestmentsRoute
   LoansRoute: typeof LoansRoute
   OverviewRoute: typeof OverviewRoute
+  PlanRoute: typeof PlanRoute
   PreferencesRoute: typeof PreferencesRoute
   ProfileRoute: typeof ProfileRoute
   RecurringRoute: typeof RecurringRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
   TransactionsRoute: typeof TransactionsRoute
+  WealthRoute: typeof WealthRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -249,6 +288,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof FundsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/insights': {
+      id: '/insights'
+      path: '/insights'
+      fullPath: '/insights'
+      preLoaderRoute: typeof InsightsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/investments': {
       id: '/investments'
       path: '/investments'
@@ -268,6 +314,13 @@ declare module '@tanstack/react-router' {
       path: '/overview'
       fullPath: '/overview'
       preLoaderRoute: typeof OverviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan': {
+      id: '/plan'
+      path: '/plan'
+      fullPath: '/plan'
+      preLoaderRoute: typeof PlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/preferences': {
@@ -312,6 +365,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TransactionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/wealth': {
+      id: '/wealth'
+      path: '/wealth'
+      fullPath: '/wealth'
+      preLoaderRoute: typeof WealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -321,15 +381,18 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsRoute: AccountsRoute,
   CategoriesRoute: CategoriesRoute,
   FundsRoute: FundsRoute,
+  InsightsRoute: InsightsRoute,
   InvestmentsRoute: InvestmentsRoute,
   LoansRoute: LoansRoute,
   OverviewRoute: OverviewRoute,
+  PlanRoute: PlanRoute,
   PreferencesRoute: PreferencesRoute,
   ProfileRoute: ProfileRoute,
   RecurringRoute: RecurringRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
   TransactionsRoute: TransactionsRoute,
+  WealthRoute: WealthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

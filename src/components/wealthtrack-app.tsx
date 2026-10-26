@@ -51,6 +51,14 @@ import { ReportsPage } from "@/features/reports/ReportsPage";
 import { RecurringPage } from "@/features/recurring/RecurringPage";
 import { RecurringModal } from "@/features/recurring/RecurringModal";
 import { SettingsPage } from "@/features/settings/SettingsPage";
+import { WealthHub, type WealthSubtab } from "@/features/wealth/WealthHub";
+import { PlanHub, type PlanSubtab } from "@/features/plan/PlanHub";
+import { DataHealthModal } from "@/components/shared/DataHealthModal";
+import { GlobalAddSheet } from "@/components/shared/GlobalAddSheet";
+import { PeriodPill } from "@/components/shared/PeriodPill";
+import { useSharedPeriod } from "@/lib/period-state";
+import { getFeatureFlag } from "@/lib/feature-flags";
+import { entryToLegacyTransaction, migrateLegacyState } from "@/lib/migration";
 import { getWealthRepository } from "@/services/api";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
 import {
@@ -87,7 +95,7 @@ import {
   type WealthState,
 } from "@/lib/wealthtrack";
 
-const navItems: { label: Section; path: string; icon: typeof LayoutDashboard }[] = [
+const legacyNavItems: { label: Section; path: string; icon: typeof LayoutDashboard }[] = [
   { label: "Overview", path: "/", icon: LayoutDashboard },
   { label: "Transactions", path: "/transactions", icon: ArrowLeftRight },
   { label: "Accounts", path: "/accounts", icon: Wallet },
@@ -99,6 +107,14 @@ const navItems: { label: Section; path: string; icon: typeof LayoutDashboard }[]
   { label: "Reports", path: "/reports", icon: Activity },
 ];
 
+const v2NavItems: { label: Section; path: string; icon: typeof LayoutDashboard }[] = [
+  { label: "Overview", path: "/", icon: LayoutDashboard },
+  { label: "Transactions", path: "/transactions", icon: ArrowLeftRight },
+  { label: "Wealth", path: "/wealth", icon: Wallet },
+  { label: "Plan", path: "/plan", icon: ShieldCheck },
+  { label: "Reports", path: "/reports", icon: Activity },
+];
+
 function getInitials(email: string) {
   return email.split("@")[0]?.slice(0, 2).toUpperCase() || "WT";
 }
@@ -107,6 +123,9 @@ function normalizeSection(sec?: Section | string): Section {
   if (!sec) return "Overview";
   if (sec === "Funds" || sec === "fund-planner" || sec === "funds") return "Fund Planner";
   if (sec === "Settings") return "Preferences";
+  if (sec === "Insights" || sec === "reports" || sec === "insights") return "Reports";
+  if (sec === "wealth") return "Wealth";
+  if (sec === "plan") return "Plan";
   return sec as Section;
 }
 
@@ -134,23 +153,92 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
   const [data, setData] = useState<WealthState>(() => createInitialState());
   const [loaded, setLoaded] = useState(false);
+  const [hubsV2, setHubsV2] = useState<boolean>(() => getFeatureFlag("hubs_v2"));
+  const [wealthSubtab, setWealthSubtab] = useState<WealthSubtab>(() => {
+    if (typeof window !== "undefined") {
+      const p = window.location.pathname.replace(/^\//, "").toLowerCase();
+      if (p === "investments") return "investments";
+      if (p === "loans") return "loans";
+    }
+    return "accounts";
+  });
+  const [planSubtab, setPlanSubtab] = useState<PlanSubtab>(() => {
+    if (typeof window !== "undefined") {
+      const p = window.location.pathname.replace(/^\//, "").toLowerCase();
+      if (p === "funds" || p === "fund-planner") return "goals";
+      if (p === "recurring") return "recurring";
+    }
+    return "budgets";
+  });
+  const [globalAddOpen, setGlobalAddOpen] = useState(false);
+  const [dataHealthOpen, setDataHealthOpen] = useState(false);
+  const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
+
+  useEffect(() => {
+    const onFlagChange = (e: any) => {
+      if (e.detail?.flag === "hubs_v2") {
+        setHubsV2(Boolean(e.detail.enabled));
+      }
+    };
+    window.addEventListener("wt_feature_flags_changed", onFlagChange);
+    return () => window.removeEventListener("wt_feature_flags_changed", onFlagChange);
+  }, []);
+
   const [active, setActive] = useState<Section>(() => {
     if (initialSection) return normalizeSection(initialSection);
     if (typeof window !== "undefined") {
       const path = window.location.pathname.replace(/^\//, "").toLowerCase();
       if (path === "transactions") return "Transactions";
-      if (path === "accounts") return "Accounts";
-      if (path === "investments") return "Investments";
-      if (path === "loans") return "Loans";
-      if (path === "funds" || path === "fund-planner") return "Fund Planner";
-      if (path === "categories") return "Categories";
-      if (path === "reports") return "Reports";
-      if (path === "recurring") return "Recurring";
+      if (path === "wealth") return "Wealth";
+      if (path === "plan") return "Plan";
+      if (path === "accounts") return getFeatureFlag("hubs_v2") ? "Wealth" : "Accounts";
+      if (path === "investments") return getFeatureFlag("hubs_v2") ? "Wealth" : "Investments";
+      if (path === "loans") return getFeatureFlag("hubs_v2") ? "Wealth" : "Loans";
+      if (path === "funds" || path === "fund-planner") return getFeatureFlag("hubs_v2") ? "Plan" : "Fund Planner";
+      if (path === "categories") return getFeatureFlag("hubs_v2") ? "Plan" : "Categories";
+      if (path === "reports" || path === "insights") return "Reports";
+      if (path === "recurring") return getFeatureFlag("hubs_v2") ? "Plan" : "Recurring";
       if (path === "profile") return "Profile";
       if (path === "preferences" || path === "settings") return "Preferences";
     }
     return "Overview";
   });
+
+  const unified = useMemo(() => migrateLegacyState(data), [data]);
+
+  const handleSaveGlobalEntry = (entry: any, newSchedule?: any) => {
+    const legacyTx = entryToLegacyTransaction(entry);
+    setData((current) => {
+      const nextTx = [legacyTx, ...current.transactions];
+      let nextRec = current.recurring;
+      if (newSchedule) {
+        nextRec = [
+          ...current.recurring,
+          {
+            id: newSchedule.id,
+            name: newSchedule.name,
+            type: newSchedule.kind === "income" ? "Income" : "Expense",
+            amount: newSchedule.amount,
+            categoryId: newSchedule.category,
+            accountId: newSchedule.account,
+            frequency: newSchedule.frequency,
+            intervalDays: 0,
+            startDate: newSchedule.next_date,
+            endDate: "",
+            nextDate: newSchedule.next_date,
+            enabled: newSchedule.active,
+          },
+        ];
+      }
+      return {
+        ...current,
+        transactions: nextTx,
+        recurring: nextRec,
+      };
+    });
+    setGlobalAddOpen(false);
+    toast.success("Transaction recorded");
+  };
 
   // Auth States
   const [authView, setAuthView] = useState<AuthView>("signin");
@@ -337,11 +425,53 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     const handlePopState = () => {
       const path = window.location.pathname.replace(/^\//, "").toLowerCase();
       if (path === "transactions") setActive("Transactions");
-      else if (path === "accounts") setActive("Accounts");
-      else if (path === "categories") setActive("Categories");
-      else if (path === "reports") setActive("Reports");
-      else if (path === "recurring") setActive("Recurring");
-      else if (path === "settings") setActive("Settings");
+      else if (path === "wealth") setActive("Wealth");
+      else if (path === "plan") setActive("Plan");
+      else if (path === "accounts") {
+        if (hubsV2) {
+          setActive("Wealth");
+          setWealthSubtab("accounts");
+        } else {
+          setActive("Accounts");
+        }
+      } else if (path === "investments") {
+        if (hubsV2) {
+          setActive("Wealth");
+          setWealthSubtab("investments");
+        } else {
+          setActive("Investments");
+        }
+      } else if (path === "loans") {
+        if (hubsV2) {
+          setActive("Wealth");
+          setWealthSubtab("loans");
+        } else {
+          setActive("Loans");
+        }
+      } else if (path === "categories") {
+        if (hubsV2) {
+          setActive("Plan");
+          setPlanSubtab("budgets");
+        } else {
+          setActive("Categories");
+        }
+      } else if (path === "funds" || path === "fund-planner") {
+        if (hubsV2) {
+          setActive("Plan");
+          setPlanSubtab("goals");
+        } else {
+          setActive("Fund Planner");
+        }
+      } else if (path === "recurring") {
+        if (hubsV2) {
+          setActive("Plan");
+          setPlanSubtab("recurring");
+        } else {
+          setActive("Recurring");
+        }
+      } else if (path === "reports" || path === "insights") setActive("Reports");
+      else if (path === "settings" || path === "preferences") setActive("Preferences");
+      else if (path === "profile") setActive("Profile");
       else setActive("Overview");
     };
     window.addEventListener("popstate", handlePopState);
@@ -810,7 +940,30 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
   // Navigation Handler
   const goSection = (section: Section) => {
-    const targetSection = normalizeSection(section);
+    let targetSection = normalizeSection(section);
+    if (hubsV2) {
+      if (targetSection === "Accounts") {
+        setWealthSubtab("accounts");
+        targetSection = "Wealth";
+      } else if (targetSection === "Investments") {
+        setWealthSubtab("investments");
+        targetSection = "Wealth";
+      } else if (targetSection === "Loans") {
+        setWealthSubtab("loans");
+        targetSection = "Wealth";
+      } else if (targetSection === "Categories") {
+        setPlanSubtab("budgets");
+        targetSection = "Plan";
+      } else if (targetSection === "Fund Planner" || (targetSection as string) === "Funds") {
+        setPlanSubtab("goals");
+        targetSection = "Plan";
+      } else if (targetSection === "Recurring") {
+        setPlanSubtab("recurring");
+        targetSection = "Plan";
+      } else if (targetSection === "Reports" || targetSection === "Insights") {
+        targetSection = "Reports";
+      }
+    }
     setActive(targetSection);
     setMobileNav(false);
     setSelectedTransaction(null);
@@ -821,6 +974,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           ? "/"
           : targetSection === "Fund Planner" || (targetSection as string) === "Funds"
           ? "/funds"
+          : targetSection === "Reports" || targetSection === "Insights"
+          ? "/reports"
           : `/${targetSection.toLowerCase()}`;
       if (window.location.pathname !== targetPath) {
         window.history.pushState(null, "", targetPath);
@@ -1314,6 +1469,28 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     });
     setModal(null);
     toast.success(editingRecurring ? "Schedule updated" : "Recurring schedule added");
+  };
+
+  const handleToggleRecurring = (item: RecurringItem) => {
+    setData((current) => {
+      const nextEnabled = !item.enabled;
+      const nextRecurring = current.recurring.map((row) =>
+        row.id === item.id ? { ...row, enabled: nextEnabled } : row
+      );
+      let nextInvestments = current.investments ?? [];
+      if (item.investmentId) {
+        nextInvestments = nextInvestments.map((inv) =>
+          inv.id === item.investmentId
+            ? { ...inv, status: nextEnabled ? "Active" : "Paused" }
+            : inv
+        );
+      }
+      return {
+        ...current,
+        recurring: nextRecurring,
+        investments: nextInvestments,
+      };
+    });
   };
 
   const recordRecurringNow = (item: RecurringItem) => {
@@ -1843,9 +2020,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               Workspace
             </p>
             <nav className="mt-3 space-y-1">
-              {navItems.map(({ label, icon: Icon }) => {
+              {(hubsV2 ? v2NavItems : legacyNavItems).map(({ label, icon: Icon }) => {
                 const isItemActive =
                   active === label ||
+                  (label === "Wealth" && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active))) ||
+                  (label === "Plan" && (active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active))) ||
                   (label === "Fund Planner" && (active === "Funds" || active === "Fund Planner")) ||
                   (label === "Preferences" && (active === "Preferences" || (active as string) === "Settings"));
 
@@ -1895,7 +2074,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 <span className="font-semibold text-muted-foreground/80">WealthTrack</span>
                 <span className="text-muted-foreground/40 font-bold">/</span>
                 <span className="font-bold text-foreground">
-                  {active === "Overview" ? "Dashboard" : active}
+                  {active === "Overview"
+                    ? "Dashboard"
+                    : active === "Wealth"
+                    ? `Wealth › ${wealthSubtab.charAt(0).toUpperCase() + wealthSubtab.slice(1)}`
+                    : active === "Plan"
+                    ? `Plan › ${planSubtab.charAt(0).toUpperCase() + planSubtab.slice(1)}`
+                    : active}
                 </span>
               </div>
             </div>
@@ -1904,7 +2089,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <div className="relative hidden sm:block">
                 <button
                   type="button"
-                  className="flex h-9 w-60 items-center justify-between rounded-xl border border-border/80 bg-muted/40 hover:bg-muted/70 px-3 text-left text-xs text-muted-foreground transition-all shadow-2xs group"
+                  className="flex h-9 w-52 items-center justify-between rounded-xl border border-border/80 bg-muted/40 hover:bg-muted/70 px-3 text-left text-xs text-muted-foreground transition-all shadow-2xs group"
                   onClick={() => setSearchOpen(true)}
                 >
                   <div className="flex items-center gap-2 min-w-0">
@@ -1915,6 +2100,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     ⌘K
                   </kbd>
                 </button>
+              </div>
+
+              {/* Shared Period Pill in Header */}
+              <div className="hidden md:flex items-center">
+                <PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />
               </div>
               <Button
                 variant="ghost"
@@ -2103,6 +2293,26 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                         variant="ghost"
                         className="w-full justify-start text-xs font-semibold"
                         onClick={() => {
+                          setDataHealthOpen(true);
+                          setProfileOpen(false);
+                        }}
+                      >
+                        <ShieldCheck size={15} className="mr-2 text-emerald-500" /> Data Health (I1–I16)
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-xs font-semibold"
+                        onClick={() => {
+                          goSection("Reports");
+                          setProfileOpen(false);
+                        }}
+                      >
+                        <Activity size={15} className="mr-2 text-primary" /> Financial Insights
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-xs font-semibold"
+                        onClick={() => {
                           toast("WealthTrack Local Workspace", {
                             description:
                               "Your financial data remains strictly in your browser.",
@@ -2138,8 +2348,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <Dashboard
                 data={data}
                 money={money}
-                dateRange={dateRange}
-                setDateRange={setDateRange}
                 onAdd={beginTransaction}
                 onTransferClick={() => openTransferModal()}
                 onNavigate={goSection}
@@ -2199,7 +2407,76 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {active === "Accounts" && (
+            {/* When hubsV2 is active, render WealthHub */}
+            {hubsV2 && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active)) && (
+              <WealthHub
+                initialSubtab={wealthSubtab}
+                data={data}
+                money={money}
+                selectedAccount={selectedAccount}
+                setSelectedAccount={setSelectedAccount}
+                onAddAccount={() => openAccountForm()}
+                onEditAccount={openAccountForm}
+                onTransfer={(account) => openTransferModal(account.id)}
+                onReconcile={handleReconcileAccount}
+                onArchiveAccount={(account) => requestDelete("account", account.id, account.name)}
+                onSelectTransaction={setSelectedTransaction}
+                onAddTransaction={(accountId) => beginTransaction({ accountId })}
+                onEditTransaction={(item) => beginTransaction(undefined, item)}
+                onDeleteTransaction={(item) => requestDelete("transaction", item.id, item.description, item.amount)}
+                onBulkDeleteTransactions={(ids?: string[]) => {
+                  const targetIds = ids && ids.length > 0 ? ids : selectedIds;
+                  if (!targetIds.length) return;
+                  setPendingDelete({
+                    kind: "bulk",
+                    ids: targetIds,
+                    label: `Delete ${targetIds.length} selected transaction${targetIds.length > 1 ? "s" : ""}?`,
+                  });
+                  setModal("confirm");
+                }}
+                onNavigate={goSection}
+                onAddHolding={handleAddHolding}
+                onEditHolding={handleEditHolding}
+                onDeleteHolding={handleDeleteHolding}
+                onToggleSip={handleToggleHoldingSip}
+                onAddLoan={handleAddLoan}
+                onEditLoan={handleEditLoan}
+                onDeleteLoan={handleDeleteLoan}
+                onRecordEmiPayment={handleRecordLoanEmiPayment}
+              />
+            )}
+
+            {/* When hubsV2 is active, render PlanHub */}
+            {hubsV2 && (active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active)) && (
+              <PlanHub
+                initialSubtab={planSubtab}
+                data={data}
+                money={money}
+                categoryTab={categoryTab}
+                setCategoryTab={setCategoryTab}
+                onAddCategory={() => openCategoryForm(undefined, categoryTab === "Income" ? "Income" : "Expense")}
+                onEditCategory={openCategoryForm}
+                onDeleteCategory={(category) => requestDelete("category", category.id, category.name)}
+                onSaveFund={handleSaveFund}
+                onDeleteFund={handleDeleteFund}
+                onSavePlan={handleSavePlan}
+                onDeletePlan={handleDeletePlan}
+                onQuickDepositFund={handleQuickDepositFund}
+                onSkipFundMonth={handleSkipFundMonth}
+                onAddRecurring={() => {
+                  setEditingRecurring(null);
+                  setModal("recurring");
+                }}
+                onEditRecurring={(item) => {
+                  setEditingRecurring(item);
+                  setModal("recurring");
+                }}
+                onDeleteRecurring={(item) => requestDelete("recurring", item.id, item.name, item.amount)}
+                onToggleRecurring={handleToggleRecurring}
+              />
+            )}
+
+            {!hubsV2 && active === "Accounts" && (
               <AccountsPage
                 data={data}
                 money={money}
@@ -2228,7 +2505,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {active === "Investments" && (
+            {!hubsV2 && active === "Investments" && (
               <InvestmentsPage
                 data={data}
                 money={money}
@@ -2239,7 +2516,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {active === "Loans" && (
+            {!hubsV2 && active === "Loans" && (
               <LoansPage
                 data={data}
                 money={money}
@@ -2250,7 +2527,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {(active === "Fund Planner" || (active as string) === "Funds") && (
+            {!hubsV2 && (active === "Fund Planner" || (active as string) === "Funds") && (
               <FundsPage
                 data={data}
                 money={money}
@@ -2263,7 +2540,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {active === "Categories" && (
+            {!hubsV2 && active === "Categories" && (
               <CategoriesPage
                 data={data}
                 kind={categoryTab}
@@ -2275,7 +2552,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {active === "Reports" && (
+            {(active === "Reports" || active === "Insights") && (
               <ReportsPage
                 data={data}
                 rows={reportTransactions}
@@ -2290,7 +2567,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {active === "Recurring" && (
+            {!hubsV2 && active === "Recurring" && (
               <RecurringPage
                 data={data}
                 money={money}
@@ -2303,29 +2580,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   setModal("recurring");
                 }}
                 onDelete={(item) => requestDelete("recurring", item.id, item.name, item.amount)}
-                onToggle={(item) =>
-                  setData((current) => {
-                    const nextEnabled = !item.enabled;
-                    const nextRecurring = current.recurring.map((row) =>
-                      row.id === item.id ? { ...row, enabled: nextEnabled } : row
-                    );
-                    let nextInvestments = current.investments;
-                    if (item.type === "Investment" || item.investmentId) {
-                      nextInvestments = (current.investments ?? []).map((inv) =>
-                        inv.id === item.investmentId ||
-                        inv.recurringId === item.id ||
-                        inv.name.toLowerCase() === item.name.toLowerCase()
-                          ? { ...inv, status: nextEnabled ? "Active" : "Paused" }
-                          : inv
-                      );
-                    }
-                    return {
-                      ...current,
-                      recurring: nextRecurring,
-                      investments: nextInvestments,
-                    };
-                  })
-                }
+                onToggle={handleToggleRecurring}
               />
             )}
 
@@ -2408,61 +2663,146 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       </div>
 
       {/* Mobile Bottom Navigation Bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg">
-        {[
-          { label: "Home", section: "Overview" as Section, icon: LayoutDashboard },
-          { label: "Transactions", section: "Transactions" as Section, icon: ArrowLeftRight },
-          { label: "Accounts", section: "Accounts" as Section, icon: Wallet },
-          { label: "Investments", section: "Investments" as Section, icon: TrendingUp },
-        ].map(({ label, section, icon: Icon }) => {
-          const isItemActive = active === section;
-          return (
-            <button
-              key={section}
-              type="button"
-              aria-label={label}
-              className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
-                isItemActive
-                  ? "text-primary font-bold"
-                  : "text-muted-foreground hover:text-foreground font-medium"
-              }`}
-              onClick={() => {
-                setMobileNav(false);
-                goSection(section);
-              }}
-            >
-              <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-                isItemActive ? "bg-primary/10 text-primary" : ""
-              }`}>
-                <Icon size={18} className={isItemActive ? "stroke-[2.3]" : "stroke-[1.8]"} />
-              </span>
-              <span className="text-[10px] leading-none tracking-tight">{label}</span>
-            </button>
-          );
-        })}
-        {(() => {
-          const isMoreActive = !["Overview", "Transactions", "Accounts", "Investments"].includes(active);
-          return (
-            <button
-              type="button"
-              aria-label="More features and settings"
-              className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
-                isMoreActive
-                  ? "text-primary font-bold"
-                  : "text-muted-foreground hover:text-foreground font-medium"
-              }`}
-              onClick={() => setMobileNav(true)}
-            >
-              <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-                isMoreActive ? "bg-primary/10 text-primary" : ""
-              }`}>
-                <MoreHorizontal size={18} className={isMoreActive ? "stroke-[2.3]" : "stroke-[1.8]"} />
-              </span>
-              <span className="text-[10px] leading-none tracking-tight">More</span>
-            </button>
-          );
-        })()}
-      </nav>
+      {hubsV2 ? (
+        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center">
+          <button
+            type="button"
+            aria-label="Home"
+            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+              active === "Overview" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
+            }`}
+            onClick={() => goSection("Overview")}
+          >
+            <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+              active === "Overview" ? "bg-primary/10 text-primary" : ""
+            }`}>
+              <LayoutDashboard size={18} className={active === "Overview" ? "stroke-[2.3]" : "stroke-[1.8]"} />
+            </span>
+            <span className="text-[10px] leading-none tracking-tight">Home</span>
+          </button>
+
+          <button
+            type="button"
+            aria-label="Transactions"
+            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+              active === "Transactions" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
+            }`}
+            onClick={() => goSection("Transactions")}
+          >
+            <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+              active === "Transactions" ? "bg-primary/10 text-primary" : ""
+            }`}>
+              <ArrowLeftRight size={18} className={active === "Transactions" ? "stroke-[2.3]" : "stroke-[1.8]"} />
+            </span>
+            <span className="text-[10px] leading-none tracking-tight">Transactions</span>
+          </button>
+
+          {/* Center Elevated [+] Add Button */}
+          <button
+            type="button"
+            aria-label="Add transaction"
+            onClick={() => setGlobalAddOpen(true)}
+            className="flex flex-col items-center justify-center -mt-3.5 py-0.5 group cursor-pointer"
+          >
+            <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/30 group-active:scale-95 transition-transform">
+              <Plus size={22} className="stroke-[2.5]" />
+            </span>
+            <span className="text-[10px] font-bold text-foreground mt-0.5">Add</span>
+          </button>
+
+          <button
+            type="button"
+            aria-label="Wealth"
+            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+              active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active)
+                ? "text-primary font-bold"
+                : "text-muted-foreground hover:text-foreground font-medium"
+            }`}
+            onClick={() => goSection("Wealth")}
+          >
+            <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+              active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active) ? "bg-primary/10 text-primary" : ""
+            }`}>
+              <Wallet size={18} className={active === "Wealth" ? "stroke-[2.3]" : "stroke-[1.8]"} />
+            </span>
+            <span className="text-[10px] leading-none tracking-tight">Wealth</span>
+          </button>
+
+          <button
+            type="button"
+            aria-label="Plan"
+            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+              active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active)
+                ? "text-primary font-bold"
+                : "text-muted-foreground hover:text-foreground font-medium"
+            }`}
+            onClick={() => goSection("Plan")}
+          >
+            <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+              active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active) ? "bg-primary/10 text-primary" : ""
+            }`}>
+              <ShieldCheck size={18} className={active === "Plan" ? "stroke-[2.3]" : "stroke-[1.8]"} />
+            </span>
+            <span className="text-[10px] leading-none tracking-tight">Plan</span>
+          </button>
+        </nav>
+      ) : (
+        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg">
+          {[
+            { label: "Home", section: "Overview" as Section, icon: LayoutDashboard },
+            { label: "Transactions", section: "Transactions" as Section, icon: ArrowLeftRight },
+            { label: "Accounts", section: "Accounts" as Section, icon: Wallet },
+            { label: "Investments", section: "Investments" as Section, icon: TrendingUp },
+          ].map(({ label, section, icon: Icon }) => {
+            const isItemActive = active === section;
+            return (
+              <button
+                key={section}
+                type="button"
+                aria-label={label}
+                className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+                  isItemActive
+                    ? "text-primary font-bold"
+                    : "text-muted-foreground hover:text-foreground font-medium"
+                }`}
+                onClick={() => {
+                  setMobileNav(false);
+                  goSection(section);
+                }}
+              >
+                <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+                  isItemActive ? "bg-primary/10 text-primary" : ""
+                }`}>
+                  <Icon size={18} className={isItemActive ? "stroke-[2.3]" : "stroke-[1.8]"} />
+                </span>
+                <span className="text-[10px] leading-none tracking-tight">{label}</span>
+              </button>
+            );
+          })}
+          {(() => {
+            const isMoreActive = !["Overview", "Transactions", "Accounts", "Investments"].includes(active);
+            return (
+              <button
+                type="button"
+                aria-label="More features and settings"
+                className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+                  isMoreActive
+                    ? "text-primary font-bold"
+                    : "text-muted-foreground hover:text-foreground font-medium"
+                }`}
+                onClick={() => setMobileNav(true)}
+              >
+                <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+                  isMoreActive ? "bg-primary/10 text-primary" : ""
+                }`}>
+                  <MoreHorizontal size={18} className={isMoreActive ? "stroke-[2.3]" : "stroke-[1.8]"} />
+                </span>
+                <span className="text-[10px] leading-none tracking-tight">More</span>
+              </button>
+            );
+          })()}
+        </nav>
+      )}
 
       {/* Mobile "More" Drawer Sheet */}
       {mobileNav && (
@@ -2771,6 +3111,25 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           onDelete={(item) => requestDelete("transaction", item.id, item.description, item.amount)}
         />
       )}
+
+      {/* Unified Global Add Sheet */}
+      <GlobalAddSheet
+        isOpen={globalAddOpen}
+        onClose={() => setGlobalAddOpen(false)}
+        accounts={unified.accounts}
+        categories={unified.categories}
+        holdings={unified.holdings}
+        loans={unified.loans}
+        defaultAccount={data.preferences.defaultAccount}
+        onSaveEntry={handleSaveGlobalEntry}
+      />
+
+      {/* System Data Health Verification Modal */}
+      <DataHealthModal
+        isOpen={dataHealthOpen}
+        onClose={() => setDataHealthOpen(false)}
+        data={data}
+      />
     </div>
   );
 }

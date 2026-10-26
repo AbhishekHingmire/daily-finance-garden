@@ -1,8 +1,10 @@
+import { useState } from "react";
 import {
   Bell,
   Download,
   FileUp,
   Globe,
+  Layers,
   LogOut,
   Plus,
   RotateCcw,
@@ -14,6 +16,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { PageHeading } from "@/components/shared/PageHeading";
+import { getFeatureFlag, setFeatureFlag } from "@/lib/feature-flags";
 import type { CustomField, WealthPreferences, WealthState } from "@/lib/wealthtrack";
 
 export function PreferencesPage({
@@ -53,6 +56,7 @@ export function PreferencesPage({
   onTagAdd?: () => void;
   onTagDelete?: (tag: string) => void;
 }) {
+  const [hubsV2, setLocalHubsV2] = useState(() => getFeatureFlag("hubs_v2"));
   const tabs = [
     "General & Regional",
     "Alerts & Notifications",
@@ -342,6 +346,38 @@ export function PreferencesPage({
                 <LogOut size={15} /> Sign Out
               </Button>
             </div>
+          </div>
+
+          {/* Navigation Architecture (hubs_v2) */}
+          <div className="space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-border/50 pb-3">
+              <Layers className="size-4 text-primary" />
+              <h3 className="text-sm font-semibold text-foreground">Navigation Architecture & Design System</h3>
+            </div>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              WealthTrack features a consolidated 5-hub navigation structure (Overview, Transactions, Wealth Hub, Plan Hub, Insights)
+              with bottom mobile bar and global transaction capture.
+            </p>
+            <label className="flex items-center justify-between rounded-lg border border-border/60 p-3 hover:bg-muted/30 transition-colors cursor-pointer max-w-xl">
+              <div>
+                <span className="block text-xs font-semibold text-foreground">
+                  Hubs v2 Navigation Mode
+                </span>
+                <span className="block text-[11px] text-muted-foreground">
+                  Consolidate Accounts, Investments, Loans into Wealth Hub, and Budgets, Goals, Recurring into Plan Hub.
+                </span>
+              </div>
+              <input
+                type="checkbox"
+                className="size-4 rounded accent-primary cursor-pointer"
+                checked={hubsV2}
+                onChange={(e) => {
+                  const val = e.target.checked;
+                  setLocalHubsV2(val);
+                  setFeatureFlag("hubs_v2", val);
+                }}
+              />
+            </label>
           </div>
         </div>
       )}
