@@ -40,7 +40,7 @@ export function ActionMenu({
           <MoreHorizontal size={16} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align={align} className={`w-48 z-toast ${contentClassName || ""}`}>
+      <DropdownMenuContent align={align} className={`w-48 z-popover ${contentClassName || ""}`}>
         {items.map((item, idx) => (
           <DropdownMenuItem
             key={idx}

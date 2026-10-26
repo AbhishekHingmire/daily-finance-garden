@@ -373,9 +373,9 @@ export function TransactionTable({
                 <span className="text-xs font-medium text-muted-foreground whitespace-nowrap">
                   {sortedTransactions.length} tx{sortedTransactions.length !== 1 ? "s" : ""}
                 </span>
-                <span className="text-muted-foreground/40 hidden sm:inline">·</span>
+                <span className="text-muted-foreground/40 hidden md:inline">·</span>
                 <div
-                  className="inline-flex items-center flex-wrap gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tabular-nums border border-border/80 bg-muted/30 text-foreground shrink-0"
+                  className="hidden md:inline-flex items-center flex-wrap gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold tabular-nums border border-border/80 bg-muted/30 text-foreground shrink-0"
                 >
                   <span>In {money(totalInflow)}</span>
                   <span className="text-muted-foreground/40">·</span>

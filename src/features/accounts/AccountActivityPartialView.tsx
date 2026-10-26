@@ -112,7 +112,7 @@ export function AccountActivityPartialView({
       id="account-activity-partial-view"
       className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 backdrop-blur-xs p-4 animate-in fade-in-50 duration-200"
     >
-      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto wt-scrollbar rounded-3xl border border-border bg-card p-6 shadow-2xl space-y-6">
+      <div className="relative w-full max-w-4xl max-h-[90vh] overflow-y-auto wt-scrollbar rounded-2xl sm:rounded-3xl border border-border bg-card p-4 sm:p-6 shadow-2xl space-y-4 sm:space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-border/80 pb-4">
           <div className="flex items-center gap-3.5">

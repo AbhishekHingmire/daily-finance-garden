@@ -153,25 +153,46 @@ export function Dashboard({
         tabIndex={0}
         onClick={() => onNavigate("Wealth")}
         onKeyDown={(e) => e.key === "Enter" && onNavigate("Wealth")}
-        className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card to-primary/5 p-5 sm:p-6 shadow-sm hover:border-primary/50 transition-all text-left"
+        className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/80 bg-card hover:bg-card/90 p-4 sm:p-5 shadow-xs hover:border-primary/50 transition-all text-left"
       >
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2">
+        <div className="flex flex-col gap-3">
+          {/* Top header row: Label on left, View Wealth on right */}
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
                 Cash available
               </span>
-              <span className="text-xs text-muted-foreground">in bank, cash & wallets</span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">in bank, cash & wallets</span>
             </div>
 
-            <div className="flex items-baseline gap-3">
-              <span className="text-3xl sm:text-4xl font-black text-foreground tracking-tight tabular-nums">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onNavigate("Wealth");
+              }}
+              className="h-7 px-2.5 gap-1 text-xs font-semibold text-primary hover:text-primary hover:bg-primary/10 transition-colors"
+            >
+              <span>View Wealth</span>
+              <ArrowRight size={13} />
+            </Button>
+          </div>
+
+          {/* Main Content: Hero Amount + Inline Metrics Strip */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 lg:gap-6 pt-0.5">
+            {/* Hero Number */}
+            <div className="flex items-baseline gap-2 shrink-0">
+              <span className="text-2xl sm:text-3xl lg:text-4xl font-black text-foreground tracking-tight tabular-nums">
                 <Metric id="cash" value={wealthMetrics.liquidCash} />
               </span>
+              <span className="text-xs text-muted-foreground sm:hidden">in bank & cash</span>
             </div>
 
-            <div className="flex items-center gap-3 text-xs pt-0.5">
+            {/* Inline Stats & Status Strip */}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 text-xs">
+              {/* Total Assets / Wealth Link */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -181,11 +202,16 @@ export function Dashboard({
                         e.stopPropagation();
                         onNavigate("Wealth");
                       }}
-                      className="inline-flex items-center gap-1 font-semibold text-primary hover:underline cursor-pointer"
+                      className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-muted/30 px-2.5 py-1 text-xs font-semibold text-foreground hover:bg-muted/60 transition-colors cursor-pointer"
                     >
-                      <span>Net worth</span>
-                      <Metric id="net_worth" value={wealthMetrics.netWorth} />
-                      <ChevronRight size={13} />
+                      <span className="text-muted-foreground font-medium">Total Assets:</span>
+                      <strong className="text-foreground">
+                        <Metric id="total_assets" value={wealthMetrics.totalAssets} />
+                      </strong>
+                      <span className="sr-only">
+                        <Metric id="net_worth" value={wealthMetrics.netWorth} />
+                      </span>
+                      <ChevronRight size={13} className="text-muted-foreground" />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs text-xs space-y-1 p-2.5">
@@ -196,64 +222,47 @@ export function Dashboard({
                     <p className="text-muted-foreground">
                       Loans: <strong className="text-foreground"><Metric id="total_debt" value={wealthMetrics.totalDebt} /></strong>
                     </p>
-                    <p className="text-[10px] text-muted-foreground pt-1 border-t border-border/50">
-                      Shows your actual current wealth. Loans are tracked as active liabilities and debt obligations.
-                    </p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
-              <span className="text-muted-foreground/50">·</span>
-              <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
-                <span>Total Assets</span>
-                <span className="font-bold text-foreground tabular-nums">
-                  <Metric id="total_assets" value={wealthMetrics.totalAssets} />
-                </span>
-              </div>
-            </div>
 
-            {/* Second line: Set aside vs Free to spend */}
-            <div className="flex items-center gap-2 pt-1 text-xs">
-              {earmarksExceedCash ? (
-                <span className="text-muted-foreground font-medium">
-                  Free to spend <strong className="text-foreground"><Metric id="free_to_spend" value={0} /></strong> ·{" "}
-                  <span className="text-amber-700 dark:text-amber-400 font-bold">
-                    short {money(wealthMetrics.earmarkedCash - wealthMetrics.liquidCash)}
-                  </span>
-                </span>
-              ) : (
-                <>
-                  <span className="text-muted-foreground">
-                    <strong className="text-foreground">
-                      <Metric id="goals_set_aside" value={wealthMetrics.earmarkedCash} />
-                    </strong> set aside for goals
-                  </span>
-                  <span className="text-muted-foreground/50">·</span>
-                  <span className="text-muted-foreground">
+              {/* Free to spend / Goals set aside */}
+              <div className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-muted/30 px-2.5 py-1 text-xs font-medium">
+                {earmarksExceedCash ? (
+                  <>
+                    <span className="text-muted-foreground">Free to spend:</span>
+                    <strong className="text-foreground"><Metric id="free_to_spend" value={0} /></strong>
+                    <span className="text-amber-700 dark:text-amber-400 font-bold">
+                      · short {money(wealthMetrics.earmarkedCash - wealthMetrics.liquidCash)}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-muted-foreground">Free to spend:</span>
                     <strong className="text-foreground">
                       <Metric id="free_to_spend" value={wealthMetrics.freeToSpend} />
-                    </strong> free to spend
-                  </span>
-                </>
+                    </strong>
+                    <span className="text-muted-foreground/60">·</span>
+                    <span className="text-muted-foreground">
+                      <Metric id="goals_set_aside" value={wealthMetrics.earmarkedCash} /> for goals
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* Goals Alert or Covered Status Chip */}
+              {earmarksExceedCash ? (
+                <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-xs text-amber-700 dark:text-amber-400 font-semibold">
+                  <AlertTriangle size={13} className="shrink-0" />
+                  <span>Goals need {money(wealthMetrics.earmarkedCash - wealthMetrics.liquidCash)} more</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+                  <CheckCircle2 size={13} className="shrink-0" />
+                  <span>Goals fully covered</span>
+                </div>
               )}
             </div>
-
-            {earmarksExceedCash && (
-              <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-xs text-amber-700 dark:text-amber-400 mt-2 font-semibold">
-                <AlertTriangle size={14} /> Your goals add up to{" "}
-                {money(wealthMetrics.earmarkedCash - wealthMetrics.liquidCash)} more than your cash.
-              </div>
-            )}
-          </div>
-
-          <div className="flex sm:items-center justify-end shrink-0 border-t border-border/60 pt-3 sm:border-t-0 sm:pt-0">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs font-semibold group-hover:bg-primary group-hover:text-primary-foreground transition-colors self-start sm:self-auto"
-            >
-              <span>View Wealth</span>
-              <ArrowRight size={13} />
-            </Button>
           </div>
         </div>
       </div>
