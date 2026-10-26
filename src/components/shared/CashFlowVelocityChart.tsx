@@ -6,6 +6,7 @@ import {
   FULL_MONTH_NAMES,
 } from "@/components/shared/DateRangeFilter";
 import type { Transaction } from "@/lib/wealthtrack";
+import { formatChartTick } from "@/lib/formatters";
 
 export interface CashFlowVelocityChartProps {
   transactions: Transaction[];
@@ -245,12 +246,12 @@ export function CashFlowVelocityChart({
 
   const yAxisTicks = useMemo(() => {
     return [
-      { value: ceilMax, label: money(ceilMax) },
-      { value: Math.round(ceilMax * 0.66), label: money(Math.round(ceilMax * 0.66)) },
-      { value: Math.round(ceilMax * 0.33), label: money(Math.round(ceilMax * 0.33)) },
-      { value: 0, label: money(0) },
+      { value: ceilMax, label: formatChartTick(ceilMax) },
+      { value: Math.round(ceilMax * 0.66), label: formatChartTick(Math.round(ceilMax * 0.66)) },
+      { value: Math.round(ceilMax * 0.33), label: formatChartTick(Math.round(ceilMax * 0.33)) },
+      { value: 0, label: formatChartTick(0) },
     ];
-  }, [ceilMax, money]);
+  }, [ceilMax]);
 
   // Active item for inspection readout
   const activeItem = useMemo(() => {

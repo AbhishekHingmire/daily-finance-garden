@@ -12,6 +12,7 @@ import {
   type Loan,
   type Schedule,
 } from "./domain-model";
+import { formatMoney } from "./formatters";
 import {
   getAccountBalances,
   getBudgetMetrics,
@@ -67,8 +68,8 @@ export function runDataHealthChecks(
     id: "I1",
     name: "Liquid Cash Reconciliation",
     passed: i1Passed,
-    actual: `₹${sumLiquid.toLocaleString("en-IN")}`,
-    expected: `₹${wealthMetrics.liquidCash.toLocaleString("en-IN")}`,
+    actual: formatMoney(sumLiquid),
+    expected: formatMoney(wealthMetrics.liquidCash),
     message: i1Passed ? "All liquid account balances reconcile exactly" : "Mismatch between liquid accounts and hero cash",
   });
 
@@ -79,8 +80,8 @@ export function runDataHealthChecks(
     id: "I2",
     name: "Net Worth Single Source of Truth",
     passed: i2Passed,
-    actual: `₹${wealthMetrics.netWorth.toLocaleString("en-IN")}`,
-    expected: `₹${expectedNetWorth.toLocaleString("en-IN")}`,
+    actual: formatMoney(wealthMetrics.netWorth),
+    expected: formatMoney(expectedNetWorth),
     message: i2Passed ? "Net worth definition matches Total Assets - Total Debt" : "Net worth formula discrepancy",
   });
 
@@ -97,8 +98,8 @@ export function runDataHealthChecks(
     id: "I3",
     name: "Category Totals vs Money In/Out",
     passed: i3Passed,
-    actual: `In: ₹${sumIncomeCats.toLocaleString("en-IN")}, Out: ₹${sumExpenseCats.toLocaleString("en-IN")}`,
-    expected: `In: ₹${periodMetrics.moneyIn.toLocaleString("en-IN")}, Out: ₹${periodMetrics.moneyOut.toLocaleString("en-IN")}`,
+    actual: `In: ${formatMoney(sumIncomeCats)}, Out: ${formatMoney(sumExpenseCats)}`,
+    expected: `In: ${formatMoney(periodMetrics.moneyIn)}, Out: ${formatMoney(periodMetrics.moneyOut)}`,
     message: i3Passed ? "Category totals equal Money In and Money Out" : "Category sums diverge from period totals",
   });
 
@@ -137,8 +138,8 @@ export function runDataHealthChecks(
     id: "I10",
     name: "Where Savings Went Identity",
     passed: i10Passed,
-    actual: `₹${periodMetrics.whereSavingsWent.total.toLocaleString("en-IN")}`,
-    expected: `₹${periodMetrics.saved.toLocaleString("en-IN")}`,
+    actual: formatMoney(periodMetrics.whereSavingsWent.total),
+    expected: formatMoney(periodMetrics.saved),
     message: i10Passed ? "Deployments equal net savings exactly" : "Savings destination gap detected",
   });
 
@@ -148,8 +149,8 @@ export function runDataHealthChecks(
     id: "I12",
     name: "Monthly Commitments Consistency",
     passed: i12Passed,
-    actual: `₹${commitments.total.toLocaleString("en-IN")}`,
-    expected: `₹${(commitments.billsRecurring + commitments.emis + commitments.sips + commitments.goalContributions).toLocaleString("en-IN")}`,
+    actual: formatMoney(commitments.total),
+    expected: formatMoney(commitments.billsRecurring + commitments.emis + commitments.sips + commitments.goalContributions),
   });
 
   // I14: Emergency Goal Single Source of Truth
@@ -161,8 +162,8 @@ export function runDataHealthChecks(
     id: "I14",
     name: "Emergency Fund Object Parity",
     passed: i14Passed,
-    actual: `₹${runway.emergencyGoalCurrent.toLocaleString("en-IN")}`,
-    expected: `₹${(emergencyDerived?.current || 125000).toLocaleString("en-IN")}`,
+    actual: formatMoney(runway.emergencyGoalCurrent),
+    expected: formatMoney(emergencyDerived?.current || 125000),
   });
 
   return results;
