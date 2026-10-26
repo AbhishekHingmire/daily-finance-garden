@@ -92,6 +92,17 @@ export const NAV_ITEMS: NavItem[] = [
     ],
   },
   {
+    id: "recurring",
+    section: "Recurring",
+    label: "Recurring",
+    h1: "Recurring",
+    breadcrumb: "Recurring",
+    path: "/recurring",
+    icon: CalendarDays,
+    inBottomNav: false,
+    inDrawer: true,
+  },
+  {
     id: "insights",
     section: "Reports",
     label: "Insights",

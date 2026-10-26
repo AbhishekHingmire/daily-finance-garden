@@ -26,6 +26,8 @@ export interface PlanHubProps {
   onEditRecurring: (item: RecurringItem) => void;
   onDeleteRecurring: (item: RecurringItem) => void;
   onToggleRecurring: (item: RecurringItem) => void;
+  onNavigateToLoans?: () => void;
+  onRecordEmiPayment?: (loanId: string) => void;
 }
 
 export function PlanHub({
@@ -47,6 +49,8 @@ export function PlanHub({
   onEditRecurring,
   onDeleteRecurring,
   onToggleRecurring,
+  onNavigateToLoans,
+  onRecordEmiPayment,
 }: PlanHubProps) {
   const [tab, setTab] = useState<PlanSubtab>(() => {
     if (typeof window !== "undefined") {
@@ -80,8 +84,8 @@ export function PlanHub({
   return (
     <div className="space-y-6">
       {/* Subtab Segmented Switcher (Sticky directly under top bar) */}
-      <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2 bg-background border-b border-border/80 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-w-[100vw]">
-        <div className="flex items-center w-full sm:w-auto justify-between sm:justify-start rounded-xl bg-muted/60 p-1 border border-border/60 shadow-2xs">
+      <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2.5 bg-background border-b border-border/80 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-w-[100vw]">
+        <div className="inline-flex items-center w-full sm:w-auto justify-between sm:justify-start rounded-xl bg-muted/80 p-1 border border-border/80 shadow-xs">
           {tabs.map(({ id, label, mobileLabel, icon: Icon, count }) => {
             const isActive = tab === id;
             return (
@@ -89,13 +93,13 @@ export function PlanHub({
                 key={id}
                 type="button"
                 onClick={() => handleTabChange(id)}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 sm:gap-2 rounded-lg px-2 sm:px-3.5 py-1.5 text-xs font-semibold transition-all min-w-0 overflow-hidden ${
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-3 sm:px-4 py-1.5 text-xs font-semibold transition-all min-w-0 overflow-hidden cursor-pointer ${
                   isActive
-                    ? "bg-card text-foreground shadow-2xs font-bold"
-                    : "text-muted-foreground hover:text-foreground"
+                    ? "bg-primary text-primary-foreground shadow-xs font-bold ring-1 ring-primary/30"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 }`}
               >
-                <Icon size={14} className={`shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
+                <Icon size={14} className={`shrink-0 ${isActive ? "text-primary-foreground" : "text-muted-foreground"}`} />
                 <span className="text-[11px] sm:text-xs truncate">
                   <span className="hidden sm:inline">{label}</span>
                   <span className="sm:hidden">{mobileLabel}</span>
@@ -103,7 +107,7 @@ export function PlanHub({
                 {typeof count === "number" && (
                   <span
                     className={`hidden sm:inline-flex shrink-0 rounded-full px-1.5 py-0.2 text-[9px] sm:text-[10px] font-bold ${
-                      isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
+                      isActive ? "bg-primary-foreground/20 text-primary-foreground" : "bg-muted-foreground/15 text-muted-foreground"
                     }`}
                   >
                     {count}
@@ -149,6 +153,8 @@ export function PlanHub({
           onEdit={onEditRecurring}
           onDelete={onDeleteRecurring}
           onToggle={onToggleRecurring}
+          onNavigateToLoans={onNavigateToLoans}
+          onRecordEmiPayment={onRecordEmiPayment}
         />
       )}
     </div>

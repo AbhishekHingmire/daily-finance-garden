@@ -3,6 +3,8 @@ import {
   ArrowDownLeft,
   CalendarDays,
   ChevronDown,
+  CircleDollarSign,
+  Landmark,
   Pencil,
   Plus,
   SlidersHorizontal,
@@ -22,6 +24,8 @@ export function RecurringPage({
   onEdit,
   onDelete,
   onToggle,
+  onNavigateToLoans,
+  onRecordEmiPayment,
 }: {
   data: WealthState;
   money: (amount: number) => string;
@@ -29,6 +33,8 @@ export function RecurringPage({
   onEdit: (item: RecurringItem) => void;
   onDelete: (item: RecurringItem) => void;
   onToggle: (item: RecurringItem) => void;
+  onNavigateToLoans?: () => void;
+  onRecordEmiPayment?: (loanId: string) => void;
 }) {
   const [priorityFilter, setPriorityFilter] = useState("All");
   const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
@@ -202,6 +208,7 @@ export function RecurringPage({
             const linkedHolding = data.investments?.find(
               (h) => (item.investmentId && h.id === item.investmentId) || h.name.toLowerCase() === item.name.toLowerCase()
             );
+            const linkedLoan = data.loans?.find((l) => l.id === item.loanId);
             const isIncome = item.type === "Income";
             const isInv = item.type === "Investment";
 
@@ -241,14 +248,14 @@ export function RecurringPage({
                           SIP · {item.instrumentType || "Investment"}
                         </span>
                       )}
+                      {item.loanId && (
+                        <span className="rounded-md bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:text-rose-300">
+                          Loan EMI
+                        </span>
+                      )}
                       {Boolean(item.totalInstallments) && (
                         <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:text-amber-300 tabular-nums">
                           {item.paidInstallments || 0}/{item.totalInstallments} paid ({Math.max(0, (item.totalInstallments || 0) - (item.paidInstallments || 0))} left)
-                        </span>
-                      )}
-                      {item.loanId && !item.totalInstallments && (
-                        <span className="rounded-md bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:text-rose-300">
-                          Loan EMI
                         </span>
                       )}
                       {item.need && !isIncome && !isInv && (
@@ -266,6 +273,8 @@ export function RecurringPage({
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
                       {isInv && linkedHolding
                         ? `Portfolio Asset: ${linkedHolding.name} · ${acc?.name ?? "Account"}`
+                        : item.loanId && linkedLoan
+                        ? `Linked to ${linkedLoan.name} (${linkedLoan.lenderInstitution}) · ${acc?.name ?? "Account"} · Outstanding ${money(linkedLoan.currentOutstanding)}`
                         : `${cat?.name ?? item.type} · ${acc?.name ?? "Account"}`}
                     </p>
                   </div>
@@ -307,6 +316,24 @@ export function RecurringPage({
 
                     <ActionMenu
                       items={[
+                        ...(item.loanId && onRecordEmiPayment
+                          ? [
+                              {
+                                label: "Record EMI Payment",
+                                icon: <CircleDollarSign size={13} />,
+                                onClick: () => onRecordEmiPayment(item.loanId!),
+                              },
+                            ]
+                          : []),
+                        ...(item.loanId && onNavigateToLoans
+                          ? [
+                              {
+                                label: "View in Loans",
+                                icon: <Landmark size={13} />,
+                                onClick: onNavigateToLoans,
+                              },
+                            ]
+                          : []),
                         {
                           label: "Edit",
                           icon: <Pencil size={13} />,

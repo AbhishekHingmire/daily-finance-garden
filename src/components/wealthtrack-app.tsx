@@ -78,6 +78,7 @@ import {
   processDueRecurringTransactions,
   safeAmount,
   STORAGE_KEY,
+  syncLoansWithRecurring,
   syncSystemNotifications,
   type Account,
   type AssetType,
@@ -130,6 +131,7 @@ function normalizeSection(sec?: Section | string): Section {
   if (sec === "Insights" || sec === "reports" || sec === "insights") return "Reports";
   if (sec === "wealth") return "Wealth";
   if (sec === "plan") return "Plan";
+  if (sec === "recurring" || sec === "Recurring") return "Recurring";
   return sec as Section;
 }
 
@@ -446,10 +448,10 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           return c;
         });
 
-        const baseState: WealthState = {
+        const baseState: WealthState = syncLoansWithRecurring({
           ...res.data,
           categories: upgradedCategories,
-        };
+        });
         const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(baseState);
         const clearedNoticeIds = getClearedNotificationIds();
         const syncedNotifications = syncSystemNotifications(updatedState, clearedNoticeIds);
@@ -748,7 +750,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setData((current) => ({
       ...current,
       loans: (current.loans ?? []).filter((l) => l.id !== loan.id),
-      recurring: current.recurring.filter((r) => r.id !== `rec-loan-${loan.id}`),
+      recurring: current.recurring.filter((r) => r.id !== `rec-loan-${loan.id}` && r.loanId !== loan.id),
     }));
     toast.success("Loan removed", {
       description: `${loan.name} was removed from your records.`,
@@ -775,6 +777,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       need: "Need",
       notes: `Monthly EMI repayment for ${loan.name}`,
     });
+  };
+
+  const handleRecordLoanEmiPaymentById = (loanId: string) => {
+    const loan = (data.loans ?? []).find((l) => l.id === loanId);
+    if (loan) handleRecordLoanEmiPayment(loan);
   };
 
   const handleSaveProfile = (profile: UserProfile) => {
@@ -1303,11 +1310,21 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       toast.success("Category archived");
     }
     if (kind === "recurring") {
-      setData((current) => ({
-        ...current,
-        recurring: current.recurring.filter((item) => item.id !== id),
-      }));
-      toast.success("Recurring rule removed");
+      setData((current) => {
+        const target = current.recurring.find((item) => item.id === id);
+        let nextLoans = current.loans ?? [];
+        if (target?.loanId) {
+          nextLoans = nextLoans.map((l) =>
+            l.id === target.loanId ? { ...l, autoRecurringEmi: false } : l
+          );
+        }
+        return {
+          ...current,
+          loans: nextLoans,
+          recurring: current.recurring.filter((item) => item.id !== id),
+        };
+      });
+      toast.success("Recurring schedule removed");
     }
     if (kind === "reset") {
       const initial = createInitialState();
@@ -1452,9 +1469,28 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       enabled: form.enabled ?? true,
       investmentId: form.investmentId,
       instrumentType: form.instrumentType,
+      loanId: form.loanId ?? editingRecurring?.loanId,
+      totalInstallments: form.totalInstallments ?? editingRecurring?.totalInstallments,
+      paidInstallments: form.paidInstallments ?? editingRecurring?.paidInstallments,
     };
     setData((current) => {
       let nextInvestments = [...(current.investments ?? [])];
+      let nextLoans = current.loans ?? [];
+
+      if (item.loanId) {
+        nextLoans = nextLoans.map((l) =>
+          l.id === item.loanId
+            ? {
+                ...l,
+                emiAmount: item.amount,
+                repaymentAccountId: item.accountId,
+                autoRecurringEmi: item.enabled,
+                tenureMonths: item.totalInstallments || l.tenureMonths,
+                paidEmisCount: item.paidInstallments !== undefined ? item.paidInstallments : l.paidEmisCount,
+              }
+            : l
+        );
+      }
       if (item.type === "Investment") {
         const invIdx = nextInvestments.findIndex(
           (inv) =>
@@ -1518,6 +1554,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           ? current.recurring.map((row) => (row.id === item.id ? item : row))
           : [...current.recurring, item],
         investments: nextInvestments,
+        loans: nextLoans,
       };
     });
     setModal(null);
@@ -1538,10 +1575,19 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             : inv
         );
       }
+      let nextLoans = current.loans ?? [];
+      if (item.loanId) {
+        nextLoans = nextLoans.map((loan) =>
+          loan.id === item.loanId
+            ? { ...loan, autoRecurringEmi: nextEnabled }
+            : loan
+        );
+      }
       return {
         ...current,
         recurring: nextRecurring,
         investments: nextInvestments,
+        loans: nextLoans,
       };
     });
   };
@@ -2085,7 +2131,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 const isItemActive =
                   active === label ||
                   (label === "Wealth" && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active))) ||
-                  (label === "Plan" && (active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active))) ||
+                  (label === "Plan" && (active === "Plan" || ["Categories", "Fund Planner", "Funds"].includes(active))) ||
+                  (label === "Recurring" && active === "Recurring") ||
                   (label === "Reports" && (active === "Reports" || active === "Insights")) ||
                   (label === "Fund Planner" && (active === "Funds" || active === "Fund Planner")) ||
                   (label === "Preferences" && (active === "Preferences" || (active as string) === "Settings"));
@@ -2113,7 +2160,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         <div className="min-w-0 flex-1 w-full md:pl-[72px] lg:pl-[248px]">
           <header className="fixed top-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-topbar flex h-[56px] md:h-[64px] pt-[env(safe-area-inset-top)] md:pt-0 items-center justify-between gap-3 border-b border-border bg-background px-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
-              {["Reports", "Insights", "Profile", "Preferences", "Settings", "Help"].includes(active) ? (
+              {["Reports", "Insights", "Recurring", "Profile", "Preferences", "Settings", "Help"].includes(active) ? (
                 <div className="flex items-center gap-2 md:hidden">
                   <Button
                     variant="ghost"
@@ -2149,6 +2196,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     ? `Wealth › ${wealthSubtab.charAt(0).toUpperCase() + wealthSubtab.slice(1)}`
                     : active === "Plan"
                     ? `Plan › ${planSubtab.charAt(0).toUpperCase() + planSubtab.slice(1)}`
+                    : active === "Recurring"
+                    ? "Recurring"
                     : active === "Reports"
                     ? "Insights"
                     : active}
@@ -2522,7 +2571,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             )}
 
             {/* When hubsV2 is active, render PlanHub */}
-            {hubsV2 && (active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active)) && (
+            {hubsV2 && (active === "Plan" || ["Categories", "Fund Planner", "Funds"].includes(active)) && (
               <PlanHub
                 initialSubtab={planSubtab}
                 data={data}
@@ -2548,6 +2597,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 }}
                 onDeleteRecurring={(item) => requestDelete("recurring", item.id, item.name, item.amount)}
                 onToggleRecurring={handleToggleRecurring}
+                onNavigateToLoans={() => {
+                  goSection("Wealth");
+                  setWealthSubtab("loans");
+                }}
+                onRecordEmiPayment={handleRecordLoanEmiPaymentById}
               />
             )}
 
@@ -2642,7 +2696,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {!hubsV2 && active === "Recurring" && (
+            {active === "Recurring" && (
               <RecurringPage
                 data={data}
                 money={money}
@@ -2656,6 +2710,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 }}
                 onDelete={(item) => requestDelete("recurring", item.id, item.name, item.amount)}
                 onToggle={handleToggleRecurring}
+                onNavigateToLoans={() => {
+                  goSection("Wealth");
+                  setWealthSubtab("loans");
+                }}
+                onRecordEmiPayment={handleRecordLoanEmiPaymentById}
               />
             )}
 
@@ -2879,7 +2938,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     const isSelected =
                       active === item.section ||
                       (item.section === "Wealth" && ["Accounts", "Investments", "Loans"].includes(active)) ||
-                      (item.section === "Plan" && ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active)) ||
+                      (item.section === "Plan" && ["Categories", "Fund Planner", "Funds"].includes(active)) ||
+                      (item.section === "Recurring" && active === "Recurring") ||
                       (item.section === "Reports" && (active === "Reports" || active === "Insights"));
                     const Icon = item.icon;
                     return (
@@ -2915,7 +2975,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                               : item.id === "wealth"
                               ? "Accounts, investments & loans"
                               : item.id === "plan"
-                              ? "Budgets, goals & recurring bills"
+                              ? "Budgets, spending limits & savings goals"
+                              : item.id === "recurring"
+                              ? "Scheduled bills, loan EMIs & subscriptions"
                               : "Cash flow trends & allocation analytics"}
                           </p>
                         </div>
@@ -2992,6 +3054,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           onClose={() => setModal(null)}
           onSave={saveTransaction}
           onAddCategory={saveCategory}
+          onOpenBulkImport={() => setModal("import")}
         />
       )}
 
@@ -3027,14 +3090,10 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         <ImportModal
           data={data}
           fileInputRef={fileInputRef}
-          csvText={csvText}
-          setCsvText={setCsvText}
           csvRows={csvRows}
           csvError={csvError}
           onFile={onFile}
-          parseCsv={parseCsv}
           onDownloadExcel={downloadExcelTemplate}
-          onDownloadCsv={downloadCsvTemplate}
           onApplyImport={applyImport}
           onClose={() => setModal(null)}
         />
@@ -3164,6 +3223,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         loans={unified.loans}
         defaultAccount={data.preferences.defaultAccount}
         onSaveEntry={handleSaveGlobalEntry}
+        onOpenBulkImport={() => setModal("import")}
       />
 
       {/* System Data Health Verification Modal */}

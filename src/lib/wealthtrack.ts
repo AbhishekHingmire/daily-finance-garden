@@ -389,6 +389,42 @@ export function createInitialState(): WealthState {
     recurring: [
       { id: "rec-rent", name: "Monthly rent", type: "Expense", amount: 22000, categoryId: "cat-housing", accountId: "acc-hdfc", frequency: "Monthly", intervalDays: 0, startDate: "2026-05-08", endDate: "", nextDate: "2026-11-08", enabled: true },
       { id: "rec-internet", name: "Home internet", type: "Expense", amount: 999, categoryId: "cat-bills", accountId: "acc-hdfc", frequency: "Monthly", intervalDays: 0, startDate: "2026-09-15", endDate: "", nextDate: "2026-11-15", enabled: true },
+      {
+        id: "rec-loan-loan-01",
+        name: "Home Loan · Tower 4 (EMI)",
+        type: "Expense",
+        amount: 30850,
+        categoryId: "cat-housing",
+        accountId: "acc-hdfc",
+        frequency: "Monthly",
+        intervalDays: 0,
+        startDate: "2024-05-10",
+        endDate: "2039-05-10",
+        nextDate: "2026-11-10",
+        need: "Need",
+        enabled: true,
+        loanId: "loan-01",
+        totalInstallments: 180,
+        paidInstallments: 29,
+      },
+      {
+        id: "rec-loan-loan-02",
+        name: "EV Car Loan (EMI)",
+        type: "Expense",
+        amount: 14200,
+        categoryId: "cat-bills",
+        accountId: "acc-sbi",
+        frequency: "Monthly",
+        intervalDays: 0,
+        startDate: "2024-08-05",
+        endDate: "2029-08-05",
+        nextDate: "2026-11-05",
+        need: "Need",
+        enabled: true,
+        loanId: "loan-02",
+        totalInstallments: 60,
+        paidInstallments: 26,
+      },
       { id: "rec-salary", name: "Monthly salary", type: "Income", amount: 85000, categoryId: "cat-salary", accountId: "acc-hdfc", frequency: "Monthly", intervalDays: 0, startDate: "2026-05-19", endDate: "", nextDate: "2026-11-19", enabled: true },
     ],
     notifications: [
@@ -977,6 +1013,89 @@ export function processDueRecurringTransactions(
     processedCount: newTransactions.length,
     processedItems,
   };
+}
+
+export function syncLoansWithRecurring(state: WealthState): WealthState {
+  if (!state.loans || state.loans.length === 0) return state;
+
+  let recurringChanged = false;
+  let nextRecurring = [...(state.recurring || [])];
+
+  const catHousing = state.categories?.find(
+    (c) => c.name.toLowerCase().includes("housing") || c.name.toLowerCase().includes("rent")
+  )?.id;
+  const catBills = state.categories?.find(
+    (c) => c.id === "cat-bills" || c.name.toLowerCase().includes("bill") || c.name.toLowerCase().includes("utilit")
+  )?.id;
+  const defaultCatId = catHousing || catBills || state.categories?.[0]?.id || "";
+
+  for (const loan of state.loans) {
+    const isLoanActive =
+      loan.autoRecurringEmi !== false &&
+      loan.emiAmount > 0 &&
+      safeAmount(loan.currentOutstanding) > 0;
+    const recurringEmiId = `rec-loan-${loan.id}`;
+    const recIdx = nextRecurring.findIndex(
+      (r) => r.loanId === loan.id || r.id === recurringEmiId
+    );
+
+    if (isLoanActive) {
+      const isHomeLoan =
+        loan.loanType === "Home Loan" || loan.name.toLowerCase().includes("home");
+      const categoryId = isHomeLoan ? catHousing || defaultCatId : catBills || defaultCatId;
+
+      const expectedItem: RecurringItem = {
+        id: recIdx >= 0 ? nextRecurring[recIdx].id : recurringEmiId,
+        name: `${loan.name} (EMI)`,
+        type: "Expense",
+        amount: loan.emiAmount,
+        categoryId:
+          recIdx >= 0 && nextRecurring[recIdx].categoryId
+            ? nextRecurring[recIdx].categoryId
+            : categoryId,
+        accountId: loan.repaymentAccountId || state.accounts[0]?.id || "",
+        frequency: "Monthly",
+        intervalDays: 0,
+        startDate: loan.startDate,
+        endDate: loan.endDate || "",
+        nextDate:
+          recIdx >= 0 && nextRecurring[recIdx].nextDate
+            ? nextRecurring[recIdx].nextDate
+            : "2026-11-05",
+        need: "Need",
+        enabled: true,
+        loanId: loan.id,
+        totalInstallments: loan.tenureMonths,
+        paidInstallments: loan.paidEmisCount || 0,
+      };
+
+      if (recIdx >= 0) {
+        const existing = nextRecurring[recIdx];
+        if (
+          existing.amount !== expectedItem.amount ||
+          existing.accountId !== expectedItem.accountId ||
+          existing.paidInstallments !== expectedItem.paidInstallments ||
+          existing.totalInstallments !== expectedItem.totalInstallments ||
+          existing.enabled !== true ||
+          existing.name !== expectedItem.name
+        ) {
+          nextRecurring[recIdx] = { ...existing, ...expectedItem };
+          recurringChanged = true;
+        }
+      } else {
+        nextRecurring.push(expectedItem);
+        recurringChanged = true;
+      }
+    } else if (recIdx >= 0) {
+      if (nextRecurring[recIdx].enabled) {
+        nextRecurring[recIdx] = { ...nextRecurring[recIdx], enabled: false };
+        recurringChanged = true;
+      }
+    }
+  }
+
+  if (!recurringChanged) return state;
+  return { ...state, recurring: nextRecurring };
 }
 
 export function getEmergencyFundSummary(

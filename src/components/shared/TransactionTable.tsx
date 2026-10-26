@@ -706,12 +706,12 @@ export function TransactionTable({
                   </div>
                 )}
                 <div
-                  className={`flex items-start justify-between gap-3 px-3 sm:px-4 py-2.5 transition-colors hover:bg-muted/30 ${
+                  className={`flex items-center justify-between gap-2.5 sm:gap-3 px-3 sm:px-4 py-2 min-h-[54px] transition-colors hover:bg-muted/30 ${
                     isSelected ? "bg-primary/[0.04]" : ""
                   }`}
                 >
-                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
-                    <div className="pt-1">
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <div className="flex items-center shrink-0">
                       <Checkbox
                         checked={isSelected}
                         onCheckedChange={() => toggleSelect(tx.id)}
@@ -719,59 +719,52 @@ export function TransactionTable({
                       />
                     </div>
                     <button
-                      className="flex items-start gap-2.5 min-w-0 text-left flex-1"
+                      className="flex items-center gap-2.5 min-w-0 text-left flex-1 cursor-pointer"
                       onClick={() => onView(tx)}
                       type="button"
                     >
-                      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-sm mt-0.5">
+                      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-muted/60 text-sm">
                         {category ? category.icon : tx.type === "Transfer" ? "↔" : "💳"}
                       </span>
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="truncate text-sm font-semibold text-foreground">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="truncate text-xs sm:text-sm font-semibold text-foreground">
                             {tx.description}
                           </span>
                           {renderTransactionChips(tx)}
                         </div>
-                        {tx.merchant && tx.merchant !== tx.description && (
-                          <span className="block truncate text-[11px] text-muted-foreground">
-                            {tx.merchant}
-                          </span>
-                        )}
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate mt-0.5">
-                          {category && (
-                            <span className="truncate">{category.icon} {category.name}</span>
-                          )}
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground truncate mt-0.5">
+                          {category && <span className="truncate">{category.name}</span>}
                           {account && (
                             <>
-                              <span>·</span>
-                              <span className="truncate flex items-center gap-1">
-                                <InstitutionLogo name={account.institution || account.name} size="xs" />
-                                {account.name}
-                              </span>
+                              <span className="text-muted-foreground/40">·</span>
+                              <span className="truncate">{account.name}</span>
                             </>
                           )}
-                          <span>·</span>
-                          <span className="shrink-0">{formatDate(tx.date)}</span>
+                          {tx.merchant && tx.merchant !== tx.description && (
+                            <>
+                              <span className="text-muted-foreground/40">·</span>
+                              <span className="truncate">{tx.merchant}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </button>
                   </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                  <div className="flex items-center gap-1.5 shrink-0">
                     <span
-                      className={`whitespace-nowrap text-sm font-bold tabular-nums ${
+                      className={`whitespace-nowrap text-xs sm:text-sm font-bold tabular-nums ${
                         isPositive
                           ? "text-emerald-600 dark:text-emerald-400"
-                          : isOutflow
-                          ? "text-rose-600 dark:text-rose-400"
                           : "text-foreground"
                       }`}
                     >
-                      {isPositive ? "+" : isOutflow ? "−" : ""}
+                      {isPositive ? "+" : "−"}
                       {money(tx.amount)}
                     </span>
                     <ActionMenu
+                      triggerClassName="size-7 rounded-md"
                       items={[
                         {
                           label: "Edit",

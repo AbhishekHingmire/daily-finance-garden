@@ -8,6 +8,8 @@ import {
   Check,
   ChevronDown,
   CircleDollarSign,
+  FileSpreadsheet,
+  FileUp,
   Landmark,
   PiggyBank,
   Plus,
@@ -46,6 +48,7 @@ export interface GlobalAddSheetProps {
   defaultAccount?: string;
   onSaveEntry: (entry: Entry, newSchedule?: Schedule) => void;
   initialPreset?: Partial<Entry>;
+  onOpenBulkImport?: () => void;
 }
 
 export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
@@ -58,6 +61,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
   defaultAccount,
   onSaveEntry,
   initialPreset,
+  onOpenBulkImport,
 }) => {
   const [activeTab, setActiveTab] = useState<EntryKind>("expense");
   const [subtype, setSubtype] = useState<EntrySubtype>("none");
@@ -362,6 +366,32 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
             <X size={18} />
           </Button>
         </div>
+
+        {/* Bulk Upload Option */}
+        {onOpenBulkImport && (
+          <div className="flex items-center justify-between gap-2.5 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 mt-3 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileSpreadsheet className="size-4 shrink-0 text-primary" />
+              <div className="min-w-0 truncate">
+                <span className="font-bold text-foreground">Need bulk entry?</span>
+                <span className="text-muted-foreground ml-1 hidden sm:inline">Upload multiple expenses & income via Excel.</span>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onClose();
+                onOpenBulkImport();
+              }}
+              className="h-7 shrink-0 gap-1.5 px-2.5 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 hover:text-primary cursor-pointer"
+            >
+              <FileUp size={13} />
+              <span>Bulk Upload (Excel)</span>
+            </Button>
+          </div>
+        )}
 
         {/* More Actions Shortcut Strip (Context-Aware for selected section) */}
         <div className="mt-3 flex items-center gap-1.5 overflow-x-auto pb-1 wt-scrollbar">

@@ -147,19 +147,20 @@ export function TransactionsPage({
       <PageHeading
         title="Transactions"
         description="Every financial movement, categorized and accounted for."
-        periodSlot={<PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />}
-        moreMenuItems={[
-          {
-            label: "Bulk Import",
-            icon: <FileUp size={15} />,
-            onClick: onImport,
-          },
-          {
-            label: "Export CSV",
-            icon: <Download size={15} />,
-            onClick: onExport,
-          },
-        ]}
+        periodSlot={
+          <div className="flex items-center gap-2">
+            <PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={onImport}
+              className="h-8 gap-1.5 px-2.5 text-xs font-semibold shadow-2xs border-border/80 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer"
+            >
+              <FileUp size={14} className="text-primary" />
+              <span>Bulk Import</span>
+            </Button>
+          </div>
+        }
       />
 
       {/* Review items for unclassified transactions if any */}

@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, Landmark, Plus, Sparkles } from "lucide-react";
+import { ChevronDown, ChevronUp, FileSpreadsheet, FileUp, Landmark, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
@@ -22,6 +22,7 @@ export function TransactionModal({
   onClose,
   onSave,
   onAddCategory,
+  onOpenBulkImport,
 }: {
   data: WealthState;
   form: Partial<Transaction>;
@@ -31,6 +32,7 @@ export function TransactionModal({
   onClose: () => void;
   onSave: (keepOpen?: boolean) => void;
   onAddCategory?: (category: Category) => void;
+  onOpenBulkImport?: () => void;
 }) {
   const type = (form.type ?? "Expense") as TransactionType;
   const isDebtType = DEBT_TRANSACTION_TYPES.includes(type);
@@ -119,6 +121,32 @@ export function TransactionModal({
       onClose={onClose}
     >
       <form onSubmit={(e) => { e.preventDefault(); onSave(false); }} onKeyDown={handleKeyDown} className="space-y-4">
+        {/* Bulk Upload Option */}
+        {!edit && onOpenBulkImport && (
+          <div className="flex items-center justify-between gap-2.5 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-xs">
+            <div className="flex items-center gap-2 min-w-0">
+              <FileSpreadsheet className="size-4 shrink-0 text-primary" />
+              <div className="min-w-0 truncate">
+                <span className="font-bold text-foreground">Need bulk entry?</span>
+                <span className="text-muted-foreground ml-1 hidden sm:inline">Upload multiple expenses & income via Excel.</span>
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                onClose();
+                onOpenBulkImport();
+              }}
+              className="h-7 shrink-0 gap-1.5 px-2.5 text-xs font-semibold text-primary border-primary/30 hover:bg-primary/10 hover:text-primary cursor-pointer"
+            >
+              <FileUp size={13} />
+              <span>Bulk Upload (Excel)</span>
+            </Button>
+          </div>
+        )}
+
         {/* 1. Large Amount Input */}
         <div>
           <label className="block">
