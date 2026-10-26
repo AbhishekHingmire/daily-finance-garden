@@ -294,7 +294,7 @@ export function AccountActivityPartialView({
             )}
           </div>
           <div className="text-xs text-muted-foreground font-medium">
-            {allAccountTxs.length} ledger transaction{allAccountTxs.length === 1 ? "" : "s"}
+            {allAccountTxs.length} transaction{allAccountTxs.length === 1 ? "" : "s"}
           </div>
         </div>
 

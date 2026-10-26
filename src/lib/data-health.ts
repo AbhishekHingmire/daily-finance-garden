@@ -159,8 +159,8 @@ export function runDataHealthChecks(
     id: "I7",
     name: "Balance reversibility on deletion",
     passed: i7Passed,
-    actual: "All account balances cleanly derived from ledger",
-    expected: "All account balances cleanly derived from ledger",
+    actual: "All account balances cleanly derived from transactions",
+    expected: "All account balances cleanly derived from transactions",
   });
 
   // 8. Investment holdings valuation
@@ -255,11 +255,11 @@ export function runDataHealthChecks(
     expected: "100% verified",
   });
 
-  // 16. Monthly period snapshot matches ledger
+  // 16. Monthly period snapshot matches transactions
   const i16Passed = periodMetrics.moneyIn === 100250 && periodMetrics.moneyOut === 79342 && periodMetrics.saved === 20908;
   results.push({
     id: "I16",
-    name: "Monthly period snapshot matches ledger",
+    name: "Monthly period snapshot matches transactions",
     passed: i16Passed,
     actual: `In ${formatMoney(periodMetrics.moneyIn)} · Out ${formatMoney(periodMetrics.moneyOut)} · Saved ${formatMoney(periodMetrics.saved)}`,
     expected: `In ₹1,00,250 · Out ₹79,342 · Saved ₹20,908`,

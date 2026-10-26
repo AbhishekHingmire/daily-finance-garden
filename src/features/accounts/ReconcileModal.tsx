@@ -54,7 +54,7 @@ export function ReconcileModal({
                 Reconcile Account Balance
               </h2>
               <p className="text-xs text-muted-foreground">
-                Match your ledger with your official bank or card statement.
+                Match your transactions with your official bank or card statement.
               </p>
             </div>
           </div>
@@ -148,7 +148,7 @@ export function ReconcileModal({
                   <CheckCircle2 size={13} /> Your tracked balance already matches this statement.
                 </span>
               ) : (
-                `A balance adjustment transaction of ${formatMoney(Math.abs(difference), currency)} will be created to align your ledger.`
+                `A balance adjustment transaction of ${formatMoney(Math.abs(difference), currency)} will be created to align your transactions.`
               )}
             </p>
           </div>

@@ -1039,7 +1039,7 @@ export function OnboardingFlow({
                   <CalendarDays className="mx-auto size-8 text-muted-foreground/60 mb-2" />
                   <p className="text-sm font-bold text-foreground">No recurring schedules set up</p>
                   <p className="mt-1 text-xs text-muted-foreground max-w-sm mx-auto">
-                    Automate notifications and ledgers for repeating bills, rent, salary, utilities, or SIP investments.
+                    Automate notifications and transactions for repeating bills, rent, salary, utilities, or SIP investments.
                   </p>
                   <Button
                     size="sm"

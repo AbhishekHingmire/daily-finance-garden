@@ -412,7 +412,7 @@ export function AccountsPage({
                   {isCard ? "Credit Account" : "Available Funds"}
                 </span>
                 <span className="flex items-center gap-1 text-[11px] font-semibold text-primary group-hover:translate-x-0.5 transition-transform shrink-0">
-                  {isSelected ? "Active Ledger ↑" : "View Details →"}
+                  {isSelected ? "Active Transactions ↑" : "View Details →"}
                 </span>
               </div>
             </div>

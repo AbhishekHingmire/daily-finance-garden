@@ -2869,7 +2869,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               {(hubsV2
                 ? [
                     { label: "Overview" as Section, title: "Overview", desc: "Dashboard & financial overview", icon: LayoutDashboard },
-                    { label: "Transactions" as Section, title: "Transactions", desc: "Ledger, filters & search", icon: ArrowLeftRight },
+                    { label: "Transactions" as Section, title: "Transactions", desc: "Transactions, filters & search", icon: ArrowLeftRight },
                     { label: "Wealth" as Section, title: "Wealth Hub", desc: "Accounts, Investments & Loans", icon: Wallet },
                     { label: "Plan" as Section, title: "Plan Hub", desc: "Budgets, Goals & Recurring", icon: ShieldCheck },
                     { label: "Reports" as Section, title: "Reports & Insights", desc: "Cash flow trends & analytics", icon: Activity },
