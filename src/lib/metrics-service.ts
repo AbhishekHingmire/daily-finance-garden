@@ -559,6 +559,9 @@ export function getWealthMetrics(
  */
 export interface RunwayMetrics {
   essentialSpend: number; // Trailing 3-month average of Needs
+  countMonths: number;
+  currentMonthNeeds: number;
+  differsByMoreThan25Pct: boolean;
   cashRunwayMonths: number;
   emergencyCoverageMonths: number;
   emergencyGoalTarget: number;
@@ -591,7 +594,12 @@ export function getRunwayMetrics(
     }
   }
 
-  const essentialSpend = Math.max(1, countMonths > 0 ? Math.round(totalNeeds / countMonths) : 71981);
+  const currentMonthNeeds = getPeriodMetrics(entries, referencePeriod).needs;
+  const countMonthsFinal = Math.max(1, countMonths);
+  const essentialSpend = Math.max(1, Math.round(totalNeeds / countMonthsFinal));
+  const diffPct = currentMonthNeeds > 0 ? Math.abs(essentialSpend - currentMonthNeeds) / currentMonthNeeds : 0;
+  const differsByMoreThan25Pct = diffPct > 0.25;
+
   const cashRunwayMonths = Math.round((liquidCash / essentialSpend) * 10) / 10;
 
   const emergencyGoalCurrent = emergencyGoal ? emergencyGoal.opening_amount : 125000;
@@ -601,6 +609,9 @@ export function getRunwayMetrics(
 
   return {
     essentialSpend,
+    countMonths: countMonthsFinal,
+    currentMonthNeeds,
+    differsByMoreThan25Pct,
     cashRunwayMonths,
     emergencyCoverageMonths,
     emergencyGoalTarget,

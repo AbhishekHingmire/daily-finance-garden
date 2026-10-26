@@ -11,6 +11,7 @@ import {
   ChevronDown,
   ChevronRight,
   CreditCard,
+  Info,
   Landmark,
   PiggyBank,
   Plus,
@@ -22,6 +23,7 @@ import {
   Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { PeriodPill } from "@/components/shared/PeriodPill";
 import { CashFlowVelocityChart } from "@/components/shared/CashFlowVelocityChart";
@@ -398,13 +400,53 @@ export function Dashboard({
         {/* Vital Health Chips */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
           <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground block">Cash runway</span>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">Cash runway</span>
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground cursor-help p-0.5"
+                      title={`${money(wealthMetrics.liquidCash)} ÷ ${money(runwayMetrics.essentialSpend)}/month essentials (average of last ${runwayMetrics.countMonths} month${runwayMetrics.countMonths !== 1 ? "s" : ""})${runwayMetrics.differsByMoreThan25Pct ? ` · Based on ${runwayMetrics.countMonths} months of history` : ""}`}
+                      aria-label="Cash runway basis details"
+                    >
+                      <Info size={11} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    {money(wealthMetrics.liquidCash)} ÷ {money(runwayMetrics.essentialSpend)}/month essentials (average of last {runwayMetrics.countMonths} month{runwayMetrics.countMonths !== 1 ? "s" : ""})
+                    {runwayMetrics.differsByMoreThan25Pct && ` · Based on ${runwayMetrics.countMonths} months of history`}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <span className="text-sm font-extrabold text-foreground tabular-nums">
               <Metric id="runway_months" value={runwayMetrics.cashRunwayMonths} format="months" />
             </span>
           </div>
           <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
-            <span className="text-[10px] uppercase font-bold text-muted-foreground block">Emergency cover</span>
+            <div className="flex items-center justify-between gap-1">
+              <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">Emergency cover</span>
+              <TooltipProvider delayDuration={100}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      className="text-muted-foreground hover:text-foreground cursor-help p-0.5"
+                      title={`${money(runwayMetrics.emergencyGoalCurrent)} ÷ ${money(runwayMetrics.essentialSpend)}/month essentials (average of last ${runwayMetrics.countMonths} month${runwayMetrics.countMonths !== 1 ? "s" : ""})${runwayMetrics.differsByMoreThan25Pct ? ` · Based on ${runwayMetrics.countMonths} months of history` : ""}`}
+                      aria-label="Emergency cover basis details"
+                    >
+                      <Info size={11} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs">
+                    {money(runwayMetrics.emergencyGoalCurrent)} ÷ {money(runwayMetrics.essentialSpend)}/month essentials (average of last {runwayMetrics.countMonths} month{runwayMetrics.countMonths !== 1 ? "s" : ""})
+                    {runwayMetrics.differsByMoreThan25Pct && ` · Based on ${runwayMetrics.countMonths} months of history`}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
             <span className="text-sm font-extrabold text-foreground tabular-nums">
               <Metric id="emergency_cover_months" value={runwayMetrics.emergencyCoverageMonths} format="months" />
             </span>
