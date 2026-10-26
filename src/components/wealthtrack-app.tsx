@@ -2019,21 +2019,26 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   }
 
   return (
-    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
+    <div className="min-h-screen bg-background w-full">
       <Toaster position="top-right" richColors />
-      <div className="flex min-h-screen w-full max-w-full overflow-x-hidden">
-        {/* Desktop Sidebar Navigation */}
+      <div className="flex min-h-screen w-full">
+        {/* Sidebar Navigation: Tablet icon rail (72px) / Desktop full sidebar (248px) */}
         <aside
-          className="hidden lg:flex fixed left-0 top-0 bottom-0 z-30 shrink-0 flex-col border-r border-border bg-card h-screen w-[248px] overflow-y-auto"
+          className="hidden md:flex fixed left-0 top-0 bottom-0 z-[40] shrink-0 flex-col border-r border-border bg-card h-[100dvh] overflow-y-auto w-[72px] lg:w-[248px]"
         >
-          <div className="flex h-[72px] items-center justify-between border-b border-border px-5">
-            <AppLogo />
+          <div className="flex h-[64px] items-center justify-center lg:justify-between border-b border-border px-3 lg:px-5">
+            <div className="hidden lg:block">
+              <AppLogo />
+            </div>
+            <div className="lg:hidden">
+              <AppLogo small />
+            </div>
           </div>
-          <div className="px-4 pt-6">
-            <p className="px-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
+          <div className="px-2 lg:px-4 pt-4 lg:pt-6">
+            <p className="hidden lg:block px-3 text-[10px] font-bold uppercase tracking-[0.15em] text-muted-foreground">
               Workspace
             </p>
-            <nav className="mt-3 space-y-1">
+            <nav className="mt-1 lg:mt-3 space-y-1">
               {(hubsV2 ? v2NavItems : legacyNavItems).map((item) => {
                 const { label, icon: Icon } = item;
                 const title = "title" in item ? (item as { title: string }).title : label;
@@ -2048,19 +2053,20 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   <Button
                     key={label}
                     variant={isItemActive ? "secondary" : "ghost"}
-                    className={`h-10 w-full justify-start gap-3 px-3 text-xs ${
+                    title={title}
+                    className={`h-10 md:w-11 lg:w-full md:justify-center lg:justify-start gap-3 md:px-0 lg:px-3 text-xs ${
                       isItemActive ? "font-bold text-primary shadow-2xs" : "text-muted-foreground font-medium"
                     }`}
                     onClick={() => goSection(label)}
                   >
-                    <Icon size={20} />
-                    {title}
+                    <Icon size={20} className="shrink-0" />
+                    <span className="hidden lg:inline truncate">{title}</span>
                   </Button>
                 );
               })}
             </nav>
           </div>
-          <div className="mt-auto p-4">
+          <div className="hidden lg:block mt-auto p-4">
             <div className="rounded-xl border border-border bg-muted/50 p-3.5">
               <div className="flex items-center gap-2">
                 <ShieldCheck size={16} className="text-success" />
@@ -2071,16 +2077,27 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               </p>
             </div>
           </div>
+          <div className="lg:hidden mt-auto p-2 flex flex-col items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              title="Preferences"
+              onClick={() => goSection("Preferences")}
+              className="size-10 text-muted-foreground hover:text-foreground"
+            >
+              <SlidersHorizontal size={18} />
+            </Button>
+          </div>
         </aside>
 
         {/* Main Content Area */}
-        <div className="min-w-0 flex-1 w-full max-w-full overflow-x-hidden lg:pl-[248px]">
-          <header className="sticky top-0 z-20 flex h-[68px] w-full items-center justify-between gap-3 border-b border-border bg-background/95 px-3 sm:px-7 backdrop-blur-xs">
+        <div className="min-w-0 flex-1 w-full">
+          <header className="fixed top-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-[50] flex h-[56px] md:h-[64px] pt-[env(safe-area-inset-top)] md:pt-0 items-center justify-between gap-3 border-b border-border bg-background px-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
               <Button
                 variant="ghost"
                 size="icon"
-                className="lg:hidden size-10"
+                className="md:hidden size-10"
                 aria-label="Open navigation"
                 onClick={() => setMobileNav(true)}
               >
@@ -2362,7 +2379,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             </div>
           </header>
 
-          <main className="mx-auto w-full max-w-[1440px] px-3 sm:px-7 pb-24 pt-4 sm:pt-6 sm:pb-10 lg:px-9 overflow-x-hidden">
+          <main className="w-full ml-0 md:ml-[72px] lg:ml-[248px] pt-[calc(56px+env(safe-area-inset-top))] md:pt-[64px] pb-[calc(64px+env(safe-area-inset-bottom)+1.5rem)] md:pb-12 px-3 sm:px-6">
             {active === "Overview" && (
               <Dashboard
                 data={data}
@@ -2697,7 +2714,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
       {/* Mobile Bottom Navigation Bar */}
       {hubsV2 ? (
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-1 sm:px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center w-full max-w-full overflow-visible">
+        <nav className="fixed inset-x-0 bottom-0 z-[50] grid grid-cols-5 border-t border-border bg-card px-1 sm:px-2 pb-[env(safe-area-inset-bottom)] h-[calc(64px+env(safe-area-inset-bottom))] md:hidden shadow-lg items-center w-full max-w-full overflow-visible">
           <button
             type="button"
             aria-label="Overview"
@@ -2782,7 +2799,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           </button>
         </nav>
       ) : (
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-1 sm:px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center w-full max-w-full overflow-visible">
+        <nav className="fixed inset-x-0 bottom-0 z-[50] grid grid-cols-5 border-t border-border bg-card px-1 sm:px-2 pb-[env(safe-area-inset-bottom)] h-[calc(64px+env(safe-area-inset-bottom))] md:hidden shadow-lg items-center w-full max-w-full overflow-visible">
           {[
             { label: "Overview", section: "Overview" as Section, icon: LayoutDashboard },
             { label: "Transactions", section: "Transactions" as Section, icon: ArrowLeftRight },
