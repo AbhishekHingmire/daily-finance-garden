@@ -195,8 +195,8 @@ export function CategoriesPage({
         </div>
       </div>
 
-      {/* Categories Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {/* Categories Grid: Compact rows, 2 columns at lg+, 1 column below */}
+      <div className="grid gap-2.5 grid-cols-1 lg:grid-cols-2">
         {categories.map((category) => {
           const row = budgetMetrics.categoryRows.find((r) => r.category.id === category.id);
           const isExpense = category.kind === "Expense";
@@ -222,43 +222,52 @@ export function CategoriesPage({
           return (
             <div
               key={category.id}
-              className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-4 sm:p-5 transition-all duration-200 hover:border-border hover:shadow-xs"
+              className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-border hover:shadow-xs"
             >
-              <div>
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <span className="grid size-10 shrink-0 place-items-center rounded-lg bg-muted/60 text-lg">
-                      {category.icon}
-                    </span>
-                    <div className="min-w-0">
-                      <h3 className="truncate font-semibold text-foreground text-sm sm:text-base">
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted/60 text-base">
+                    {category.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <h3 className="truncate font-semibold text-foreground text-xs sm:text-sm">
                         {category.name}
                       </h3>
-                      <div className="mt-1 flex items-center gap-1.5 flex-wrap">
+                      {category.kind === "Expense" && (
                         <span
-                          className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-wider ${
-                            category.kind === "Income"
-                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20"
-                              : "bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-500/20"
+                          className={`inline-block rounded px-1.5 py-0.2 text-[8px] font-semibold tracking-wider ${
+                            category.defaultNeed === "Want"
+                              ? "border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                              : "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
                           }`}
                         >
-                          {category.kind}
+                          {category.defaultNeed || "Need"}
                         </span>
-                        {category.kind === "Expense" && (
-                          <span
-                            className={`inline-block rounded px-1.5 py-0.5 text-[9px] font-semibold tracking-wider ${
-                              category.defaultNeed === "Want"
-                                ? "border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                                : "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                            }`}
-                          >
-                            {category.defaultNeed || "Need"}
-                          </span>
-                        )}
-                      </div>
+                      )}
                     </div>
                   </div>
+                </div>
 
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="text-right">
+                    <span className="font-bold text-foreground text-xs sm:text-sm tabular-nums block">
+                      <Metric id={`category_total:${category.id}`} value={spent} />
+                    </span>
+                    {hasBudget && (
+                      <span
+                        className={`text-[10px] font-semibold tabular-nums block ${
+                          overBudget
+                            ? "text-rose-600 dark:text-rose-400 font-bold"
+                            : percent > 75
+                            ? "text-amber-600 dark:text-amber-400"
+                            : "text-muted-foreground"
+                        }`}
+                      >
+                        {overBudget ? `Over by ${money(overByAmount)}` : `of ${money(cap)} (${percent}%)`}
+                      </span>
+                    )}
+                  </div>
                   <ActionMenu
                     items={[
                       {
@@ -275,71 +284,25 @@ export function CategoriesPage({
                     ]}
                   />
                 </div>
-
-                <div className="mt-4 pt-3 border-t border-border/40">
-                  <div className="flex items-baseline justify-between text-sm">
-                    <span className="text-xs text-muted-foreground">
-                      {category.kind === "Income" ? "Deposited this month" : "Spent this month"}
-                    </span>
-                    <span className="font-semibold text-foreground tabular-nums">
-                      <Metric id={`category_total:${category.id}`} value={spent} />
-                    </span>
-                  </div>
-
-                  {hasBudget && (
-                    <div className="mt-2.5">
-                      <div className="flex justify-between text-xs text-muted-foreground">
-                        <span>Cap: {money(cap)}</span>
-                        <span
-                          className={
-                            overBudget
-                              ? "font-bold text-rose-600 dark:text-rose-400"
-                              : percent > 75
-                              ? "font-bold text-amber-600 dark:text-amber-400"
-                              : "font-semibold text-foreground"
-                          }
-                        >
-                          {overBudget ? `Over by ${money(overByAmount)}` : `${percent}%`}
-                        </span>
-                      </div>
-                      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted/60">
-                        <div
-                          className={`h-full rounded-full transition-all duration-300 ${
-                            overBudget
-                              ? "bg-rose-500"
-                              : percent > 75
-                              ? "bg-amber-500"
-                              : "bg-emerald-500"
-                          }`}
-                          style={{ width: `${Math.min(100, percent)}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
               </div>
+
+              {hasBudget && (
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted/60">
+                  <div
+                    className={`h-full rounded-full transition-all duration-300 ${
+                      overBudget
+                        ? "bg-rose-500"
+                        : percent > 75
+                        ? "bg-amber-500"
+                        : "bg-emerald-500"
+                    }`}
+                    style={{ width: `${Math.min(100, percent)}%` }}
+                  />
+                </div>
+              )}
             </div>
           );
         })}
-
-        {/* Add Category Card */}
-        <button
-          type="button"
-          onClick={onAdd}
-          className="rounded-xl border-2 border-dashed border-border/70 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 p-5 transition-all flex flex-col items-center justify-center text-center gap-2.5 min-h-[160px] group cursor-pointer"
-        >
-          <div className="grid size-10 place-items-center rounded-xl bg-primary/10 text-primary group-hover:scale-110 group-hover:bg-primary group-hover:text-primary-foreground transition-all shadow-2xs">
-            <Plus size={20} />
-          </div>
-          <div>
-            <span className="text-sm font-bold text-foreground block group-hover:text-primary transition-colors">
-              Add New Category
-            </span>
-            <span className="text-[11px] text-muted-foreground block mt-0.5">
-              Expense, Income, or Custom Group
-            </span>
-          </div>
-        </button>
       </div>
     </div>
   );

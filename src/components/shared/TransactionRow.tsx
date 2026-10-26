@@ -1,5 +1,5 @@
 import React from "react";
-import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight } from "lucide-react";
+import { ArrowDownLeft, ArrowLeftRight, ArrowUpRight, RotateCw } from "lucide-react";
 import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import {
   INVESTMENT_OUTFLOW_ACTIONS,
@@ -95,6 +95,15 @@ export function TransactionRow({
                 Recovery
               </span>
             ) : null}
+
+            {transaction.recurring && (
+              <span
+                className="inline-flex shrink-0 items-center justify-center size-4 rounded-full bg-primary/10 text-primary"
+                title="Posted automatically"
+              >
+                <RotateCw size={10} />
+              </span>
+            )}
           </span>
           <span className="block truncate text-xs text-muted-foreground">
             {transaction.merchant || category?.name || transaction.type}

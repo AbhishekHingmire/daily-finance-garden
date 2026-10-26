@@ -174,18 +174,36 @@ export function Dashboard({
             </div>
 
             <div className="flex items-center gap-3 text-xs pt-0.5">
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onNavigate("Wealth");
-                }}
-                className="inline-flex items-center gap-1 font-semibold text-primary hover:underline"
-              >
-                <span>Net worth</span>
-                <Metric id="net_worth" value={wealthMetrics.netWorth} />
-                <ChevronRight size={13} />
-              </button>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onNavigate("Wealth");
+                      }}
+                      className="inline-flex items-center gap-1 font-semibold text-primary hover:underline cursor-pointer"
+                    >
+                      <span>Net worth</span>
+                      <Metric id="net_worth" value={wealthMetrics.netWorth} />
+                      <ChevronRight size={13} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top" className="max-w-xs text-xs space-y-1 p-2.5">
+                    <p className="font-bold text-foreground">Net Worth Calculation</p>
+                    <p className="text-muted-foreground">
+                      Total Assets: <strong className="text-foreground"><Metric id="total_assets" value={wealthMetrics.totalAssets} /></strong> (Cash <Metric id="cash" value={wealthMetrics.liquidCash} /> + Investments <Metric id="invested" value={wealthMetrics.investmentsValue} /> + Lent <Metric id="lent_out" value={wealthMetrics.receivablesValue} />)
+                    </p>
+                    <p className="text-muted-foreground">
+                      Loans: <strong className="text-foreground"><Metric id="total_debt" value={wealthMetrics.totalDebt} /></strong>
+                    </p>
+                    <p className="text-[10px] text-muted-foreground pt-1 border-t border-border/50">
+                      Your loans are counted in full; a home or car you own isn't tracked as an asset yet.
+                    </p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
               <span className="text-muted-foreground/50">·</span>
               <div className="flex items-center gap-1.5 text-muted-foreground font-medium">
                 <span>Total Assets</span>
@@ -229,26 +247,20 @@ export function Dashboard({
             )}
           </div>
 
-          <div className="flex flex-col sm:items-end justify-between self-stretch shrink-0 border-t border-border/60 pt-3 sm:border-t-0 sm:pt-0">
-            <div className="hidden sm:block text-right">
-              <span className="text-[11px] text-muted-foreground uppercase tracking-wider font-bold">Investments</span>
-              <p className="text-sm font-black text-foreground tabular-nums">
-                <Metric id="invested" value={wealthMetrics.investmentsValue} />
-              </p>
-            </div>
+          <div className="flex sm:items-center justify-end shrink-0 border-t border-border/60 pt-3 sm:border-t-0 sm:pt-0">
             <Button
               variant="outline"
               size="sm"
               className="h-8 gap-1.5 text-xs font-semibold group-hover:bg-primary group-hover:text-primary-foreground transition-colors self-start sm:self-auto"
             >
-              <span>View Wealth Hub</span>
+              <span>View Wealth</span>
               <ArrowRight size={13} />
             </Button>
           </div>
         </div>
       </div>
 
-      {/* BLOCK 2: "This Month" 3-Tile Strip (Tap opens filtered Transactions) */}
+      {/* BLOCK 2: "This Month" 3-Tile Strip (One row of 3 compact tiles at ALL widths) */}
       <div>
         <div className="flex items-center justify-between px-1 mb-2.5">
           <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -256,23 +268,23 @@ export function Dashboard({
           </h2>
           <span className="text-[11px] text-muted-foreground">Tap any tile to inspect entries</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
           {/* Tile 1: Money In */}
           <div
             role="button"
             tabIndex={0}
             onClick={() => onNavigate("Transactions")}
             onKeyDown={(e) => e.key === "Enter" && onNavigate("Transactions")}
-            className="group cursor-pointer rounded-xl border border-border/70 bg-card p-4 shadow-2xs hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all"
+            className="group cursor-pointer rounded-xl border border-border/70 bg-card p-2.5 sm:p-4 shadow-2xs hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all min-w-0"
           >
             <div className="flex items-center justify-between text-muted-foreground mb-1">
-              <span className="text-xs font-bold uppercase tracking-wider">Money In</span>
-              <ArrowDownLeft size={16} className="text-emerald-500 group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Money In</span>
+              <ArrowDownLeft size={14} className="text-emerald-500 shrink-0 group-hover:scale-110 transition-transform" />
             </div>
-            <div className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+            <div className="text-sm sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums truncate">
               <Metric id="money_in" value={periodMetrics.moneyIn} signed />
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Salary, freelance & other income</p>
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 sm:mt-1 truncate">Salary, freelance & other income</p>
           </div>
 
           {/* Tile 2: Money Out */}
@@ -281,16 +293,16 @@ export function Dashboard({
             tabIndex={0}
             onClick={() => onNavigate("Transactions")}
             onKeyDown={(e) => e.key === "Enter" && onNavigate("Transactions")}
-            className="group cursor-pointer rounded-xl border border-border/70 bg-card p-4 shadow-2xs hover:border-rose-500/50 hover:bg-rose-500/5 transition-all"
+            className="group cursor-pointer rounded-xl border border-border/70 bg-card p-2.5 sm:p-4 shadow-2xs hover:border-rose-500/50 hover:bg-rose-500/5 transition-all min-w-0"
           >
             <div className="flex items-center justify-between text-muted-foreground mb-1">
-              <span className="text-xs font-bold uppercase tracking-wider">Money Out</span>
-              <ArrowUpRight size={16} className="text-rose-500 group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Money Out</span>
+              <ArrowUpRight size={14} className="text-rose-500 shrink-0 group-hover:scale-110 transition-transform" />
             </div>
-            <div className="text-2xl font-extrabold text-foreground tabular-nums">
+            <div className="text-sm sm:text-2xl font-extrabold text-foreground tabular-nums truncate">
               <Metric id="money_out" value={periodMetrics.moneyOut} />
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 sm:mt-1 truncate">
               incl. <strong className="text-foreground"><Metric id="monthly_emi_total" value={periodMetrics.emisInPeriod} /></strong> EMIs
             </p>
           </div>
@@ -301,19 +313,19 @@ export function Dashboard({
             tabIndex={0}
             onClick={() => onNavigate("Transactions")}
             onKeyDown={(e) => e.key === "Enter" && onNavigate("Transactions")}
-            className="group cursor-pointer rounded-xl border border-border/70 bg-card p-4 shadow-2xs hover:border-primary/50 hover:bg-primary/5 transition-all"
+            className="group cursor-pointer rounded-xl border border-border/70 bg-card p-2.5 sm:p-4 shadow-2xs hover:border-primary/50 hover:bg-primary/5 transition-all min-w-0"
           >
             <div className="flex items-center justify-between text-muted-foreground mb-1">
-              <span className="text-xs font-bold uppercase tracking-wider">Saved</span>
-              <PiggyBank size={16} className="text-primary group-hover:scale-110 transition-transform" />
+              <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Saved</span>
+              <PiggyBank size={14} className="text-primary shrink-0 group-hover:scale-110 transition-transform" />
             </div>
-            <div className="text-2xl font-extrabold text-foreground tabular-nums">
+            <div className="text-sm sm:text-2xl font-extrabold text-foreground tabular-nums truncate">
               <Metric id="saved" value={periodMetrics.saved} />
-              <span className="ml-2 text-sm font-bold text-primary">
+              <span className="ml-1 sm:ml-2 text-xs sm:text-sm font-bold text-primary">
                 (<Metric id="savings_rate" value={periodMetrics.savingsRatePct ?? 0} format="percent" />)
               </span>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Kept in cash + investments + lent</p>
+            <p className="text-[9px] sm:text-[11px] text-muted-foreground mt-0.5 sm:mt-1 truncate">Kept in cash + investments + lent</p>
           </div>
         </div>
       </div>

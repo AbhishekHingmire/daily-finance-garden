@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -61,7 +61,15 @@ export function ReportsPage({
   const [priorityFilter, setPriorityFilter] = useState("All");
   const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
   const [expandedChart, setExpandedChart] = useState<"velocity" | "trend" | null>(null);
-  const [activeTab, setActiveTab] = useState<"all" | "cashflow" | "spending" | "rule" | "debt" | "wealth">("all");
+  const [activeTab, setActiveTab] = useState<"summary" | "spending" | "cashflow" | "wealth" | "debt" | "all">("summary");
+  const isSummary = activeTab === "summary" || activeTab === "all";
+  const activeTabButtonRef = useRef<HTMLButtonElement | null>(null);
+
+  useEffect(() => {
+    if (activeTabButtonRef.current) {
+      activeTabButtonRef.current.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+    }
+  }, [activeTab]);
 
   const [sharedPeriod] = useSharedPeriod();
   const unified = useMemo(() => migrateLegacyState(data), [data]);
@@ -185,30 +193,37 @@ export function ReportsPage({
 
   return (
     <div className="space-y-6">
-      {/* Responsive Segmented Reports Navigation Tabs (Sticky directly under top bar) */}
-      <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2.5 bg-background border-b border-border/80 w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)] overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-        <div className="flex items-center gap-1.5 overflow-x-auto pb-1 wt-scrollbar">
-          {[
-            { id: "all", label: "Overview & All" },
-            { id: "cashflow", label: "Cash Flow & Trends" },
-            { id: "spending", label: "Spending Allocation" },
-            { id: "rule", label: "50/30/20 Discipline" },
-            { id: "debt", label: "Income & Debt" },
-            { id: "wealth", label: "Wealth & SIPs" },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id as any)}
-              className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer ${
-                activeTab === tab.id
-                  ? "bg-primary text-primary-foreground shadow-2xs font-bold"
-                  : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      {/* Responsive Segmented Reports Navigation Tabs (5 tabs, sticky directly under top bar with scroll-into-view and right edge fade) */}
+      <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2.5 bg-background border-b border-border/80 w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] lg:w-[calc(100%+4rem)]">
+        <div className="relative w-full">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 wt-scrollbar [scrollbar-width:none] [&::-webkit-scrollbar]:hidden pr-10">
+            {[
+              { id: "summary" as const, label: "Summary" },
+              { id: "spending" as const, label: "Spending" },
+              { id: "cashflow" as const, label: "Cash flow" },
+              { id: "wealth" as const, label: "Wealth" },
+              { id: "debt" as const, label: "Debt" },
+            ].map((tab) => {
+              const isActive = activeTab === tab.id || (tab.id === "summary" && (activeTab as string) === "all");
+              return (
+                <button
+                  key={tab.id}
+                  ref={isActive ? activeTabButtonRef : undefined}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                    isActive
+                      ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                      : "bg-muted/50 text-muted-foreground hover:bg-muted hover:text-foreground font-medium"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
+          {/* Right edge fade gradient */}
+          <div className="pointer-events-none absolute right-0 top-0 bottom-1 w-8 bg-gradient-to-l from-background to-transparent" />
         </div>
       </div>
 
@@ -368,7 +383,7 @@ export function ReportsPage({
       </div>
 
       {/* Side by Side Charts in 1 Row: Velocity Breakdown & Cumulative Net Cash Flow Trend */}
-      {(activeTab === "all" || activeTab === "cashflow") && (
+      {(isSummary || activeTab === "cashflow") && (
         <div className="grid gap-6 lg:grid-cols-2">
           <CashFlowVelocityChart
             transactions={data.transactions}
@@ -389,10 +404,10 @@ export function ReportsPage({
       )}
 
       {/* Two Column Visual Analytics: Allocation Donut & 50/30/20 Diagnostic */}
-      {(activeTab === "all" || activeTab === "spending" || activeTab === "rule") && (
-        <div className={activeTab === "all" ? "grid gap-6 lg:grid-cols-2" : "grid gap-6"}>
+      {(isSummary || activeTab === "spending") && (
+        <div className={isSummary ? "grid gap-6 lg:grid-cols-2" : "grid gap-6"}>
           {/* Interactive Category Pie / Donut Chart */}
-          {(activeTab === "all" || activeTab === "spending") && (
+          {(isSummary || activeTab === "spending") && (
             <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
               <div>
                 <div className="flex items-center justify-between pb-3 border-b border-border/60">
@@ -422,7 +437,7 @@ export function ReportsPage({
           )}
 
           {/* 50 / 30 / 20 Budget Diagnostic & Allocations */}
-          {(activeTab === "all" || activeTab === "rule") && (
+          {(isSummary || activeTab === "spending") && (
             <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-border/60">
@@ -552,16 +567,16 @@ export function ReportsPage({
       )}
 
       {/* 3-Pillar Capital Flow: Income Streams, Investments, and Debt/Loan Cash Flow */}
-      {(activeTab === "all" || activeTab === "debt" || activeTab === "wealth") && (
+      {(isSummary || activeTab === "debt" || activeTab === "wealth") && (
         <div className={`grid gap-6 ${
-          activeTab === "all"
+          isSummary
             ? "md:grid-cols-3"
             : activeTab === "debt"
             ? "md:grid-cols-2"
             : "grid-cols-1 max-w-3xl"
         }`}>
           {/* Income Breakdown */}
-          {(activeTab === "all" || activeTab === "debt") && (
+          {(isSummary || activeTab === "debt") && (
             <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col justify-between h-[390px] sm:h-[410px] transition-all hover:border-border">
               <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
                 <div className="flex items-center gap-2.5">
@@ -647,7 +662,7 @@ export function ReportsPage({
           )}
 
           {/* Investment & Wealth Deployment */}
-          {(activeTab === "all" || activeTab === "wealth") && (
+          {(isSummary || activeTab === "wealth") && (
             <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col justify-between h-[390px] sm:h-[410px] transition-all hover:border-border">
               <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
                 <div className="flex items-center gap-2.5">
@@ -762,7 +777,7 @@ export function ReportsPage({
           )}
 
           {/* Debt, Loan & Borrowing Cash Flow */}
-          {(activeTab === "all" || activeTab === "debt") && (
+          {(isSummary || activeTab === "debt") && (
             <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col justify-between h-[390px] sm:h-[410px] transition-all hover:border-border">
               <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
                 <div className="flex items-center gap-2.5">

@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Copy,
   Pencil,
+  RotateCw,
   Search,
   Trash2,
   X,
@@ -14,11 +15,87 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   INVESTMENT_OUTFLOW_ACTIONS,
   type Transaction,
   type WealthState,
 } from "@/lib/wealthtrack";
 import { formatDate } from "@/lib/formatters";
+
+function formatDateGroupHeader(dateStr: string): string {
+  const txDate = dateStr.slice(0, 10);
+  const todayStr = "2026-10-26";
+  const yesterdayStr = "2026-10-25";
+
+  if (txDate === todayStr) return "Today";
+  if (txDate === yesterdayStr) return "Yesterday";
+
+  const parts = txDate.split("-");
+  if (parts.length === 3) {
+    const day = parseInt(parts[2], 10);
+    const monthIdx = parseInt(parts[1], 10) - 1;
+    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+    return `${day} ${months[monthIdx] || ""}`;
+  }
+  return dateStr;
+}
+
+function renderTransactionChips(tx: Transaction) {
+  return (
+    <span className="inline-flex items-center gap-1 shrink-0">
+      {tx.type === "Expense" ? (
+        <span
+          className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider ${
+            tx.need === "Want"
+              ? "border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              : "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+          }`}
+        >
+          {tx.need === "Want" ? "Want" : "Need"}
+        </span>
+      ) : tx.type === "EMI / Loan Payment" ? (
+        <span className="inline-flex shrink-0 items-center rounded-md border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-300">
+          EMI
+        </span>
+      ) : tx.type === "Borrow / Loan Taken" ? (
+        <span className="inline-flex shrink-0 items-center rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
+          Borrowed
+        </span>
+      ) : tx.type === "Lend / Loan Given" ? (
+        <span className="inline-flex shrink-0 items-center rounded-md border border-violet-500/20 bg-violet-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+          Lent
+        </span>
+      ) : tx.type === "Debt Recovery" ? (
+        <span className="inline-flex shrink-0 items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
+          Recovery
+        </span>
+      ) : null}
+
+      {tx.recurring && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span
+                className="inline-flex shrink-0 items-center justify-center size-4 rounded-full bg-primary/10 text-primary cursor-help"
+                aria-label="Posted automatically"
+              >
+                <RotateCw size={10} />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent side="top" className="text-[11px] py-1 px-2 z-tooltip">
+              Posted automatically
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+    </span>
+  );
+}
 
 export function TransactionTable({
   transactions,
@@ -164,10 +241,12 @@ export function TransactionTable({
   // Pagination State (Default 15 records per page as requested)
   const [pageSize, setPageSize] = useState<number>(15);
   const [currentPage, setCurrentPage] = useState<number>(1);
+  const [mobileLimit, setMobileLimit] = useState<number>(20);
 
   // Auto-reset page when search, total records, sort order, or pageSize changes
   useEffect(() => {
     setCurrentPage(1);
+    setMobileLimit(20);
   }, [search, sortedTransactions.length, sortOrder, pageSize]);
 
   const totalRecords = sortedTransactions.length;
@@ -184,6 +263,10 @@ export function TransactionTable({
     if (pageSize === -1) return sortedTransactions;
     return sortedTransactions.slice(startIndex, endIndex);
   }, [sortedTransactions, startIndex, endIndex, pageSize]);
+
+  const mobileTransactions = useMemo(() => {
+    return sortedTransactions.slice(0, mobileLimit);
+  }, [sortedTransactions, mobileLimit]);
 
   const toggleSelect = (id: string) => {
     updateSelectedIds((prev) =>
@@ -424,8 +507,8 @@ export function TransactionTable({
         <span className="text-center font-semibold text-muted-foreground/80">Actions</span>
       </div>
 
-      {/* Table Rows */}
-      <div className="divide-y divide-border/60">
+      {/* Table Rows (Desktop) */}
+      <div className="hidden md:block divide-y divide-border/60">
         {paginatedTransactions.length ? (
           paginatedTransactions.map((tx) => {
             const isSelected = selectedIds.includes(tx.id);
@@ -456,14 +539,13 @@ export function TransactionTable({
 
             return (
               <div
-                key={tx.id}
+                key={`desktop-${tx.id}`}
                 className={`group/row transition-colors hover:bg-muted/30 ${
                   isSelected ? "bg-primary/[0.04]" : ""
                 }`}
               >
-                {/* Desktop Grid Row */}
                 <div
-                  className={`hidden md:grid items-center gap-3 px-4 py-2.5 text-xs ${
+                  className={`grid items-center gap-3 px-4 py-2.5 text-xs ${
                     showAccountColumn
                       ? "grid-cols-[36px_minmax(0,1.2fr)_150px_130px_105px_120px_60px]"
                       : "grid-cols-[36px_minmax(0,1.4fr)_160px_110px_120px_60px]"
@@ -488,41 +570,7 @@ export function TransactionTable({
                       <span className="truncate text-sm font-semibold group-hover:text-primary transition-colors text-foreground">
                         {tx.description}
                       </span>
-
-                      {/* Status Badges */}
-                      {tx.type === "Expense" ? (
-                        <span
-                          className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider ${
-                            tx.need === "Want"
-                              ? "border border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                              : "border border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                          }`}
-                        >
-                          {tx.need === "Want" ? "Want" : "Need"}
-                        </span>
-                      ) : tx.type === "EMI / Loan Payment" ? (
-                        <span className="inline-flex shrink-0 items-center rounded-md border border-rose-500/20 bg-rose-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-rose-700 dark:text-rose-300">
-                          EMI
-                        </span>
-                      ) : tx.type === "Borrow / Loan Taken" ? (
-                        <span className="inline-flex shrink-0 items-center rounded-md border border-amber-500/20 bg-amber-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-amber-700 dark:text-amber-300">
-                          Borrowed
-                        </span>
-                      ) : tx.type === "Lend / Loan Given" ? (
-                        <span className="inline-flex shrink-0 items-center rounded-md border border-violet-500/20 bg-violet-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">
-                          Lent
-                        </span>
-                      ) : tx.type === "Debt Recovery" ? (
-                        <span className="inline-flex shrink-0 items-center rounded-md border border-emerald-500/20 bg-emerald-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-emerald-700 dark:text-emerald-300">
-                          Recovery
-                        </span>
-                      ) : null}
-
-                      {tx.recurring && (
-                        <span className="inline-flex shrink-0 items-center rounded-md bg-primary/10 px-1.5 py-0.2 text-[8px] font-semibold text-primary">
-                          Auto
-                        </span>
-                      )}
+                      {renderTransactionChips(tx)}
                     </div>
                     {tx.merchant && tx.merchant !== tx.description && (
                       <span className="block truncate text-[11px] text-muted-foreground mt-0.5">
@@ -596,82 +644,6 @@ export function TransactionTable({
                     />
                   </div>
                 </div>
-
-                {/* Mobile View */}
-                <div className="flex items-center justify-between gap-3 px-4 py-3 md:hidden">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Checkbox
-                      checked={isSelected}
-                      onCheckedChange={() => toggleSelect(tx.id)}
-                      aria-label={`Select ${tx.description}`}
-                    />
-                    <button
-                      className="flex items-center gap-2.5 min-w-0 text-left"
-                      onClick={() => onView(tx)}
-                      type="button"
-                    >
-                      <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-base">
-                        {category ? category.icon : tx.type === "Transfer" ? "↔" : "💳"}
-                      </span>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="truncate text-sm font-semibold text-foreground">
-                            {tx.description}
-                          </span>
-                          {tx.type === "Expense" ? (
-                            <span
-                              className={`inline-flex shrink-0 items-center rounded-full px-1.5 py-0.2 text-[8px] font-bold uppercase tracking-wider ${
-                                tx.need === "Want"
-                                  ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
-                                  : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
-                              }`}
-                            >
-                              {tx.need === "Want" ? "Want" : "Need"}
-                            </span>
-                          ) : tx.type === "EMI / Loan Payment" ? (
-                            <span className="inline-flex shrink-0 items-center rounded-full bg-rose-500/15 px-1.5 py-0.2 text-[8px] font-bold uppercase text-rose-700 dark:text-rose-300">
-                              EMI
-                            </span>
-                          ) : null}
-                        </div>
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate mt-0.5">
-                          {showAccountColumn && <span>{account?.name} · </span>}
-                          <span>{formatDate(tx.date)}</span>
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <span
-                      className={`whitespace-nowrap text-sm font-bold tabular-nums ${
-                        isPositive
-                          ? "text-emerald-600 dark:text-emerald-400"
-                          : isOutflow
-                          ? "text-rose-600 dark:text-rose-400"
-                          : "text-foreground"
-                      }`}
-                    >
-                      {isPositive ? "+" : isOutflow ? "−" : ""}
-                      {money(tx.amount)}
-                    </span>
-                    <ActionMenu
-                      items={[
-                        {
-                          label: "Edit",
-                          icon: <Pencil size={13} />,
-                          onClick: () => onEdit(tx),
-                        },
-                        {
-                          label: "Delete",
-                          icon: <Trash2 size={13} />,
-                          destructive: true,
-                          onClick: () => onDelete(tx),
-                        },
-                      ]}
-                    />
-                  </div>
-                </div>
               </div>
             );
           })
@@ -692,10 +664,163 @@ export function TransactionTable({
         )}
       </div>
 
-      {/* Bottom Pagination & Rows-Per-Page Controls Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-muted/20 px-4 py-3 text-xs">
+      {/* Table Rows (Mobile with Date Grouping Headers) */}
+      <div className="md:hidden divide-y divide-border/60">
+        {mobileTransactions.length ? (
+          mobileTransactions.map((tx, idx) => {
+            const isSelected = selectedIds.includes(tx.id);
+            const isInvestmentOutflow =
+              tx.type === "Investment" &&
+              tx.investmentAction &&
+              INVESTMENT_OUTFLOW_ACTIONS.includes(tx.investmentAction);
+
+            const isPositive =
+              tx.type === "Income" ||
+              tx.type === "Refund" ||
+              tx.type === "Borrow / Loan Taken" ||
+              tx.type === "Debt Recovery" ||
+              (tx.type === "Adjustment" && tx.amount > 0) ||
+              (tx.type === "Investment" &&
+                !isInvestmentOutflow &&
+                tx.investmentAction !== "Valuation");
+
+            const isOutflow =
+              tx.type === "Expense" ||
+              tx.type === "EMI / Loan Payment" ||
+              tx.type === "Lend / Loan Given" ||
+              isInvestmentOutflow ||
+              (tx.type === "Adjustment" && tx.amount < 0);
+
+            const category = data.categories.find((c) => c.id === tx.categoryId);
+            const account = data.accounts.find((a) => a.id === tx.accountId);
+
+            const currentHeader = formatDateGroupHeader(tx.date);
+            const prevHeader = idx > 0 ? formatDateGroupHeader(mobileTransactions[idx - 1].date) : null;
+            const showDateHeader = idx === 0 || currentHeader !== prevHeader;
+
+            return (
+              <React.Fragment key={`mobile-${tx.id}`}>
+                {showDateHeader && (
+                  <div className="px-4 py-1.5 text-[11px] font-bold text-muted-foreground uppercase tracking-wider bg-muted/40 border-y border-border/40 select-none">
+                    {currentHeader}
+                  </div>
+                )}
+                <div
+                  className={`flex items-start justify-between gap-3 px-3 sm:px-4 py-2.5 transition-colors hover:bg-muted/30 ${
+                    isSelected ? "bg-primary/[0.04]" : ""
+                  }`}
+                >
+                  <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                    <div className="pt-1">
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => toggleSelect(tx.id)}
+                        aria-label={`Select ${tx.description}`}
+                      />
+                    </div>
+                    <button
+                      className="flex items-start gap-2.5 min-w-0 text-left flex-1"
+                      onClick={() => onView(tx)}
+                      type="button"
+                    >
+                      <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-muted text-sm mt-0.5">
+                        {category ? category.icon : tx.type === "Transfer" ? "↔" : "💳"}
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="truncate text-sm font-semibold text-foreground">
+                            {tx.description}
+                          </span>
+                          {renderTransactionChips(tx)}
+                        </div>
+                        {tx.merchant && tx.merchant !== tx.description && (
+                          <span className="block truncate text-[11px] text-muted-foreground">
+                            {tx.merchant}
+                          </span>
+                        )}
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground truncate mt-0.5">
+                          {category && (
+                            <span className="truncate">{category.icon} {category.name}</span>
+                          )}
+                          {account && (
+                            <>
+                              <span>·</span>
+                              <span className="truncate flex items-center gap-1">
+                                <InstitutionLogo name={account.institution || account.name} size="xs" />
+                                {account.name}
+                              </span>
+                            </>
+                          )}
+                          <span>·</span>
+                          <span className="shrink-0">{formatDate(tx.date)}</span>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                    <span
+                      className={`whitespace-nowrap text-sm font-bold tabular-nums ${
+                        isPositive
+                          ? "text-emerald-600 dark:text-emerald-400"
+                          : isOutflow
+                          ? "text-rose-600 dark:text-rose-400"
+                          : "text-foreground"
+                      }`}
+                    >
+                      {isPositive ? "+" : isOutflow ? "−" : ""}
+                      {money(tx.amount)}
+                    </span>
+                    <ActionMenu
+                      items={[
+                        {
+                          label: "Edit",
+                          icon: <Pencil size={13} />,
+                          onClick: () => onEdit(tx),
+                        },
+                        ...(onDuplicate
+                          ? [
+                              {
+                                label: "Duplicate",
+                                icon: <Copy size={13} />,
+                                onClick: () => onDuplicate(tx),
+                              },
+                            ]
+                          : []),
+                        {
+                          label: "Delete",
+                          icon: <Trash2 size={13} />,
+                          destructive: true,
+                          onClick: () => onDelete(tx),
+                        },
+                      ]}
+                    />
+                  </div>
+                </div>
+              </React.Fragment>
+            );
+          })
+        ) : (
+          <div className="py-12 text-center text-xs text-muted-foreground space-y-2">
+            <p className="font-semibold text-foreground text-sm">No transactions found</p>
+            <p>
+              {search
+                ? `No results matching "${search}". Try clearing your search.`
+                : "No transactions recorded for the selected filter criteria."}
+            </p>
+            {search && (
+              <Button size="sm" variant="outline" className="h-7 text-xs font-semibold mt-1" onClick={() => setSearch("")}>
+                Clear Search
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Desktop Pagination & Rows-Per-Page Controls Bar (Hidden on Mobile) */}
+      <div className="hidden md:flex flex-wrap items-center justify-between gap-3 border-t border-border/70 bg-muted/20 px-4 py-3 text-xs overflow-x-auto [scrollbar-width:none]">
         {/* Left: Showing range */}
-        <div className="flex items-center gap-2 text-muted-foreground font-medium">
+        <div className="flex items-center gap-2 text-muted-foreground font-medium shrink-0">
           <span>
             {totalRecords > 0 ? (
               <>
@@ -709,10 +834,10 @@ export function TransactionTable({
         </div>
 
         {/* Center: Rows per page selector */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <span className="text-muted-foreground font-medium whitespace-nowrap">Rows per page:</span>
           <select
-            className="wt-field h-8 py-0 pl-2.5 pr-7 text-xs font-semibold bg-background w-18 sm:w-20 cursor-pointer"
+            className="wt-field h-8 py-0 pl-2.5 pr-7 text-xs font-semibold bg-background min-w-[72px] sm:min-w-[80px] w-auto cursor-pointer"
             value={pageSize}
             onChange={(e) => {
               setPageSize(Number(e.target.value));
@@ -728,11 +853,11 @@ export function TransactionTable({
         </div>
 
         {/* Right: Page navigation buttons */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1.5 shrink-0">
           <Button
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 text-xs font-semibold"
+            className="h-8 px-2.5 text-xs font-semibold shrink-0"
             disabled={safePage <= 1}
             onClick={() => setCurrentPage(1)}
             title="First page"
@@ -742,7 +867,7 @@ export function TransactionTable({
           <Button
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 text-xs font-semibold"
+            className="h-8 px-2.5 text-xs font-semibold shrink-0"
             disabled={safePage <= 1}
             onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
             title="Previous page"
@@ -750,14 +875,14 @@ export function TransactionTable({
             ‹ Prev
           </Button>
 
-          <span className="px-2 font-bold text-foreground tabular-nums whitespace-nowrap">
+          <span className="px-2 font-bold text-foreground tabular-nums whitespace-nowrap shrink-0">
             Page {safePage} of {totalPages}
           </span>
 
           <Button
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 text-xs font-semibold"
+            className="h-8 px-2.5 text-xs font-semibold shrink-0"
             disabled={safePage >= totalPages}
             onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
             title="Next page"
@@ -767,7 +892,7 @@ export function TransactionTable({
           <Button
             variant="outline"
             size="sm"
-            className="h-8 px-2.5 text-xs font-semibold"
+            className="h-8 px-2.5 text-xs font-semibold shrink-0"
             disabled={safePage >= totalPages}
             onClick={() => setCurrentPage(totalPages)}
             title="Last page"
@@ -775,6 +900,26 @@ export function TransactionTable({
             Last »
           </Button>
         </div>
+      </div>
+
+      {/* Mobile Infinite Scroll Footer */}
+      <div className="md:hidden border-t border-border/70 bg-muted/20 px-4 py-3 text-xs">
+        {totalRecords > 0 && (
+          mobileLimit < totalRecords ? (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs font-semibold h-8.5 cursor-pointer"
+              onClick={() => setMobileLimit((prev) => Math.min(totalRecords, prev + 20))}
+            >
+              Load more ({totalRecords - mobileLimit} remaining)
+            </Button>
+          ) : (
+            <p className="text-center text-[11px] text-muted-foreground font-medium">
+              All {totalRecords} transactions loaded
+            </p>
+          )
+        )}
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import {
   PiggyBank,
   Save,
@@ -37,6 +37,20 @@ export function ProfilePage({
   };
 
   const [form, setForm] = useState<UserProfile>(currentProfile);
+
+  const isDirty = useMemo(() => {
+    return (
+      form.fullName !== currentProfile.fullName ||
+      form.email !== currentProfile.email ||
+      form.phone !== currentProfile.phone ||
+      form.occupation !== currentProfile.occupation ||
+      (form.bio ?? "") !== (currentProfile.bio ?? "") ||
+      form.monthlyIncomeTarget !== currentProfile.monthlyIncomeTarget ||
+      form.emergencyFundTarget !== currentProfile.emergencyFundTarget ||
+      form.savingsRateTarget !== currentProfile.savingsRateTarget ||
+      form.riskProfile !== currentProfile.riskProfile
+    );
+  }, [form, currentProfile]);
 
   // Compute liquid balance for emergency fund comparison
   const liquidBalance = data.accounts
@@ -258,12 +272,35 @@ export function ProfilePage({
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="flex items-center justify-end gap-3 pt-2">
-          <Button type="submit" className="h-9 gap-2 px-5 text-xs font-semibold shadow-xs">
-            <Save size={15} /> Save Profile Changes
-          </Button>
-        </div>
+        {/* Sticky Footer Bar that appears only when there are unsaved changes */}
+        {isDirty && (
+          <div className="fixed bottom-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-topbar bg-card/95 backdrop-blur-xs border-t border-border/80 px-4 py-3 sm:px-6 shadow-xl flex items-center justify-between animate-in slide-in-from-bottom duration-200">
+            <div className="flex items-center gap-2">
+              <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-xs font-semibold text-foreground">
+                You have unsaved changes
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs font-semibold cursor-pointer"
+                onClick={() => setForm(currentProfile)}
+              >
+                Discard
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="h-8 gap-1.5 px-4 text-xs font-semibold shadow-xs cursor-pointer"
+              >
+                <Save size={14} /> Save Profile Changes
+              </Button>
+            </div>
+          </div>
+        )}
       </form>
     </div>
   );
