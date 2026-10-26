@@ -57,9 +57,9 @@ export function PageHeader({
     ) : null);
 
   const rightSide = actions ? (
-    <div className="flex flex-wrap items-center gap-2 shrink-0">{actions}</div>
+    <div className="flex flex-wrap items-center gap-2 min-w-0">{actions}</div>
   ) : (
-    <div className="flex flex-wrap items-center gap-2 shrink-0">
+    <div className="flex flex-wrap items-center gap-2 min-w-0">
       {periodSlot ?? (isBalancePage ? <AsOfTodayCaption /> : null)}
       {primaryAction}
       {renderedMoreMenu}
@@ -69,7 +69,7 @@ export function PageHeader({
   return (
     <div className={`space-y-4 ${className}`}>
       {tabs && (
-        <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2.5 bg-background border-b border-border/80">
+        <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2 bg-background border-b border-border/80 max-w-[100vw]">
           {tabs}
         </div>
       )}

@@ -66,38 +66,39 @@ export function CategoriesPage({
         description="Organize your spending into smart need or want classifications with monthly budget caps. Tap any category to edit, or use ⋯ to delete."
         periodSlot={<PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />}
         primaryAction={
-          <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 text-xs font-semibold shadow-xs">
-            <Plus size={15} /> Add category
+          <Button size="sm" onClick={onAdd} className="h-8 sm:h-9 px-2.5 sm:px-3 gap-1.5 text-xs font-semibold shadow-xs shrink-0">
+            <Plus size={15} />
+            <span className="hidden sm:inline">Add category</span>
           </Button>
         }
       />
 
       {/* Top Budget Summary Hero Card */}
-      <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-2xs space-y-3">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-2">
+      <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-2xs space-y-3 min-w-0 w-full overflow-hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                 Overall Budget Performance
               </span>
-              <span className="rounded-full bg-primary/10 text-primary px-2 py-0.2 text-[10px] font-bold">
+              <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-bold shrink-0">
                 {sharedPeriod.month === 10 ? "October 2026" : `${sharedPeriod.month}/${sharedPeriod.year}`}
               </span>
             </div>
-            <div className="flex items-baseline gap-2 mt-1">
+            <div className="flex items-baseline gap-2 mt-1 flex-wrap">
               <h2 className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
                 <Metric id="money_out" value={budgetMetrics.budgetedSpend} />
               </h2>
-              <span className="text-sm font-semibold text-muted-foreground">
+              <span className="text-xs sm:text-sm font-semibold text-muted-foreground">
                 of {money(budgetMetrics.totalCap)}
               </span>
-              <span className="ml-2 text-xs font-extrabold text-primary">
+              <span className="text-xs font-extrabold text-primary">
                 (<Metric id="budget_used_pct" value={budgetMetrics.budgetUsedPct} format="percent" /> used)
               </span>
             </div>
           </div>
-          <div className="text-left sm:text-right text-xs text-muted-foreground">
-            <span className="block">Uncapped / not budgeted:</span>
+          <div className="text-left sm:text-right text-xs text-muted-foreground shrink-0">
+            <span className="block sm:inline sm:mr-1">Uncapped / not budgeted:</span>
             <strong className="text-foreground">{money(budgetMetrics.notBudgetedSpend)}</strong>
           </div>
         </div>
@@ -117,32 +118,32 @@ export function CategoriesPage({
       </div>
 
       {/* Filter and Switcher Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3 sm:pb-4">
-        <div className="flex items-center justify-between gap-2 w-full sm:w-auto">
-          <div className="flex flex-wrap gap-1.5 sm:gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3 sm:pb-4 min-w-0">
+        <div className="flex items-center justify-between gap-2 w-full sm:w-auto min-w-0">
+          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
             <Button
               variant={kind === "Expense" ? "default" : "outline"}
               size="sm"
-              className="h-8 text-xs font-medium"
+              className="h-7.5 sm:h-8 px-2.5 sm:px-3 text-xs font-medium"
               onClick={() => setKind("Expense")}
             >
-              Expense ({expenseCategories.length})
+              Expense <span className="hidden sm:inline">({expenseCategories.length})</span>
             </Button>
             <Button
               variant={kind === "Income" ? "default" : "outline"}
               size="sm"
-              className="h-8 text-xs font-medium"
+              className="h-7.5 sm:h-8 px-2.5 sm:px-3 text-xs font-medium"
               onClick={() => setKind("Income")}
             >
-              Income ({incomeCategories.length})
+              Income <span className="hidden sm:inline">({incomeCategories.length})</span>
             </Button>
             <Button
               variant={kind === "Transfer" ? "default" : "outline"}
               size="sm"
-              className="h-8 text-xs font-medium"
+              className="h-7.5 sm:h-8 px-2.5 sm:px-3 text-xs font-medium"
               onClick={() => setKind("Transfer")}
             >
-              Transfers ({transferCategories.length})
+              Transfers <span className="hidden sm:inline">({transferCategories.length})</span>
             </Button>
           </div>
 

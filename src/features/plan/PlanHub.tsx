@@ -71,18 +71,18 @@ export function PlanHub({
     }
   };
 
-  const tabs: { id: PlanSubtab; label: string; icon: typeof Tag; count?: number }[] = [
-    { id: "budgets", label: "Budgets & Categories", icon: Tag, count: data.categories.length },
-    { id: "goals", label: "Goals", icon: ShieldCheck, count: (data.funds ?? []).length },
-    { id: "recurring", label: "Recurring", icon: CalendarDays, count: (data.recurring ?? []).length },
+  const tabs: { id: PlanSubtab; label: string; mobileLabel: string; icon: typeof Tag; count?: number }[] = [
+    { id: "budgets", label: "Budgets & Categories", mobileLabel: "Budgets", icon: Tag, count: data.categories.length },
+    { id: "goals", label: "Goals", mobileLabel: "Goals", icon: ShieldCheck, count: (data.funds ?? []).length },
+    { id: "recurring", label: "Recurring", mobileLabel: "Recurring", icon: CalendarDays, count: (data.recurring ?? []).length },
   ];
 
   return (
     <div className="space-y-6">
       {/* Subtab Segmented Switcher (Sticky directly under top bar) */}
-      <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2.5 bg-background border-b border-border/80 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="sticky top-[56px] md:top-[64px] z-subnav -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-2 bg-background border-b border-border/80 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden max-w-[100vw]">
         <div className="flex items-center w-full sm:w-auto justify-between sm:justify-start rounded-xl bg-muted/60 p-1 border border-border/60 shadow-2xs">
-          {tabs.map(({ id, label, icon: Icon, count }) => {
+          {tabs.map(({ id, label, mobileLabel, icon: Icon, count }) => {
             const isActive = tab === id;
             return (
               <button
@@ -96,10 +96,13 @@ export function PlanHub({
                 }`}
               >
                 <Icon size={14} className={`shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-                <span className="text-[11px] sm:text-xs truncate">{label}</span>
+                <span className="text-[11px] sm:text-xs truncate">
+                  <span className="hidden sm:inline">{label}</span>
+                  <span className="sm:hidden">{mobileLabel}</span>
+                </span>
                 {typeof count === "number" && (
                   <span
-                    className={`shrink-0 rounded-full px-1.5 py-0.2 text-[9px] sm:text-[10px] font-bold ${
+                    className={`hidden sm:inline-flex shrink-0 rounded-full px-1.5 py-0.2 text-[9px] sm:text-[10px] font-bold ${
                       isActive ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                     }`}
                   >
