@@ -2005,9 +2005,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background w-full max-w-full overflow-x-hidden">
       <Toaster position="top-right" richColors />
-      <div className="flex min-h-screen">
+      <div className="flex min-h-screen w-full max-w-full overflow-x-hidden">
         {/* Desktop Sidebar Navigation */}
         <aside
           className="hidden shrink-0 flex-col border-r border-border bg-card lg:sticky lg:top-0 lg:flex lg:h-screen lg:w-[248px]"
@@ -2058,8 +2058,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         </aside>
 
         {/* Main Content Area */}
-        <div className="min-w-0 flex-1">
-          <header className="sticky top-0 z-20 flex h-[68px] items-center justify-between gap-3 border-b border-border bg-background/95 px-4 backdrop-blur-xs sm:px-7">
+        <div className="min-w-0 flex-1 w-full max-w-full overflow-x-hidden">
+          <header className="sticky top-0 z-20 flex h-[68px] w-full items-center justify-between gap-3 border-b border-border bg-background/95 px-3 sm:px-7 backdrop-blur-xs">
             <div className="flex min-w-0 items-center gap-3">
               <Button
                 variant="ghost"
@@ -2343,7 +2343,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             </div>
           </header>
 
-          <main className="mx-auto max-w-[1440px] px-4 pb-24 pt-6 sm:px-7 sm:pb-10 lg:px-9">
+          <main className="mx-auto w-full max-w-[1440px] px-3 sm:px-7 pb-24 pt-4 sm:pt-6 sm:pb-10 lg:px-9 overflow-x-hidden">
             {active === "Overview" && (
               <Dashboard
                 data={data}
@@ -2664,11 +2664,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
       {/* Mobile Bottom Navigation Bar */}
       {hubsV2 ? (
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center">
+        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-1 sm:px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center w-full max-w-full overflow-hidden">
           <button
             type="button"
             aria-label="Home"
-            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
               active === "Overview" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
             onClick={() => goSection("Overview")}
@@ -2678,13 +2678,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             }`}>
               <LayoutDashboard size={18} className={active === "Overview" ? "stroke-[2.3]" : "stroke-[1.8]"} />
             </span>
-            <span className="text-[10px] leading-none tracking-tight">Home</span>
+            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Home</span>
           </button>
 
           <button
             type="button"
             aria-label="Transactions"
-            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
               active === "Transactions" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
             }`}
             onClick={() => goSection("Transactions")}
@@ -2694,7 +2694,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             }`}>
               <ArrowLeftRight size={18} className={active === "Transactions" ? "stroke-[2.3]" : "stroke-[1.8]"} />
             </span>
-            <span className="text-[10px] leading-none tracking-tight">Transactions</span>
+            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Transactions</span>
           </button>
 
           {/* Center Elevated [+] Add Button */}
@@ -2702,18 +2702,18 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             type="button"
             aria-label="Add transaction"
             onClick={() => setGlobalAddOpen(true)}
-            className="flex flex-col items-center justify-center -mt-3.5 py-0.5 group cursor-pointer"
+            className="flex flex-col items-center justify-center -mt-3.5 py-0.5 group cursor-pointer w-full min-w-0"
           >
             <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-md shadow-primary/30 group-active:scale-95 transition-transform">
               <Plus size={22} className="stroke-[2.5]" />
             </span>
-            <span className="text-[10px] font-bold text-foreground mt-0.5">Add</span>
+            <span className="text-[9.5px] sm:text-[10px] font-bold text-foreground mt-0.5">Add</span>
           </button>
 
           <button
             type="button"
             aria-label="Wealth"
-            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
               active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active)
                 ? "text-primary font-bold"
                 : "text-muted-foreground hover:text-foreground font-medium"
@@ -2725,13 +2725,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             }`}>
               <Wallet size={18} className={active === "Wealth" ? "stroke-[2.3]" : "stroke-[1.8]"} />
             </span>
-            <span className="text-[10px] leading-none tracking-tight">Wealth</span>
+            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Wealth</span>
           </button>
 
           <button
             type="button"
             aria-label="Plan"
-            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
               active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active)
                 ? "text-primary font-bold"
                 : "text-muted-foreground hover:text-foreground font-medium"
@@ -2743,11 +2743,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             }`}>
               <ShieldCheck size={18} className={active === "Plan" ? "stroke-[2.3]" : "stroke-[1.8]"} />
             </span>
-            <span className="text-[10px] leading-none tracking-tight">Plan</span>
+            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Plan</span>
           </button>
         </nav>
       ) : (
-        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg">
+        <nav className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border/80 bg-card/95 px-1 sm:px-2 pb-[calc(env(safe-area-inset-bottom)+4px)] pt-1.5 backdrop-blur-md lg:hidden shadow-lg items-center w-full max-w-full overflow-hidden">
           {[
             { label: "Home", section: "Overview" as Section, icon: LayoutDashboard },
             { label: "Transactions", section: "Transactions" as Section, icon: ArrowLeftRight },
@@ -2760,7 +2760,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 key={section}
                 type="button"
                 aria-label={label}
-                className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+                className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
                   isItemActive
                     ? "text-primary font-bold"
                     : "text-muted-foreground hover:text-foreground font-medium"
@@ -2775,7 +2775,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 }`}>
                   <Icon size={18} className={isItemActive ? "stroke-[2.3]" : "stroke-[1.8]"} />
                 </span>
-                <span className="text-[10px] leading-none tracking-tight">{label}</span>
+                <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">{label}</span>
               </button>
             );
           })}
@@ -2785,7 +2785,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               <button
                 type="button"
                 aria-label="More features and settings"
-                className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all ${
+                className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
                   isMoreActive
                     ? "text-primary font-bold"
                     : "text-muted-foreground hover:text-foreground font-medium"
@@ -2797,7 +2797,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 }`}>
                   <MoreHorizontal size={18} className={isMoreActive ? "stroke-[2.3]" : "stroke-[1.8]"} />
                 </span>
-                <span className="text-[10px] leading-none tracking-tight">More</span>
+                <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">More</span>
               </button>
             );
           })()}

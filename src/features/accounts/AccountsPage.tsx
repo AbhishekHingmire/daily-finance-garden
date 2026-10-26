@@ -219,12 +219,14 @@ export function AccountsPage({
                 <span className="size-1.5 rounded-full bg-primary animate-pulse" />
                 Net Worth
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-muted border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                Assets: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.totalAssets)}</strong> · Debt: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.totalDebt)}</strong>
+              <span className="inline-flex items-center gap-1 rounded-full bg-muted border border-border/60 px-2 py-0.5 text-[10px] font-medium text-muted-foreground flex-wrap max-w-full">
+                <span>Assets: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.totalAssets)}</strong></span>
+                <span>·</span>
+                <span>Debt: <strong className="text-foreground ml-0.5 tabular-nums">{money(wealthMetrics.totalDebt)}</strong></span>
               </span>
             </div>
 
-            <p className="wt-display mt-1.5 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight tabular-nums whitespace-nowrap">
+            <p className="wt-display mt-1.5 text-2xl sm:text-3xl lg:text-4xl font-extrabold text-foreground tracking-tight tabular-nums truncate max-w-full">
               {money(wealthMetrics.netWorth)}
             </p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -304,7 +306,7 @@ export function AccountsPage({
               title={`Debt: ${debtPct}%`}
             />
           </div>
-          <div className="flex justify-between text-[11px] text-muted-foreground">
+          <div className="flex flex-wrap justify-between gap-1 text-[11px] text-muted-foreground">
             <span>Assets: {money(wealthMetrics.totalAssets)} ({assetsPct}%)</span>
             <span>Debt: {money(wealthMetrics.totalDebt)} ({debtPct}%)</span>
           </div>
@@ -312,7 +314,7 @@ export function AccountsPage({
       </div>
 
       {/* Accounts Grid */}
-      <div className={gridColsClass}>
+      <div className={`${gridColsClass} w-full max-w-full`}>
         {activeAccounts.map((account) => {
           const balance = accountBalances.get(account.id) ?? (account.openingBalance || 0);
           const isSelected = selected?.id === account.id;
@@ -331,16 +333,16 @@ export function AccountsPage({
                   setSelected(isSelected ? null : account);
                 }
               }}
-              className={`group cursor-pointer rounded-xl border p-4 sm:p-5 transition-all wt-shadow bg-card hover:border-primary/50 hover:shadow-xs flex flex-col justify-between select-none ${
+              className={`group cursor-pointer rounded-xl border p-4 sm:p-5 transition-all wt-shadow bg-card hover:border-primary/50 hover:shadow-xs flex flex-col justify-between select-none w-full min-w-0 max-w-full overflow-hidden ${
                 isSelected
                   ? "border-primary ring-2 ring-primary/20 bg-primary/[0.03]"
                   : "border-border/70"
               }`}
             >
-              <div>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
+              <div className="w-full min-w-0">
+                <div className="flex items-start justify-between gap-2.5 sm:gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <span className="inline-block rounded-md bg-muted px-2 py-0.5 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
                         {account.kind}
                       </span>
@@ -369,17 +371,17 @@ export function AccountsPage({
                   <span className="text-[11px] font-medium text-muted-foreground">
                     {isCard ? "Outstanding Balance" : "Current Balance"}
                   </span>
-                  <p className="wt-display mt-0.5 text-xl sm:text-2xl font-bold text-foreground tabular-nums">
+                  <p className="wt-display mt-0.5 text-xl sm:text-2xl font-bold text-foreground tabular-nums truncate">
                     {money(balance)}
                   </p>
                 </div>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between text-xs">
-                <span className="text-[11px] font-medium text-muted-foreground/80">
+              <div className="mt-4 pt-3 border-t border-border/50 flex items-center justify-between gap-2 text-xs w-full min-w-0">
+                <span className="text-[11px] font-medium text-muted-foreground/80 truncate">
                   {isCard ? "Credit Account" : "Available Funds"}
                 </span>
-                <span className="flex items-center gap-1 text-[11px] font-semibold text-primary group-hover:translate-x-0.5 transition-transform">
+                <span className="flex items-center gap-1 text-[11px] font-semibold text-primary group-hover:translate-x-0.5 transition-transform shrink-0">
                   {isSelected ? "Active Ledger ↑" : "View Details →"}
                 </span>
               </div>

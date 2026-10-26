@@ -104,6 +104,8 @@
 html {
   font-size: 86.625%;
   min-width: 320px;
+  max-width: 100%;
+  overflow-x: hidden;
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -111,6 +113,9 @@ html {
 body {
   margin: 0;
   min-width: 320px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   background: var(--color-background);
   color: var(--color-foreground);
   letter-spacing: -0.01em;

@@ -93,7 +93,7 @@ export function WealthHub({
     <div className="space-y-6">
       {/* Subtab Segmented Switcher */}
       <div className="w-full max-w-full overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-border/80 pb-3">
-        <div className="inline-flex items-center w-full sm:w-auto justify-between sm:justify-start rounded-xl bg-muted/60 p-1 border border-border/60 shadow-2xs">
+        <div className="flex items-center w-full sm:w-auto justify-between sm:justify-start rounded-xl bg-muted/60 p-1 border border-border/60 shadow-2xs">
           {tabs.map(({ id, label, icon: Icon, count }) => {
             const isActive = tab === id;
             return (
@@ -101,14 +101,14 @@ export function WealthHub({
                 key={id}
                 type="button"
                 onClick={() => handleTabChange(id)}
-                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 sm:gap-2 rounded-lg px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold transition-all whitespace-nowrap ${
+                className={`flex-1 sm:flex-initial flex items-center justify-center gap-1 sm:gap-2 rounded-lg px-2 sm:px-3.5 py-1.5 text-xs font-semibold transition-all min-w-0 overflow-hidden ${
                   isActive
                     ? "bg-card text-foreground shadow-2xs font-bold"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 <Icon size={14} className={`shrink-0 ${isActive ? "text-primary" : "text-muted-foreground"}`} />
-                <span className="text-[11px] sm:text-xs">{label}</span>
+                <span className="text-[11px] sm:text-xs truncate">{label}</span>
                 {typeof count === "number" && (
                   <span
                     className={`shrink-0 rounded-full px-1.5 py-0.2 text-[9px] sm:text-[10px] font-bold ${
