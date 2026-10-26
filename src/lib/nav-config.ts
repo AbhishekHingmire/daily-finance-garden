@@ -125,6 +125,16 @@ export const SECONDARY_NAV_ITEMS: NavItem[] = [
     icon: User,
     inDrawer: true,
   },
+  {
+    id: "help",
+    section: "Help",
+    label: "Help",
+    h1: "Help & Support",
+    breadcrumb: "Help",
+    path: "/help",
+    icon: HelpCircle,
+    inDrawer: true,
+  },
 ];
 
 export function getNavItemBySection(section: Section): NavItem | undefined {

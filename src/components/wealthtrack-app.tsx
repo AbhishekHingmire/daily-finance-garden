@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
+  ArrowLeft,
   ArrowLeftRight,
   Bell,
   CalendarDays,
@@ -51,6 +52,7 @@ import { ReportsPage } from "@/features/reports/ReportsPage";
 import { RecurringPage } from "@/features/recurring/RecurringPage";
 import { RecurringModal } from "@/features/recurring/RecurringModal";
 import { SettingsPage } from "@/features/settings/SettingsPage";
+import { HelpPage } from "@/features/help/HelpPage";
 import { WealthHub, type WealthSubtab } from "@/features/wealth/WealthHub";
 import { PlanHub, type PlanSubtab } from "@/features/plan/PlanHub";
 import { DataHealthModal } from "@/components/shared/DataHealthModal";
@@ -2098,15 +2100,32 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         <div className="min-w-0 flex-1 w-full">
           <header className="fixed top-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-topbar flex h-[56px] md:h-[64px] pt-[env(safe-area-inset-top)] md:pt-0 items-center justify-between gap-3 border-b border-border bg-background px-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden size-10"
-                aria-label="Open navigation"
-                onClick={() => setMobileNav(true)}
-              >
-                <Menu size={24} />
-              </Button>
+              {["Reports", "Insights", "Profile", "Preferences", "Settings", "Help"].includes(active) ? (
+                <div className="flex items-center gap-2 md:hidden">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-10"
+                    aria-label="Back to Home"
+                    onClick={() => goSection("Overview")}
+                  >
+                    <ArrowLeft size={22} />
+                  </Button>
+                  <span className="font-bold text-sm text-foreground truncate">
+                    {active === "Reports" ? "Insights" : active}
+                  </span>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="md:hidden size-10"
+                  aria-label="Open navigation"
+                  onClick={() => setMobileNav(true)}
+                >
+                  <Menu size={24} />
+                </Button>
+              )}
               <div className="hidden min-w-0 sm:flex items-center gap-1.5 text-xs text-muted-foreground select-none">
                 <span className="font-semibold text-muted-foreground/80">WealthTrack</span>
                 <span className="text-muted-foreground/40 font-bold">/</span>
@@ -2701,6 +2720,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 }
               />
             )}
+            {active === "Help" && (
+              <HelpPage onNavigate={(sec) => goSection(sec as Section)} />
+            )}
             </PageContainer>
           </main>
         </div>
@@ -2719,148 +2741,90 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       </button>
 
       {/* Mobile Bottom Navigation Bar */}
-      {hubsV2 ? (
-        <nav className="fixed inset-x-0 bottom-0 z-topbar grid grid-cols-5 border-t border-border bg-card px-1 sm:px-2 pb-[env(safe-area-inset-bottom)] h-[calc(64px+env(safe-area-inset-bottom))] md:hidden shadow-lg items-center w-full max-w-full overflow-visible">
-          <button
-            type="button"
-            aria-label="Overview"
-            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
-              active === "Overview" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
-            }`}
-            onClick={() => goSection("Overview")}
-          >
-            <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-              active === "Overview" ? "bg-primary/10 text-primary" : ""
-            }`}>
-              <LayoutDashboard size={18} className={active === "Overview" ? "stroke-[2.3]" : "stroke-[1.8]"} />
-            </span>
-            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Overview</span>
-          </button>
+      <nav className="fixed inset-x-0 bottom-0 z-topbar grid grid-cols-5 border-t border-border bg-card px-1 sm:px-2 pb-[env(safe-area-inset-bottom)] h-[calc(64px+env(safe-area-inset-bottom))] md:hidden shadow-lg items-center w-full max-w-full overflow-visible">
+        <button
+          type="button"
+          aria-label="Home"
+          className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
+            active === "Overview" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
+          }`}
+          onClick={() => goSection("Overview")}
+        >
+          <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+            active === "Overview" ? "bg-primary/10 text-primary" : ""
+          }`}>
+            <LayoutDashboard size={18} className={active === "Overview" ? "stroke-[2.3]" : "stroke-[1.8]"} />
+          </span>
+          <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Home</span>
+        </button>
 
-          <button
-            type="button"
-            aria-label="Transactions"
-            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
-              active === "Transactions" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
-            }`}
-            onClick={() => goSection("Transactions")}
-          >
-            <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-              active === "Transactions" ? "bg-primary/10 text-primary" : ""
-            }`}>
-              <ArrowLeftRight size={18} className={active === "Transactions" ? "stroke-[2.3]" : "stroke-[1.8]"} />
-            </span>
-            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Transactions</span>
-          </button>
+        <button
+          type="button"
+          aria-label="Transactions"
+          className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
+            active === "Transactions" ? "text-primary font-bold" : "text-muted-foreground hover:text-foreground font-medium"
+          }`}
+          onClick={() => goSection("Transactions")}
+        >
+          <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+            active === "Transactions" ? "bg-primary/10 text-primary" : ""
+          }`}>
+            <ArrowLeftRight size={18} className={active === "Transactions" ? "stroke-[2.3]" : "stroke-[1.8]"} />
+          </span>
+          <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Transactions</span>
+        </button>
 
-          {/* Center Elevated [+] Add Button */}
-          <button
-            type="button"
-            aria-label="Add transaction"
-            onClick={() => setGlobalAddOpen(true)}
-            className="flex flex-col items-center justify-center -mt-5 py-0 group cursor-pointer w-full min-w-0 overflow-visible"
-          >
-            <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 group-active:scale-95 transition-transform ring-4 ring-card shrink-0">
-              <Plus size={20} className="stroke-[2.5]" />
-            </span>
-            <span className="text-[10px] font-bold text-foreground mt-1 leading-none tracking-tight select-none">
-              Add
-            </span>
-          </button>
+        {/* Center Elevated [+] Add Button */}
+        <button
+          type="button"
+          aria-label="Add transaction"
+          onClick={() => setGlobalAddOpen(true)}
+          className="flex flex-col items-center justify-center -mt-5 py-0 group cursor-pointer w-full min-w-0 overflow-visible"
+        >
+          <span className="grid size-11 place-items-center rounded-full bg-primary text-primary-foreground shadow-lg shadow-primary/30 group-active:scale-95 transition-transform ring-4 ring-card shrink-0">
+            <Plus size={20} className="stroke-[2.5]" />
+          </span>
+          <span className="text-[10px] font-bold text-foreground mt-1 leading-none tracking-tight select-none">
+            Add
+          </span>
+        </button>
 
-          <button
-            type="button"
-            aria-label="Wealth Hub"
-            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
-              active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active)
-                ? "text-primary font-bold"
-                : "text-muted-foreground hover:text-foreground font-medium"
-            }`}
-            onClick={() => goSection("Wealth")}
-          >
-            <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-              active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active) ? "bg-primary/10 text-primary" : ""
-            }`}>
-              <Wallet size={18} className={active === "Wealth" ? "stroke-[2.3]" : "stroke-[1.8]"} />
-            </span>
-            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Wealth Hub</span>
-          </button>
+        <button
+          type="button"
+          aria-label="Wealth"
+          className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
+            active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active)
+              ? "text-primary font-bold"
+              : "text-muted-foreground hover:text-foreground font-medium"
+          }`}
+          onClick={() => goSection("Wealth")}
+        >
+          <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+            active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active) ? "bg-primary/10 text-primary" : ""
+          }`}>
+            <Wallet size={18} className={active === "Wealth" ? "stroke-[2.3]" : "stroke-[1.8]"} />
+          </span>
+          <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Wealth</span>
+        </button>
 
-          <button
-            type="button"
-            aria-label="Plan Hub"
-            className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
-              active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active)
-                ? "text-primary font-bold"
-                : "text-muted-foreground hover:text-foreground font-medium"
-            }`}
-            onClick={() => goSection("Plan")}
-          >
-            <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-              active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active) ? "bg-primary/10 text-primary" : ""
-            }`}>
-              <ShieldCheck size={18} className={active === "Plan" ? "stroke-[2.3]" : "stroke-[1.8]"} />
-            </span>
-            <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Plan Hub</span>
-          </button>
-        </nav>
-      ) : (
-        <nav className="fixed inset-x-0 bottom-0 z-topbar grid grid-cols-5 border-t border-border bg-card px-1 sm:px-2 pb-[env(safe-area-inset-bottom)] h-[calc(64px+env(safe-area-inset-bottom))] md:hidden shadow-lg items-center w-full max-w-full overflow-visible">
-          {[
-            { label: "Overview", section: "Overview" as Section, icon: LayoutDashboard },
-            { label: "Transactions", section: "Transactions" as Section, icon: ArrowLeftRight },
-            { label: "Accounts", section: "Accounts" as Section, icon: Wallet },
-            { label: "Investments", section: "Investments" as Section, icon: TrendingUp },
-          ].map(({ label, section, icon: Icon }) => {
-            const isItemActive = active === section;
-            return (
-              <button
-                key={section}
-                type="button"
-                aria-label={label}
-                className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
-                  isItemActive
-                    ? "text-primary font-bold"
-                    : "text-muted-foreground hover:text-foreground font-medium"
-                }`}
-                onClick={() => {
-                  setMobileNav(false);
-                  goSection(section);
-                }}
-              >
-                <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-                  isItemActive ? "bg-primary/10 text-primary" : ""
-                }`}>
-                  <Icon size={18} className={isItemActive ? "stroke-[2.3]" : "stroke-[1.8]"} />
-                </span>
-                <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">{label}</span>
-              </button>
-            );
-          })}
-          {(() => {
-            const isMoreActive = !["Overview", "Transactions", "Accounts", "Investments"].includes(active);
-            return (
-              <button
-                type="button"
-                aria-label="More features and settings"
-                className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
-                  isMoreActive
-                    ? "text-primary font-bold"
-                    : "text-muted-foreground hover:text-foreground font-medium"
-                }`}
-                onClick={() => setMobileNav(true)}
-              >
-                <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-                  isMoreActive ? "bg-primary/10 text-primary" : ""
-                }`}>
-                  <MoreHorizontal size={18} className={isMoreActive ? "stroke-[2.3]" : "stroke-[1.8]"} />
-                </span>
-                <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">More</span>
-              </button>
-            );
-          })()}
-        </nav>
-      )}
+        <button
+          type="button"
+          aria-label="Plan"
+          className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
+            active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active)
+              ? "text-primary font-bold"
+              : "text-muted-foreground hover:text-foreground font-medium"
+          }`}
+          onClick={() => goSection("Plan")}
+        >
+          <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
+            active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active) ? "bg-primary/10 text-primary" : ""
+          }`}>
+            <ShieldCheck size={18} className={active === "Plan" ? "stroke-[2.3]" : "stroke-[1.8]"} />
+          </span>
+          <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Plan</span>
+        </button>
+      </nav>
 
       {/* Mobile "More" Drawer Sheet */}
       {mobileNav && (
@@ -2874,8 +2838,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             <div className="mx-auto mb-4 h-1 w-12 rounded-full bg-muted-foreground/30" />
             <div className="flex items-center justify-between pb-3 border-b border-border/70">
               <div>
-                <h3 className="wt-display text-base font-bold text-foreground">More Tools & Navigation</h3>
-                <p className="text-xs text-muted-foreground">Access all financial tracking modules</p>
+                <h3 className="wt-display text-base font-bold text-foreground">Navigation & Tools</h3>
+                <p className="text-xs text-muted-foreground">Access all WealthTrack modules</p>
               </div>
               <Button
                 variant="ghost"
@@ -2888,57 +2852,108 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               </Button>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-4">
-              {(hubsV2
-                ? [
-                    { label: "Overview" as Section, title: "Overview", desc: "Dashboard & financial overview", icon: LayoutDashboard },
-                    { label: "Transactions" as Section, title: "Transactions", desc: "Transactions, filters & search", icon: ArrowLeftRight },
-                    { label: "Wealth" as Section, title: "Wealth Hub", desc: "Accounts, Investments & Loans", icon: Wallet },
-                    { label: "Plan" as Section, title: "Plan Hub", desc: "Budgets, Goals & Recurring", icon: ShieldCheck },
-                    { label: "Reports" as Section, title: "Reports & Insights", desc: "Cash flow trends & analytics", icon: Activity },
-                  ]
-                : [
-                    { label: "Loans" as Section, title: "Loans & Debt", desc: "Liabilities, EMIs & debt payoff", icon: Landmark },
-                    { label: "Fund Planner" as Section, title: "Fund Planner", desc: "Emergency runway & sinking funds", icon: ShieldCheck },
-                    { label: "Recurring" as Section, title: "Recurring Bills", desc: "Scheduled auto-debits & SIPs", icon: CalendarDays },
-                    { label: "Categories" as Section, title: "Categories & Budgets", desc: "50/30/20 caps & spend limits", icon: Tag },
-                    { label: "Reports" as Section, title: "Reports & Analytics", desc: "Cash flow velocity & allocation", icon: Activity },
-                  ]
-              ).map(({ label, title, desc, icon: Icon }) => {
-                const isSelected =
-                  active === label ||
-                  (label === "Wealth" && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active))) ||
-                  (label === "Plan" && (active === "Plan" || ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active))) ||
-                  (label === "Fund Planner" && (active === "Funds" || active === "Fund Planner"));
+            <div className="space-y-4 mt-4">
+              <div>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                  Main Navigation
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {NAV_ITEMS.map((item) => {
+                    const isSelected =
+                      active === item.section ||
+                      (item.section === "Wealth" && ["Accounts", "Investments", "Loans"].includes(active)) ||
+                      (item.section === "Plan" && ["Categories", "Fund Planner", "Funds", "Recurring"].includes(active)) ||
+                      (item.section === "Reports" && (active === "Reports" || active === "Insights"));
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
+                          isSelected
+                            ? "border-primary/50 bg-primary/10 shadow-xs"
+                            : "border-border/70 bg-card hover:bg-muted/40 hover:border-border"
+                        }`}
+                        onClick={() => {
+                          setMobileNav(false);
+                          goSection(item.section);
+                        }}
+                      >
+                        <span
+                          className={`grid size-9 shrink-0 place-items-center rounded-xl ${
+                            isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          <Icon size={18} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-xs font-bold ${isSelected ? "text-primary" : "text-foreground"}`}>
+                            {item.label}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                            {item.id === "home"
+                              ? "What you have, spent & what's next"
+                              : item.id === "transactions"
+                              ? "All entries, filters & search"
+                              : item.id === "wealth"
+                              ? "Accounts, investments & loans"
+                              : item.id === "plan"
+                              ? "Budgets, goals & recurring bills"
+                              : "Cash flow trends & allocation analytics"}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
-                return (
-                  <button
-                    key={label}
-                    type="button"
-                    className={`flex items-start gap-3 rounded-2xl border p-3.5 text-left transition-all ${
-                      isSelected
-                        ? "border-primary/50 bg-primary/10 shadow-xs"
-                        : "border-border/70 bg-card hover:bg-muted/40 hover:border-border"
-                    }`}
-                    onClick={() => {
-                      setMobileNav(false);
-                      goSection(label);
-                    }}
-                  >
-                    <span className={`grid size-9 shrink-0 place-items-center rounded-xl ${
-                      isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-                    }`}>
-                      <Icon size={18} />
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-xs font-bold ${isSelected ? "text-primary" : "text-foreground"}`}>
-                        {title}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">{desc}</p>
-                    </div>
-                  </button>
-                );
-              })}
+              <div>
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                  Settings & Help
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {SECONDARY_NAV_ITEMS.map((item) => {
+                    const isSelected = active === item.section;
+                    const Icon = item.icon;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`flex items-start gap-3 rounded-2xl border p-3 text-left transition-all ${
+                          isSelected
+                            ? "border-primary/50 bg-primary/10 shadow-xs"
+                            : "border-border/70 bg-card hover:bg-muted/40 hover:border-border"
+                        }`}
+                        onClick={() => {
+                          setMobileNav(false);
+                          goSection(item.section);
+                        }}
+                      >
+                        <span
+                          className={`grid size-8 shrink-0 place-items-center rounded-lg ${
+                            isSelected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          }`}
+                        >
+                          <Icon size={16} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className={`text-xs font-bold ${isSelected ? "text-primary" : "text-foreground"}`}>
+                            {item.label}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+                            {item.id === "preferences"
+                              ? "Currency, formats, tags & backup"
+                              : item.id === "profile"
+                              ? "User details & account preferences"
+                              : "Offline privacy & keyboard shortcuts"}
+                          </p>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
 
             <div className="mt-5 pt-4 border-t border-border/70 flex items-center justify-between">

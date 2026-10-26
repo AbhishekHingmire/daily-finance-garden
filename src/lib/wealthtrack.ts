@@ -49,7 +49,8 @@ export type Section =
   | "Settings"
   | "Wealth"
   | "Plan"
-  | "Insights";
+  | "Insights"
+  | "Help";
 // Cash-flow direction for an investment transaction: money leaving (Contribution/Purchase/Fee),
 // money returning (Sale/Maturity/Dividend), or a non-cash note of current value (Valuation).
 export type InvestmentAction = "Contribution" | "Purchase" | "Sale" | "Maturity" | "Dividend" | "Fee" | "Valuation";
