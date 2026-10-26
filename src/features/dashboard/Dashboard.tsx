@@ -42,7 +42,7 @@ import {
   getRunwayMetrics,
   getWealthMetrics,
 } from "@/lib/metrics-service";
-import type { Section, Transaction, WealthState } from "@/lib/wealthtrack";
+import { safeAmount, type Section, type Transaction, type WealthState } from "@/lib/wealthtrack";
 
 export function Dashboard({
   data,
@@ -137,6 +137,35 @@ export function Dashboard({
   const emiToIncomePct = periodMetrics.moneyIn > 0
     ? Math.round((periodMetrics.emisInPeriod / periodMetrics.moneyIn) * 100)
     : 0;
+
+  // Loan obligations summary
+  const loansSummary = useMemo(() => {
+    const activeLoans = (data.loans ?? []).filter((l) => safeAmount(l.currentOutstanding) > 0);
+    const totalOutstanding = activeLoans.reduce((sum, l) => sum + safeAmount(l.currentOutstanding), 0);
+    const totalMonthlyEmi = activeLoans.reduce(
+      (sum, l) => sum + (l.autoRecurringEmi !== false ? safeAmount(l.emiAmount) : 0),
+      0
+    );
+    const totalPrincipal = activeLoans.reduce(
+      (sum, l) => sum + safeAmount(l.principalAmount || l.currentOutstanding),
+      0
+    );
+    const totalPaid = Math.max(0, totalPrincipal - totalOutstanding);
+    const payoffPct = totalPrincipal > 0 ? Math.round((totalPaid / totalPrincipal) * 100) : 0;
+    return {
+      activeLoans,
+      totalOutstanding,
+      totalMonthlyEmi,
+      payoffPct,
+      hasLoans: activeLoans.length > 0,
+    };
+  }, [data.loans]);
+
+  // Conditional Card Visibility (Only show if user has relevant data configured)
+  const hasComingUp = comingUpItems && comingUpItems.length > 0;
+  const hasLoans = loansSummary.hasLoans;
+  const hasTopSpending = topCategories && topCategories.length > 0;
+  const hasGoals = unified.goals && unified.goals.length > 0;
 
   return (
     <div className="space-y-6">
@@ -242,24 +271,44 @@ export function Dashboard({
                     <strong className="text-foreground">
                       <Metric id="free_to_spend" value={wealthMetrics.freeToSpend} />
                     </strong>
-                    <span className="text-muted-foreground/60">·</span>
-                    <span className="text-muted-foreground">
-                      <Metric id="goals_set_aside" value={wealthMetrics.earmarkedCash} /> for goals
-                    </span>
+                    {hasGoals ? (
+                      <>
+                        <span className="text-muted-foreground/60">·</span>
+                        <span className="text-muted-foreground">
+                          <Metric id="goals_set_aside" value={wealthMetrics.earmarkedCash} /> for goals
+                        </span>
+                      </>
+                    ) : (
+                      <span className="sr-only">
+                        <Metric id="goals_set_aside" value={wealthMetrics.earmarkedCash} />
+                      </span>
+                    )}
                   </>
                 )}
               </div>
 
-              {/* Goals Alert or Covered Status Chip */}
-              {earmarksExceedCash ? (
-                <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-xs text-amber-700 dark:text-amber-400 font-semibold">
-                  <AlertTriangle size={13} className="shrink-0" />
-                  <span>Goals need {money(wealthMetrics.earmarkedCash - wealthMetrics.liquidCash)} more</span>
-                </div>
-              ) : (
-                <div className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
-                  <CheckCircle2 size={13} className="shrink-0" />
-                  <span>Goals fully covered</span>
+              {/* Goals Alert or Covered Status Chip (Shown only if user configured goals) */}
+              {hasGoals && (
+                earmarksExceedCash ? (
+                  <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-xs text-amber-700 dark:text-amber-400 font-semibold">
+                    <AlertTriangle size={13} className="shrink-0" />
+                    <span>Goals need {money(wealthMetrics.earmarkedCash - wealthMetrics.liquidCash)} more</span>
+                  </div>
+                ) : (
+                  <div className="inline-flex items-center gap-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 text-xs text-emerald-700 dark:text-emerald-400 font-semibold">
+                    <CheckCircle2 size={13} className="shrink-0" />
+                    <span>Goals fully covered</span>
+                  </div>
+                )
+              )}
+
+              {/* Loans Outstanding Chip (Shown if user has active borrowings) */}
+              {hasLoans && (
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-rose-500/20 bg-rose-500/5 px-2.5 py-1 text-xs font-medium">
+                  <span className="text-muted-foreground">Loans:</span>
+                  <strong className="text-rose-600 dark:text-rose-400">
+                    <Metric id="total_debt" value={wealthMetrics.totalDebt} />
+                  </strong>
                 </div>
               )}
             </div>
@@ -483,26 +532,24 @@ export function Dashboard({
         </div>
       </div>
 
-      {/* ROW 1: Coming Up & Top Spending (Desktop Side-by-Side, Responsive) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* BLOCK 4: Coming Up Card (Payday + Next 3 Commitments) */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5">
-          <div className="space-y-3.5">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div className="flex items-center gap-2">
-                <CalendarDays size={16} className="text-primary" />
-                <h3 className="text-sm font-bold text-foreground">Coming Up</h3>
+      {/* Dynamic Adaptive Dashboard Grid: Shows only configured sections, auto-balances odd card counts */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 [&>*:last-child:nth-child(odd)]:md:col-span-2">
+        {/* CARD 1: Coming Up Card (Rendered only if upcoming commitments exist) */}
+        {hasComingUp && (
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-border transition-colors">
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <CalendarDays size={16} className="text-primary" />
+                  <h3 className="text-sm font-bold text-foreground">Coming Up</h3>
+                </div>
+                <div className="text-right">
+                  <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-bold">
+                    {payday ? formatPaydayLabel(payday.nextDate) : "No upcoming payday"}
+                  </span>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="rounded-full bg-primary/10 text-primary px-2.5 py-0.5 text-xs font-bold">
-                  {payday ? formatPaydayLabel(payday.nextDate) : "No upcoming payday"}
-                </span>
-              </div>
-            </div>
 
-            {comingUpItems.length === 0 ? (
-              <p className="text-xs text-muted-foreground py-2 text-center">No scheduled payments due in the next 30 days.</p>
-            ) : (
               <div className="space-y-2">
                 {comingUpItems.slice(0, 3).map((item) => (
                   <div
@@ -527,86 +574,267 @@ export function Dashboard({
                   </div>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
 
-          <div className="flex items-center justify-between pt-2 border-t border-border/40">
-            <span className="text-[11px] text-muted-foreground">
-              Total monthly commitments: <strong className="text-foreground">{money(commitments.total)}</strong>
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onNavigate("Plan")}
-              className="h-7 text-xs font-semibold text-primary"
-            >
-              Manage recurring →
-            </Button>
+            <div className="flex items-center justify-between pt-2 border-t border-border/40">
+              <span className="text-[11px] text-muted-foreground">
+                Total monthly commitments: <strong className="text-foreground">{money(commitments.total)}</strong>
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onNavigate("Recurring")}
+                className="h-7 text-xs font-semibold text-primary"
+              >
+                Manage recurring →
+              </Button>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* BLOCK 5: Top Spending Categories */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5">
-          <div className="space-y-3.5">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-foreground">Top Spending</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {budgetMetrics.budgetUsedPct}% of total budget used in {periodLabel}
-                </p>
+        {/* CARD 2: Monthly EMIs & Debt Overview Card (Rendered if user has active loans) */}
+        {hasLoans && (
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-border transition-colors">
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div className="flex items-center gap-2">
+                  <Landmark size={16} className="text-rose-500" />
+                  <h3 className="text-sm font-bold text-foreground">Monthly EMIs & Debt</h3>
+                </div>
+                <div className="text-right">
+                  <span className="rounded-full bg-rose-500/10 text-rose-600 dark:text-rose-400 px-2.5 py-0.5 text-xs font-bold">
+                    {loansSummary.activeLoans.length} Active {loansSummary.activeLoans.length === 1 ? "EMI" : "EMIs"}
+                  </span>
+                </div>
               </div>
+
+              {/* Quick Summary Strip */}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                <div className="rounded-xl border border-border/60 bg-muted/25 p-2.5">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">Monthly EMIs</span>
+                  <span className="text-sm sm:text-base font-extrabold text-rose-600 dark:text-rose-400 tabular-nums block mt-0.5">
+                    −{money(loansSummary.totalMonthlyEmi)}
+                  </span>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-muted/25 p-2.5">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">Outstanding Debt</span>
+                  <span className="text-sm sm:text-base font-extrabold text-foreground tabular-nums block mt-0.5">
+                    {money(loansSummary.totalOutstanding)}
+                  </span>
+                </div>
+                <div className="col-span-2 sm:col-span-1 rounded-xl border border-border/60 bg-muted/25 p-2.5">
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">Paid Off</span>
+                  <span className="text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums block mt-0.5">
+                    {loansSummary.payoffPct}%
+                  </span>
+                </div>
+              </div>
+
+              {/* Active Loans List */}
+              <div className="space-y-2">
+                {loansSummary.activeLoans.map((loan) => {
+                  const acc = data.accounts.find((a) => a.id === loan.repaymentAccountId);
+                  const paidCount = loan.paidEmisCount || 0;
+                  const tenure = loan.tenureMonths || 0;
+                  const progressPct = tenure > 0 ? Math.min(100, Math.round((paidCount / tenure) * 100)) : 0;
+                  return (
+                    <div
+                      key={loan.id}
+                      className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2 text-xs"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="font-bold text-foreground truncate">{loan.name}</span>
+                          <span className="rounded-md bg-muted px-1.5 py-0.5 text-[9.5px] font-semibold text-muted-foreground shrink-0">
+                            {loan.loanType}
+                          </span>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className="font-extrabold text-foreground tabular-nums text-sm">
+                            −{money(loan.emiAmount)}/mo
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="space-y-1">
+                        <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            style={{ width: `${progressPct}%` }}
+                            className="h-full bg-emerald-500 rounded-full transition-all"
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-[10.5px] text-muted-foreground tabular-nums">
+                          <span>
+                            {paidCount}/{tenure} paid ({Math.max(0, tenure - paidCount)} left)
+                          </span>
+                          <span>
+                            Outstanding: <strong className="text-foreground">{money(loan.currentOutstanding)}</strong>
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-0.5 border-t border-border/30">
+                        <span className="truncate">
+                          {loan.lenderInstitution} · {acc?.name ?? "Linked Account"}
+                        </span>
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 shrink-0">
+                          {loan.autoRecurringEmi !== false ? "● Auto-debit active" : "○ Manual"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-2 border-t border-border/40">
+              <span className="text-[11px] text-muted-foreground">
+                Managed under Wealth liabilities
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onNavigate("Wealth")}
+                className="h-7 text-xs font-semibold text-primary"
+              >
+                View all loans →
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* CARD 3: Top Spending Categories (Rendered if spending exists in this period) */}
+        {hasTopSpending && (
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-border transition-colors">
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Top Spending</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {budgetMetrics.budgetUsedPct}% of total budget used in {periodLabel}
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onNavigate("Plan")}
+                  className="h-7 text-xs font-semibold text-primary"
+                >
+                  All Budgets →
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {topCategories.map((r) => {
+                  const pct = r.cap > 0 ? Math.round((r.spent / r.cap) * 100) : 100;
+                  const isOver = r.isOverBudget;
+                  return (
+                    <div key={r.category.id} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-xs">
+                        <div className="flex items-center gap-2">
+                          <span>{r.category.icon}</span>
+                          <span className="font-bold text-foreground">{r.category.name}</span>
+                        </div>
+                        <div className="text-right tabular-nums">
+                          <span className="font-bold text-foreground">
+                            <Metric id={`category_total:${r.category.id}`} value={r.spent} />
+                          </span>
+                          {r.cap > 0 && (
+                            <span className="text-muted-foreground ml-1">/ {money(r.cap)}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                        <div
+                          style={{ width: `${Math.min(100, pct)}%` }}
+                          className={`h-full rounded-full transition-all ${
+                            isOver ? "bg-rose-500" : pct > 75 ? "bg-amber-500" : "bg-primary"
+                          }`}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground">
+              <span>Updated live from posted transactions</span>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => onNavigate("Plan")}
-                className="h-7 text-xs font-semibold text-primary"
+                className="h-6 text-xs font-semibold text-primary p-0"
               >
-                All Budgets →
+                Category limits →
               </Button>
             </div>
+          </div>
+        )}
 
-            <div className="space-y-3">
-              {topCategories.map((r) => {
-                const pct = r.cap > 0 ? Math.round((r.spent / r.cap) * 100) : 100;
-                const isOver = r.isOverBudget;
-                return (
-                  <div key={r.category.id} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-xs">
-                      <div className="flex items-center gap-2">
-                        <span>{r.category.icon}</span>
-                        <span className="font-bold text-foreground">{r.category.name}</span>
-                      </div>
-                      <div className="text-right tabular-nums">
-                        <span className="font-bold text-foreground">
-                          <Metric id={`category_total:${r.category.id}`} value={r.spent} />
-                        </span>
-                        {r.cap > 0 && (
-                          <span className="text-muted-foreground ml-1">/ {money(r.cap)}</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                      <div
-                        style={{ width: `${Math.min(100, pct)}%` }}
-                        className={`h-full rounded-full transition-all ${
-                          isOver ? "bg-rose-500" : pct > 75 ? "bg-amber-500" : "bg-primary"
-                        }`}
-                      />
-                    </div>
+        {/* CARD 4: Goals & Sinking Funds (Rendered if user has configured goals) */}
+        {hasGoals && (
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-border transition-colors">
+            <div className="space-y-3.5">
+              <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <ShieldCheck size={16} className="text-emerald-500" />
+                    <h3 className="text-sm font-bold text-foreground">Goals & Sinking Funds</h3>
                   </div>
-                );
-              })}
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {unified.goals.length} active goals · {money(commitments.goalContributions)}/mo allocated
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onNavigate("Plan")}
+                  className="h-7 text-xs font-semibold text-primary"
+                >
+                  All Goals →
+                </Button>
+              </div>
+
+              <div className="space-y-3">
+                {unified.goals.map((g) => {
+                  const pct = g.target > 0 ? Math.min(100, Math.round((g.opening_amount / g.target) * 100)) : 100;
+                  return (
+                    <div key={g.id} className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground">{g.name}</span>
+                        <span className="text-[10px] font-bold text-primary tabular-nums">{pct}%</span>
+                      </div>
+                      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                        <div style={{ width: `${pct}%` }} className="h-full bg-emerald-500 rounded-full" />
+                      </div>
+                      <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
+                        <span><Metric id={`goal_current:${g.id}`} value={g.opening_amount} /></span>
+                        <span>Target: {money(g.target)}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground">
+              <span>Target date progress</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onNavigate("Plan")}
+                className="h-6 text-xs font-semibold text-primary p-0"
+              >
+                Manage goals →
+              </Button>
             </div>
           </div>
+        )}
 
-          <div className="pt-2" />
-        </div>
-      </div>
-
-      {/* ROW 2: Recent Activity & Goals & Sinking Funds (Desktop Side-by-Side, Responsive) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* BLOCK 6: Recent Activity (Last 4 entries) */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5">
+        {/* CARD 5: Recent Activity (Compulsory: Ledger Transactions) */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-border transition-colors">
           <div className="space-y-3.5">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <div>
@@ -623,69 +851,45 @@ export function Dashboard({
               </Button>
             </div>
 
-            <div className="space-y-1">
-              {recentTransactions.map((tx) => (
-                <TransactionRow
-                  key={tx.id}
-                  transaction={tx}
-                  category={data.categories.find((c) => c.id === tx.categoryId)}
-                  account={data.accounts.find((a) => a.id === tx.accountId)}
-                  money={money}
-                  onClick={() => onSelectTransaction(tx)}
-                />
-              ))}
-            </div>
-          </div>
-
-          <div className="pt-2" />
-        </div>
-
-        {/* BLOCK 7: Goals & Sinking Funds (Expanded by default) */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5">
-          <div className="space-y-3.5">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <ShieldCheck size={16} className="text-emerald-500" />
-                  <h3 className="text-sm font-bold text-foreground">Goals & Sinking Funds</h3>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  {unified.goals.length} active goals · {money(commitments.goalContributions)}/mo allocated
-                </p>
+            {recentTransactions.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground space-y-2">
+                <p>No transactions logged yet.</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onAdd()}
+                  className="gap-1.5 text-xs font-semibold"
+                >
+                  <Plus size={13} /> Add first transaction
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onNavigate("Plan")}
-                className="h-7 text-xs font-semibold text-primary"
-              >
-                All Goals →
-              </Button>
-            </div>
-
-            <div className="space-y-3">
-              {unified.goals.map((g) => {
-                const pct = g.target > 0 ? Math.min(100, Math.round((g.opening_amount / g.target) * 100)) : 100;
-                return (
-                  <div key={g.id} className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-foreground">{g.name}</span>
-                      <span className="text-[10px] font-bold text-primary tabular-nums">{pct}%</span>
-                    </div>
-                    <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
-                      <div style={{ width: `${pct}%` }} className="h-full bg-emerald-500 rounded-full" />
-                    </div>
-                    <div className="flex justify-between text-[11px] text-muted-foreground tabular-nums">
-                      <span><Metric id={`goal_current:${g.id}`} value={g.opening_amount} /></span>
-                      <span>Target: {money(g.target)}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            ) : (
+              <div className="space-y-1">
+                {recentTransactions.map((tx) => (
+                  <TransactionRow
+                    key={tx.id}
+                    transaction={tx}
+                    category={data.categories.find((c) => c.id === tx.categoryId)}
+                    account={data.accounts.find((a) => a.id === tx.accountId)}
+                    money={money}
+                    onClick={() => onSelectTransaction(tx)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="pt-2" />
+          <div className="pt-2 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground">
+            <span>Showing latest {recentTransactions.length} entries</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => onNavigate("Transactions")}
+              className="h-6 text-xs font-semibold text-primary p-0"
+            >
+              Open ledger →
+            </Button>
+          </div>
         </div>
       </div>
     </div>

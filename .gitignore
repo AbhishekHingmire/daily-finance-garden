@@ -30,3 +30,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Testing
+test-results/
+playwright-report/
+blob-report/
+docs/redesign/screens/
