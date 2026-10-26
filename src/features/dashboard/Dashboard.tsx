@@ -210,23 +210,34 @@ export function Dashboard({
 
             {/* Second line: Set aside vs Free to spend */}
             <div className="flex items-center gap-2 pt-1 text-xs">
-              <span className="text-muted-foreground">
-                <strong className="text-foreground">
-                  <Metric id="goals_set_aside" value={wealthMetrics.earmarkedCash} />
-                </strong> set aside for goals
-              </span>
-              <span className="text-muted-foreground/50">·</span>
-              <span className="text-muted-foreground">
-                <strong className="text-foreground">
-                  <Metric id="free_to_spend" value={wealthMetrics.freeToSpend} />
-                </strong> free to spend
-              </span>
+              {earmarksExceedCash ? (
+                <span className="text-muted-foreground font-medium">
+                  Free to spend <strong className="text-foreground"><Metric id="free_to_spend" value={0} /></strong> ·{" "}
+                  <span className="text-amber-700 dark:text-amber-400 font-bold">
+                    short {money(wealthMetrics.earmarkedCash - wealthMetrics.liquidCash)}
+                  </span>
+                </span>
+              ) : (
+                <>
+                  <span className="text-muted-foreground">
+                    <strong className="text-foreground">
+                      <Metric id="goals_set_aside" value={wealthMetrics.earmarkedCash} />
+                    </strong> set aside for goals
+                  </span>
+                  <span className="text-muted-foreground/50">·</span>
+                  <span className="text-muted-foreground">
+                    <strong className="text-foreground">
+                      <Metric id="free_to_spend" value={wealthMetrics.freeToSpend} />
+                    </strong> free to spend
+                  </span>
+                </>
+              )}
             </div>
 
             {earmarksExceedCash && (
               <div className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 px-2.5 py-1 text-xs text-amber-700 dark:text-amber-400 mt-2 font-semibold">
-                <AlertTriangle size={14} /> Earmarks exceed current liquid balance by{" "}
-                {money(wealthMetrics.earmarkedCash - wealthMetrics.liquidCash)}
+                <AlertTriangle size={14} /> Your goals add up to{" "}
+                {money(wealthMetrics.earmarkedCash - wealthMetrics.liquidCash)} more than your cash.
               </div>
             )}
           </div>
