@@ -1,6 +1,7 @@
 import { useMemo, useState, useRef, useEffect } from "react";
 import {
   ArrowDownLeft,
+  ArrowRight,
   ArrowUpRight,
   Award,
   ChevronDown,
@@ -50,6 +51,7 @@ export function ReportsPage({
   money,
   onExport,
   onCategory,
+  onViewAllCategories,
 }: {
   data: WealthState;
   rows: Transaction[];
@@ -58,6 +60,7 @@ export function ReportsPage({
   money: (amount: number) => string;
   onExport: () => void;
   onCategory?: (id: string) => void;
+  onViewAllCategories?: () => void;
 }) {
   const [priorityFilter, setPriorityFilter] = useState("All");
   const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
@@ -370,34 +373,47 @@ export function ReportsPage({
       </div>
 
       {/* Two Column Visual Analytics: Allocation Donut & 50/30/20 Diagnostic */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
         {/* Interactive Category Pie / Donut Chart */}
-        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
+        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col space-y-4 h-auto">
+          <div>
+            <div className="flex items-center justify-between pb-3 border-b border-border/60">
               <div>
-                <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                  <div>
-                    <h3 className="wt-display text-base font-bold text-foreground">
-                      Where your money went
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Visual distribution across major expense categories
-                    </p>
-                  </div>
-                </div>
+                <h3 className="wt-display text-base font-bold text-foreground">
+                  Where your money went
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Visual distribution across top 10 expense categories
+                </p>
               </div>
-
-              <div className="mt-5">
-                <CategoryPieChart
-                  categories={categorySpendList}
-                  totalAmount={totalExpenses}
-                  money={money}
-                  onCategoryClick={onCategory}
-                />
-              </div>
+              {onViewAllCategories && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onViewAllCategories}
+                  className="h-7 text-xs font-semibold text-primary hover:text-primary gap-1 cursor-pointer"
+                >
+                  <span>All Categories</span>
+                  <ArrowRight size={12} />
+                </Button>
+              )}
             </div>
+          </div>
 
-          {/* 50 / 30 / 20 Budget Diagnostic & Allocations */}
-          <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col justify-between">
+          <div>
+            <CategoryPieChart
+              categories={categorySpendList}
+              totalAmount={totalExpenses}
+              totalCategoriesCount={unified.categories.filter((c) => c.kind === "expense" && !c.archived).length}
+              money={money}
+              onCategoryClick={onCategory}
+              onViewAllCategories={onViewAllCategories}
+            />
+          </div>
+        </div>
+
+        {/* 50 / 30 / 20 Budget Diagnostic & Allocations */}
+        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col space-y-4 h-auto">
               <div className="space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-border/60">
                   <div>

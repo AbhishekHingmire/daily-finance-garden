@@ -532,11 +532,11 @@ export function Dashboard({
         </div>
       </div>
 
-      {/* Dynamic Adaptive Dashboard Grid: Shows only configured sections, auto-balances odd card counts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 items-start [&>*:last-child:nth-child(odd)]:md:col-span-2">
-        {/* CARD 1: Coming Up Card (Rendered only if upcoming commitments exist) */}
-        {hasComingUp && (
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px]">
+      {/* Dynamic Adaptive Dashboard Grid: Shows only configured sections without dead vertical gaps */}
+      {(() => {
+        // CARD 1: Coming Up Card
+        const comingUpCardNode = hasComingUp ? (
+          <div key="card-coming-up" className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-1 md:order-none">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
@@ -590,11 +590,11 @@ export function Dashboard({
               </Button>
             </div>
           </div>
-        )}
+        ) : null;
 
-        {/* CARD 2: Monthly EMIs & Debt Overview Card (Rendered if user has active loans) */}
-        {hasLoans && (
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px]">
+        // CARD 2: Monthly EMIs & Debt Overview Card
+        const loansCardNode = hasLoans ? (
+          <div key="card-loans" className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-2 md:order-none">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
@@ -702,11 +702,11 @@ export function Dashboard({
               </Button>
             </div>
           </div>
-        )}
+        ) : null;
 
-        {/* CARD 3: Top Spending Categories (Rendered if spending exists in this period) */}
-        {hasTopSpending && (
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px]">
+        // CARD 3: Top Spending Categories
+        const topSpendingCardNode = hasTopSpending ? (
+          <div key="card-top-spending" className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-3 md:order-none">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div>
@@ -771,11 +771,11 @@ export function Dashboard({
               </Button>
             </div>
           </div>
-        )}
+        ) : null;
 
-        {/* CARD 4: Goals & Sinking Funds (Rendered if user has configured goals) */}
-        {hasGoals && (
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px]">
+        // CARD 4: Goals & Sinking Funds Card
+        const goalsCardNode = hasGoals ? (
+          <div key="card-goals" className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-4 md:order-none">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div>
@@ -831,67 +831,118 @@ export function Dashboard({
               </Button>
             </div>
           </div>
-        )}
+        ) : null;
 
-        {/* CARD 5: Recent Activity (Compulsory: Ledger Transactions) */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px]">
-          <div className="space-y-3.5">
-            <div className="flex items-center justify-between border-b border-border/60 pb-3">
-              <div>
-                <h3 className="text-sm font-bold text-foreground">Recent Activity</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">Latest posted transactions</p>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => onNavigate("Transactions")}
-                className="h-7 text-xs font-semibold text-primary"
-              >
-                View all →
-              </Button>
-            </div>
+        // Distribute active upper cards into two clean column streams on desktop
+        const col1Cards: React.ReactNode[] = [];
+        const col2Cards: React.ReactNode[] = [];
 
-            {recentTransactions.length === 0 ? (
-              <div className="p-6 text-center text-xs text-muted-foreground space-y-2">
-                <p>No transactions logged yet.</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onAdd()}
-                  className="gap-1.5 text-xs font-semibold"
-                >
-                  <Plus size={13} /> Add first transaction
-                </Button>
-              </div>
-            ) : (
-              <div className="space-y-1 max-h-[380px] overflow-y-auto wt-scrollbar pr-0.5">
-                {recentTransactions.map((tx) => (
-                  <TransactionRow
-                    key={tx.id}
-                    transaction={tx}
-                    category={data.categories.find((c) => c.id === tx.categoryId)}
-                    account={data.accounts.find((a) => a.id === tx.accountId)}
-                    money={money}
-                    onClick={() => onSelectTransaction(tx)}
-                  />
-                ))}
+        const bothSidesActive = (hasComingUp || hasTopSpending) && (hasLoans || hasGoals);
+
+        if (bothSidesActive) {
+          // Cashflow column (Left on desktop): Coming Up + Top Spending (directly stacked, ZERO vertical gap!)
+          if (hasComingUp) col1Cards.push(comingUpCardNode);
+          if (hasTopSpending) col1Cards.push(topSpendingCardNode);
+
+          // Balance Sheet column (Right on desktop): Monthly EMIs + Goals & Sinking Funds (directly stacked, ZERO vertical gap!)
+          if (hasLoans) col2Cards.push(loansCardNode);
+          if (hasGoals) col2Cards.push(goalsCardNode);
+        } else {
+          // Dynamic distribution when user has an asymmetrical subset of cards
+          const activeUpperList: React.ReactNode[] = [
+            comingUpCardNode,
+            loansCardNode,
+            topSpendingCardNode,
+            goalsCardNode,
+          ].filter(Boolean);
+
+          if (activeUpperList.length >= 2) {
+            col1Cards.push(activeUpperList[0]);
+            col2Cards.push(activeUpperList[1]);
+            if (activeUpperList[2]) col1Cards.push(activeUpperList[2]);
+          } else if (activeUpperList.length === 1) {
+            col1Cards.push(activeUpperList[0]);
+          }
+        }
+
+        return (
+          <div className="space-y-4 lg:space-y-6">
+            {(col1Cards.length > 0 || col2Cards.length > 0) && (
+              <div className={`grid grid-cols-1 ${col2Cards.length > 0 ? "md:grid-cols-2" : ""} gap-4 lg:gap-6 items-start`}>
+                {col1Cards.length > 0 && (
+                  <div className={`contents md:flex md:flex-col md:gap-4 lg:gap-6 ${col2Cards.length === 0 ? "md:col-span-2" : ""}`}>
+                    {col1Cards}
+                  </div>
+                )}
+                {col2Cards.length > 0 && (
+                  <div className="contents md:flex md:flex-col md:gap-4 lg:gap-6">
+                    {col2Cards}
+                  </div>
+                )}
               </div>
             )}
-          </div>
 
-          <div className="pt-2.5 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground mt-1">
-            <span>Showing latest {recentTransactions.length} entries</span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => onNavigate("Transactions")}
-              className="h-6 text-xs font-semibold text-primary p-0"
-            >
-              Open ledger →
-            </Button>
+            {/* CARD 5: Recent Activity (Compulsory: Ledger Transactions, full width spanning both columns) */}
+            <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-5 md:order-none">
+              <div className="space-y-3.5">
+                <div className="flex items-center justify-between border-b border-border/60 pb-3">
+                  <div>
+                    <h3 className="text-sm font-bold text-foreground">Recent Activity</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">Latest posted transactions</p>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => onNavigate("Transactions")}
+                    className="h-7 text-xs font-semibold text-primary"
+                  >
+                    View all →
+                  </Button>
+                </div>
+
+                {recentTransactions.length === 0 ? (
+                  <div className="p-6 text-center text-xs text-muted-foreground space-y-2">
+                    <p>No transactions logged yet.</p>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onAdd()}
+                      className="gap-1.5 text-xs font-semibold"
+                    >
+                      <Plus size={13} /> Add first transaction
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="space-y-1 max-h-[380px] overflow-y-auto wt-scrollbar pr-0.5">
+                    {recentTransactions.map((tx) => (
+                      <TransactionRow
+                        key={tx.id}
+                        transaction={tx}
+                        category={data.categories.find((c) => c.id === tx.categoryId)}
+                        account={data.accounts.find((a) => a.id === tx.accountId)}
+                        money={money}
+                        onClick={() => onSelectTransaction(tx)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2.5 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground mt-1">
+                <span>Showing latest {recentTransactions.length} entries</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onNavigate("Transactions")}
+                  className="h-6 text-xs font-semibold text-primary p-0"
+                >
+                  Open ledger →
+                </Button>
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        );
+      })()}
     </div>
   );
 }

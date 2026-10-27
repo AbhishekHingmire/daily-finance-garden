@@ -2701,6 +2701,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   setTxCategory(id);
                   goSection("Transactions");
                 }}
+                onViewAllCategories={() => {
+                  goSection("Categories");
+                }}
               />
             )}
 

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { ArrowRight, Tags } from "lucide-react";
 
 export interface PieCategoryItem {
   id: string;
@@ -30,13 +31,17 @@ const PALETTE = [
 export function CategoryPieChart({
   categories,
   totalAmount,
+  totalCategoriesCount,
   money,
   onCategoryClick,
+  onViewAllCategories,
 }: {
   categories: PieCategoryItem[];
   totalAmount: number;
+  totalCategoriesCount?: number;
   money: (amount: number) => string;
   onCategoryClick?: (id: string) => void;
+  onViewAllCategories?: () => void;
 }) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
 
@@ -45,8 +50,8 @@ export function CategoryPieChart({
     const nonZero = categories.filter((c) => c.amount > 0).sort((a, b) => b.amount - a.amount);
     if (nonZero.length === 0) return [];
 
-    // Support up to 15 categories individually so user can add 10+ or 15+ without aggressive truncation
-    const maxItems = 15;
+    // Show top 10 categories individually, bundle any excess into 'Other'
+    const maxItems = 10;
     const top = nonZero.slice(0, maxItems);
     const remainder = nonZero.slice(maxItems);
     const remainderSum = remainder.reduce((s, c) => s + c.amount, 0);
@@ -193,15 +198,22 @@ export function CategoryPieChart({
         </div>
       </div>
 
-      {/* Category Legend with Fixed View Area & Smooth Scrolling for 8+ Categories */}
-      <div className="flex-1 w-full min-w-0 flex flex-col justify-center">
-        {activeItems.length > 7 && (
-          <div className="flex items-center justify-between pb-1.5 mb-1 px-1 text-[11px] font-semibold text-muted-foreground border-b border-border/40">
-            <span>Categories ({activeItems.length})</span>
-            <span className="text-[10px] text-muted-foreground/70">Scroll for more ↓</span>
-          </div>
-        )}
-        <div className="space-y-1.5 max-h-[260px] sm:max-h-[290px] overflow-y-auto wt-scrollbar pr-1">
+      {/* Category Legend with Fixed View Area & Smooth Scrolling for 10 Categories */}
+      <div className="flex-1 w-full min-w-0 flex flex-col justify-start">
+        <div className="flex items-center justify-between pb-1.5 mb-1 px-1 text-[11px] font-semibold text-muted-foreground border-b border-border/40">
+          <span>Top Categories ({Math.min(activeItems.length, 10)})</span>
+          {onViewAllCategories && (
+            <button
+              type="button"
+              onClick={onViewAllCategories}
+              className="text-[11px] font-bold text-primary hover:underline inline-flex items-center gap-1 cursor-pointer"
+            >
+              <span>View all {totalCategoriesCount ? `(${totalCategoriesCount})` : ""}</span>
+              <ArrowRight size={11} />
+            </button>
+          )}
+        </div>
+        <div className="space-y-1 max-h-[260px] sm:max-h-[290px] overflow-y-auto wt-scrollbar pr-1">
           {activeItems.map((item, idx) => {
             const isHovered = hoveredId === item.id;
             const color = PALETTE[idx % PALETTE.length];
@@ -241,6 +253,23 @@ export function CategoryPieChart({
             );
           })}
         </div>
+
+        {/* Prominent View All Footer Action */}
+        {onViewAllCategories && (
+          <button
+            type="button"
+            onClick={onViewAllCategories}
+            className="w-full mt-2.5 flex items-center justify-between px-3 py-2 rounded-xl border border-primary/25 bg-primary/5 hover:bg-primary/10 text-primary transition-all text-xs font-semibold cursor-pointer group"
+          >
+            <span className="flex items-center gap-1.5">
+              <Tags size={13} className="shrink-0 text-primary" />
+              <span>View all categories {totalCategoriesCount ? `(${totalCategoriesCount})` : ""}</span>
+            </span>
+            <span className="inline-flex items-center gap-1 text-[11px] font-bold group-hover:translate-x-0.5 transition-transform">
+              Categories page <ArrowRight size={12} />
+            </span>
+          </button>
+        )}
       </div>
     </div>
   );
