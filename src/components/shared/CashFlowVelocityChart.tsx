@@ -1,6 +1,15 @@
 import { useMemo, useState } from "react";
 import { Maximize2 } from "lucide-react";
 import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+} from "recharts";
+import {
   type DateRangeValue,
   MONTH_NAMES,
   FULL_MONTH_NAMES,
@@ -17,6 +26,7 @@ export interface CashFlowVelocityChartProps {
   title?: string;
   subtitle?: string;
   className?: string;
+  chartHeight?: number;
 }
 
 interface VelocityItem {
@@ -29,6 +39,7 @@ interface VelocityItem {
   isFuture?: boolean;
   income: number;
   expense: number;
+  net: number;
   dayNumber?: number;
 }
 
@@ -49,38 +60,6 @@ function isOutflow(type: string): boolean {
   );
 }
 
-// Helper to generate smooth Catmull-Rom / cubic bezier curves across SVG points
-function buildSmoothPath(
-  points: { x: number; y: number }[],
-  baseY = 166,
-  topY = 14
-): string {
-  if (points.length <= 1) {
-    return points.length === 1
-      ? `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`
-      : "";
-  }
-  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[Math.max(0, i - 1)];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[Math.min(points.length - 1, i + 2)];
-
-    const cp1x = p1.x + (p2.x - p0.x) / 5.5;
-    let cp1y = p1.y + (p2.y - p0.y) / 5.5;
-    const cp2x = p2.x - (p3.x - p1.x) / 5.5;
-    let cp2y = p2.y - (p3.y - p1.y) / 5.5;
-
-    // Clamp control points so the wave never overshoots below the baseline or above top boundary
-    cp1y = Math.min(baseY, Math.max(topY, cp1y));
-    cp2y = Math.min(baseY, Math.max(topY, cp2y));
-
-    d += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
-  }
-  return d;
-}
-
 export function CashFlowVelocityChart({
   transactions,
   dateRange,
@@ -90,9 +69,8 @@ export function CashFlowVelocityChart({
   title = "Cash Flow Velocity",
   subtitle,
   className = "",
+  chartHeight,
 }: CashFlowVelocityChartProps) {
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-
   // Reference today date (anchored to 2026-10-22 if mock year is 2026)
   const today = useMemo(() => {
     const now = new Date();
@@ -147,6 +125,7 @@ export function CashFlowVelocityChart({
           isFuture: false,
           income,
           expense,
+          net: income - expense,
           dayNumber: day,
         });
       }
@@ -184,6 +163,7 @@ export function CashFlowVelocityChart({
           isToday: isCurrent,
           income,
           expense,
+          net: income - expense,
         };
       });
     }
@@ -219,11 +199,12 @@ export function CashFlowVelocityChart({
         isToday: isCurrent,
         income,
         expense,
+        net: income - expense,
       };
     });
   }, [isMonthlyFilter, dateRange.preset, targetYear, targetMonth, transactions, today]);
 
-  // Max value for bar scaling
+  // Max value for scaling
   const maxValue = useMemo(() => {
     const highest = Math.max(
       1,
@@ -246,89 +227,12 @@ export function CashFlowVelocityChart({
 
   const yAxisTicks = useMemo(() => {
     return [
-      { value: ceilMax, label: formatChartTick(ceilMax) },
-      { value: Math.round(ceilMax * 0.66), label: formatChartTick(Math.round(ceilMax * 0.66)) },
-      { value: Math.round(ceilMax * 0.33), label: formatChartTick(Math.round(ceilMax * 0.33)) },
-      { value: 0, label: formatChartTick(0) },
+      0,
+      Math.round(ceilMax * 0.33),
+      Math.round(ceilMax * 0.66),
+      ceilMax,
     ];
   }, [ceilMax]);
-
-  // Active item for inspection readout
-  const activeItem = useMemo(() => {
-    if (hoveredKey) {
-      return chartItems.find((i) => i.key === hoveredKey) ?? null;
-    }
-    // Default to today if current month, or the latest item with transactions
-    const todayItem = chartItems.find((i) => i.isToday);
-    if (todayItem) return todayItem;
-    const lastWithActivity = [...chartItems].reverse().find((i) => i.income > 0 || i.expense > 0);
-    return lastWithActivity ?? chartItems[chartItems.length - 1] ?? null;
-  }, [chartItems, hoveredKey]);
-
-  // Compute SVG coordinates and smooth paths across 1000x180 canvas
-  const {
-    inflowAreaPath,
-    inflowLinePath,
-    outflowAreaPath,
-    outflowLinePath,
-    activeX,
-    activeInflowY,
-    activeOutflowY,
-  } = useMemo(() => {
-    const N = chartItems.length;
-    if (N === 0) {
-      return {
-        inflowAreaPath: "",
-        inflowLinePath: "",
-        outflowAreaPath: "",
-        outflowLinePath: "",
-        activeX: 500,
-        activeInflowY: 166,
-        activeOutflowY: 166,
-      };
-    }
-
-    const inflowPts = chartItems.map((item, idx) => ({
-      x: N > 1 ? (idx / (N - 1)) * 1000 : 500,
-      y: 166 - (item.income / ceilMax) * 152,
-    }));
-
-    const outflowPts = chartItems.map((item, idx) => ({
-      x: N > 1 ? (idx / (N - 1)) * 1000 : 500,
-      y: 166 - (item.expense / ceilMax) * 152,
-    }));
-
-    const iLine = buildSmoothPath(inflowPts, 166, 14);
-    const oLine = buildSmoothPath(outflowPts, 166, 14);
-
-    const firstX = inflowPts[0].x.toFixed(1);
-    const lastX = inflowPts[inflowPts.length - 1].x.toFixed(1);
-
-    const iArea = iLine ? `${iLine} L ${lastX} 166 L ${firstX} 166 Z` : "";
-    const oArea = oLine ? `${oLine} L ${lastX} 166 L ${firstX} 166 Z` : "";
-
-    const activeIdx = activeItem
-      ? chartItems.findIndex((it) => it.key === activeItem.key)
-      : -1;
-    const curX =
-      activeIdx >= 0
-        ? N > 1
-          ? (activeIdx / (N - 1)) * 1000
-          : 500
-        : 500;
-    const curInY = activeItem ? 166 - (activeItem.income / ceilMax) * 152 : 166;
-    const curOutY = activeItem ? 166 - (activeItem.expense / ceilMax) * 152 : 166;
-
-    return {
-      inflowAreaPath: iArea,
-      inflowLinePath: iLine,
-      outflowAreaPath: oArea,
-      outflowLinePath: oLine,
-      activeX: curX,
-      activeInflowY: curInY,
-      activeOutflowY: curOutY,
-    };
-  }, [chartItems, ceilMax, activeItem]);
 
   const defaultSubtitle = isMonthlyFilter
     ? `Day-by-day cash velocity for ${FULL_MONTH_NAMES[targetMonth - 1]} ${targetYear}`
@@ -336,48 +240,87 @@ export function CashFlowVelocityChart({
     ? `Monthly cash inflows vs outflows for ${targetYear}`
     : "Continuous cash inflow and outflow area wave";
 
-  // Compute clean X-axis milestone markers based on current view
-  const xAxisMilestones = useMemo(() => {
+  // Collision-free X-axis milestone markers
+  const { milestoneTicks, milestoneLabelMap } = useMemo(() => {
+    const labelMap = new Map<string, string>();
+
     if (!isMonthlyFilter) {
-      return chartItems.map((item, i) => ({
-        key: item.key,
-        label: item.shortLabel,
-        isCurrent: item.isToday,
-        ratio: chartItems.length > 1 ? (i / (chartItems.length - 1)) * 100 : 50,
-      }));
+      const n = chartItems.length;
+      let selectedItems: VelocityItem[] = [];
+      if (n <= 6) {
+        selectedItems = chartItems;
+      } else {
+        const step = Math.ceil(n / 6);
+        selectedItems = chartItems.filter((_, i) => i === 0 || i === n - 1 || i % step === 0);
+      }
+      selectedItems.forEach((it) => labelMap.set(it.shortLabel, it.shortLabel));
+      return {
+        milestoneTicks: selectedItems.map((it) => it.shortLabel),
+        milestoneLabelMap: labelMap,
+      };
     }
 
     const n = chartItems.length;
-    if (n <= 1) return [];
+    if (n <= 1) {
+      return { milestoneTicks: [], milestoneLabelMap: labelMap };
+    }
 
-    // Milestone day numbers to display along the horizontal axis
-    const days = [1, 5, 10, 15, 20, 25, n].filter(
+    const isCurrentMonth =
+      today.getFullYear() === targetYear && today.getMonth() + 1 === targetMonth;
+    const currentDay = isCurrentMonth ? today.getDate() : -1;
+
+    const candidateDays = [1, 5, 10, 15, 20, 25, n].filter(
       (d, idx, arr) => d <= n && arr.indexOf(d) === idx
     );
 
-    return days.map((d) => ({
-      key: `day-${d}`,
-      label: d === 1 ? "Day 1" : d === n ? `Day ${d}` : String(d),
-      isCurrent:
-        d ===
-        (today.getFullYear() === targetYear && today.getMonth() + 1 === targetMonth
-          ? today.getDate()
-          : -1),
-      ratio: ((d - 1) / Math.max(1, n - 1)) * 100,
-    }));
-  }, [isMonthlyFilter, chartItems, today, targetYear, targetMonth]);
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const idx = Math.min(
-      chartItems.length - 1,
-      Math.max(0, Math.round(ratio * (chartItems.length - 1)))
+    const filteredDays = candidateDays.filter(
+      (d) => currentDay <= 0 || d === currentDay || Math.abs(d - currentDay) >= 3
     );
-    if (chartItems[idx]) {
-      setHoveredKey(chartItems[idx].key);
+
+    if (currentDay > 1 && currentDay < n && !filteredDays.includes(currentDay)) {
+      filteredDays.push(currentDay);
+      filteredDays.sort((a, b) => a - b);
     }
-  };
+
+    const cleanDays: number[] = [];
+    for (const d of filteredDays) {
+      const ratio = ((d - 1) / Math.max(1, n - 1)) * 100;
+      const prevRatio =
+        cleanDays.length > 0
+          ? ((cleanDays[cleanDays.length - 1] - 1) / Math.max(1, n - 1)) * 100
+          : -100;
+
+      if (ratio - prevRatio >= 8 || d === currentDay || d === n) {
+        if (
+          d === currentDay &&
+          cleanDays.length > 0 &&
+          ratio - prevRatio < 8 &&
+          cleanDays[cleanDays.length - 1] !== 1
+        ) {
+          cleanDays.pop();
+        }
+        cleanDays.push(d);
+      }
+    }
+
+    cleanDays.forEach((d) => {
+      const key = String(d);
+      const label =
+        d === 1
+          ? "Day 1"
+          : d === currentDay
+          ? `Today (${d})`
+          : d === n
+          ? `Day ${d}`
+          : String(d);
+      labelMap.set(key, label);
+    });
+
+    return {
+      milestoneTicks: cleanDays.map(String),
+      milestoneLabelMap: labelMap,
+    };
+  }, [isMonthlyFilter, chartItems, today, targetYear, targetMonth]);
 
   return (
     <div
@@ -440,259 +383,141 @@ export function CashFlowVelocityChart({
           </div>
         </div>
 
-        {/* Real-time Hover Inspection Readout Banner */}
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2 text-xs">
-          <div className="flex items-center gap-2 font-bold text-foreground">
-            <span>{activeItem?.fullDateLabel ?? "Timeline Inspection"}</span>
-            {activeItem?.isToday && (
-              <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                Today
-              </span>
-            )}
-          </div>
-
-          <div className="flex items-center gap-3 tabular-nums text-xs">
-            <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
-              +{money(activeItem ? activeItem.income : 0)}
-            </span>
-            <span className="text-muted-foreground">·</span>
-            <span className="font-extrabold text-rose-600 dark:text-rose-400">
-              −{money(activeItem ? activeItem.expense : 0)}
-            </span>
-            <span className="text-muted-foreground">·</span>
-            <span
-              className={`font-extrabold ${
-                (activeItem ? activeItem.income - activeItem.expense : 0) >= 0
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-rose-600 dark:text-rose-400"
-              }`}
-            >
-              Net: {money(activeItem ? activeItem.income - activeItem.expense : 0)}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Chart Canvas with Left Vertical Y-Axis, Guidelines, and Continuous SVG Area Wave */}
-      <div className="mt-3.5">
-        <div className="flex gap-2 sm:gap-3">
-          {/* Vertical Left Y-Axis Bar with Amount Numbers */}
-          <div className="flex flex-col justify-between items-end pr-2.5 h-[168px] text-[10px] font-bold text-muted-foreground tabular-nums select-none shrink-0 border-r border-border/80 min-w-[52px] sm:min-w-[64px] py-1">
-            {yAxisTicks.map((tick, i) => (
-              <span key={i} className="leading-none">
-                {tick.label}
-              </span>
-            ))}
-          </div>
-
-          {/* Continuous SVG Area Wave Chart Container */}
-          <div
-            className="relative flex-1 h-[168px] cursor-crosshair select-none"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={() => setHoveredKey(null)}
-          >
-            {/* SVG Wave Canvas */}
-            <svg
-              viewBox="0 0 1000 180"
-              preserveAspectRatio="none"
-              className="absolute inset-0 size-full overflow-visible"
+        {/* Modern Recharts Area Chart */}
+        <div className="mt-3 w-full" style={{ height: chartHeight ?? 210 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={chartItems}
+              margin={{ top: 12, right: 8, left: -16, bottom: 0 }}
             >
               <defs>
-                {/* Emerald Inflow Gradient */}
-                <linearGradient id="cf-inflow-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.48" />
-                  <stop offset="70%" stopColor="#10b981" stopOpacity="0.12" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.01" />
+                <linearGradient id="velocityInflowGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.38} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
                 </linearGradient>
-
-                {/* Rose Outflow Gradient */}
-                <linearGradient id="cf-outflow-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#f43f5e" stopOpacity="0.42" />
-                  <stop offset="70%" stopColor="#f43f5e" stopOpacity="0.10" />
-                  <stop offset="100%" stopColor="#f43f5e" stopOpacity="0.01" />
+                <linearGradient id="velocityOutflowGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.38} />
+                  <stop offset="95%" stopColor="#f43f5e" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
 
-              {/* Horizontal Guidelines matching Y-Axis Ticks */}
-              <line
-                x1="0"
-                y1="14"
-                x2="1000"
-                y2="14"
-                stroke="currentColor"
-                strokeDasharray="4 4"
-                className="text-border/40"
-              />
-              <line
-                x1="0"
-                y1="64.6"
-                x2="1000"
-                y2="64.6"
-                stroke="currentColor"
-                strokeDasharray="4 4"
-                className="text-border/40"
-              />
-              <line
-                x1="0"
-                y1="115.3"
-                x2="1000"
-                y2="115.3"
-                stroke="currentColor"
-                strokeDasharray="4 4"
-                className="text-border/40"
-              />
-              <line
-                x1="0"
-                y1="166"
-                x2="1000"
-                y2="166"
-                stroke="currentColor"
-                className="text-border/80"
-                strokeWidth="1"
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="hsl(var(--border))"
+                strokeOpacity={0.45}
               />
 
-              {/* Filled Continuous Area Waves */}
-              {inflowAreaPath && (
-                <path d={inflowAreaPath} fill="url(#cf-inflow-grad)" />
-              )}
-              {outflowAreaPath && (
-                <path d={outflowAreaPath} fill="url(#cf-outflow-grad)" />
-              )}
+              <XAxis
+                dataKey="shortLabel"
+                axisLine={false}
+                tickLine={false}
+                ticks={milestoneTicks}
+                tickFormatter={(val) => milestoneLabelMap.get(String(val)) ?? String(val)}
+                tick={{
+                  fill: "hsl(var(--muted-foreground))",
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                }}
+                dy={6}
+              />
 
-              {/* Glowing Boundary Contour Strokes */}
-              {inflowLinePath && (
-                <path
-                  d={inflowLinePath}
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              )}
-              {outflowLinePath && (
-                <path
-                  d={outflowLinePath}
-                  fill="none"
-                  stroke="#f43f5e"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              )}
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                domain={[0, ceilMax]}
+                ticks={yAxisTicks}
+                tickFormatter={(val) => formatChartTick(Number(val))}
+                tick={{
+                  fill: "hsl(var(--muted-foreground))",
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                }}
+                dx={-4}
+              />
 
-              {/* Activity Dots on Days with Movement */}
-              {chartItems.map((item, idx) => {
-                const x =
-                  chartItems.length > 1
-                    ? (idx / (chartItems.length - 1)) * 1000
-                    : 500;
-                const hasInflow = item.income > 0;
-                const hasOutflow = item.expense > 0;
-                if (!hasInflow && !hasOutflow) return null;
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const item = payload[0]?.payload as VelocityItem;
+                  if (!item) return null;
 
-                const isCur = activeItem?.key === item.key;
+                  return (
+                    <div className="rounded-xl border border-border/80 bg-card/95 backdrop-blur-md px-3.5 py-2.5 text-xs shadow-xl min-w-[175px]">
+                      <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5 mb-1.5 font-bold text-foreground">
+                        <span>{item.fullDateLabel}</span>
+                        {item.isToday && (
+                          <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[9px] font-bold text-emerald-700 dark:text-emerald-400">
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5 tabular-nums text-xs">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="flex items-center gap-1.5 text-muted-foreground">
+                            <span className="size-2 rounded-full bg-emerald-500" /> Inflows
+                          </span>
+                          <span className="font-extrabold text-emerald-600 dark:text-emerald-400">
+                            +{money(item.income)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="flex items-center gap-1.5 text-muted-foreground">
+                            <span className="size-2 rounded-full bg-rose-500" /> Outflows
+                          </span>
+                          <span className="font-extrabold text-rose-600 dark:text-rose-400">
+                            −{money(item.expense)}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 pt-1 border-t border-border/40 font-bold">
+                          <span className="text-muted-foreground">Net Movement</span>
+                          <span
+                            className={
+                              item.net >= 0
+                                ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
+                                : "text-rose-600 dark:text-rose-400 font-extrabold"
+                            }
+                          >
+                            {item.net >= 0 ? `+${money(item.net)}` : `−${money(Math.abs(item.net))}`}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }}
+                cursor={{
+                  stroke: "hsl(var(--muted-foreground))",
+                  strokeWidth: 1.5,
+                  strokeDasharray: "3 3",
+                  strokeOpacity: 0.6,
+                }}
+              />
 
-                return (
-                  <g key={item.key}>
-                    {hasInflow && (
-                      <circle
-                        cx={x}
-                        cy={166 - (item.income / ceilMax) * 152}
-                        r={isCur ? 4.5 : 2.5}
-                        fill="#10b981"
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
-                      />
-                    )}
-                    {hasOutflow && (
-                      <circle
-                        cx={x}
-                        cy={166 - (item.expense / ceilMax) * 152}
-                        r={isCur ? 4.5 : 2.5}
-                        fill="#f43f5e"
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
-                      />
-                    )}
-                  </g>
-                );
-              })}
+              <Area
+                type="monotone"
+                dataKey="income"
+                name="Inflows"
+                stroke="#10b981"
+                strokeWidth={2.5}
+                fillOpacity={1}
+                fill="url(#velocityInflowGrad)"
+                isAnimationActive={false}
+                activeDot={{ r: 5.5, strokeWidth: 2, stroke: "#ffffff", fill: "#10b981" }}
+              />
 
-              {/* Active / Hovered Vertical Guide Line and Nodes */}
-              {activeItem && (
-                <g>
-                  <line
-                    x1={activeX}
-                    y1={14}
-                    x2={activeX}
-                    y2={166}
-                    stroke="currentColor"
-                    strokeDasharray="3 3"
-                    className="text-muted-foreground/60"
-                    strokeWidth="1.5"
-                  />
-                  {activeItem.income > 0 && (
-                    <circle
-                      cx={activeX}
-                      cy={activeInflowY}
-                      r="6"
-                      fill="#10b981"
-                      stroke="#ffffff"
-                      strokeWidth="2"
-                    />
-                  )}
-                  {activeItem.expense > 0 && (
-                    <circle
-                      cx={activeX}
-                      cy={activeOutflowY}
-                      r="6"
-                      fill="#f43f5e"
-                      stroke="#ffffff"
-                      strokeWidth="2"
-                    />
-                  )}
-                  {activeItem.income === 0 && activeItem.expense === 0 && (
-                    <circle
-                      cx={activeX}
-                      cy={166}
-                      r="4"
-                      fill="currentColor"
-                      className="text-muted-foreground"
-                    />
-                  )}
-                </g>
-              )}
-            </svg>
-          </div>
-        </div>
-
-        {/* X-Axis Milestone Labels with Exact Proportional Alignment */}
-        <div className="flex gap-2 sm:gap-3 mt-1.5">
-          <div className="min-w-[52px] sm:min-w-[64px] shrink-0" />
-          <div className="relative flex-1 h-5 text-[10px] font-bold text-muted-foreground select-none">
-            {xAxisMilestones.map((ms, idx) => {
-              const isFirst = idx === 0;
-              const isLast = idx === xAxisMilestones.length - 1;
-              const transformClass = isFirst
-                ? "translate-x-0"
-                : isLast
-                ? "-translate-x-full"
-                : "-translate-x-1/2";
-
-              return (
-                <span
-                  key={ms.key}
-                  style={{ left: `${ms.ratio}%` }}
-                  className={`absolute top-0 transform ${transformClass} whitespace-nowrap ${
-                    ms.isCurrent ? "text-primary font-black" : ""
-                  }`}
-                >
-                  {ms.label}
-                </span>
-              );
-            })}
-          </div>
+              <Area
+                type="monotone"
+                dataKey="expense"
+                name="Outflows"
+                stroke="#f43f5e"
+                strokeWidth={2.5}
+                fillOpacity={1}
+                fill="url(#velocityOutflowGrad)"
+                isAnimationActive={false}
+                activeDot={{ r: 5.5, strokeWidth: 2, stroke: "#ffffff", fill: "#f43f5e" }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
 
         {/* Symmetrical Bottom Velocity Metrics Footer */}
@@ -700,7 +525,14 @@ export function CashFlowVelocityChart({
           <div>
             <span className="font-bold text-foreground">Period Velocity Movement</span>
             <span className="text-[11px] block text-muted-foreground mt-0.5">
-              Inflows: <strong className="text-emerald-600 dark:text-emerald-400 font-bold">+{money(chartItems.reduce((s, it) => s + it.income, 0))}</strong> · Outflows: <strong className="text-rose-600 dark:text-rose-400 font-bold">−{money(chartItems.reduce((s, it) => s + it.expense, 0))}</strong>
+              Inflows:{" "}
+              <strong className="text-emerald-600 dark:text-emerald-400 font-bold">
+                +{money(chartItems.reduce((s, it) => s + it.income, 0))}
+              </strong>{" "}
+              · Outflows:{" "}
+              <strong className="text-rose-600 dark:text-rose-400 font-bold">
+                −{money(chartItems.reduce((s, it) => s + it.expense, 0))}
+              </strong>
             </span>
           </div>
           <div className="text-right">

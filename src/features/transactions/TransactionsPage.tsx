@@ -142,6 +142,36 @@ export function TransactionsPage({
     );
   }, [data.transactions]);
 
+  // Dynamic totals for currently filtered transactions from main
+  const { filteredNet, filteredInflow, filteredOutflow } = React.useMemo(() => {
+    let inflow = 0;
+    let outflow = 0;
+    let net = 0;
+    for (const tx of rows) {
+      const isPositive =
+        tx.type === "Income" ||
+        tx.type === "Refund" ||
+        tx.type === "Borrow / Loan Taken" ||
+        tx.type === "Debt Recovery" ||
+        (tx.type === "Adjustment" && tx.amount > 0);
+
+      const isNegative =
+        tx.type === "Expense" ||
+        tx.type === "EMI / Loan Payment" ||
+        tx.type === "Lend / Loan Given" ||
+        (tx.type === "Adjustment" && tx.amount < 0);
+
+      if (isPositive) {
+        inflow += Math.abs(tx.amount);
+        net += Math.abs(tx.amount);
+      } else if (isNegative) {
+        outflow += Math.abs(tx.amount);
+        net -= Math.abs(tx.amount);
+      }
+    }
+    return { filteredNet: net, filteredInflow: inflow, filteredOutflow: outflow };
+  }, [rows]);
+
   return (
     <div className="space-y-6">
       <PageHeading
@@ -395,6 +425,46 @@ export function TransactionsPage({
           </div>
         </div>
       )}
+
+      {/* Sleek Minimalist Filtered Summary Strip */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-border/70 bg-card/80 px-3.5 py-2 wt-shadow text-xs">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-foreground text-xs">Filtered Activity</span>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+            {rows.length} {rows.length === 1 ? "record" : "records"}
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 font-bold tabular-nums text-xs">
+          <span className="text-muted-foreground text-[11px]">
+            Inflows:{" "}
+            <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">
+              +{money(filteredInflow)}
+            </strong>
+          </span>
+          <span className="text-border select-none">·</span>
+          <span className="text-muted-foreground text-[11px]">
+            Outflows:{" "}
+            <strong className="text-rose-600 dark:text-rose-400 font-extrabold">
+              −{money(filteredOutflow)}
+            </strong>
+          </span>
+          <span className="text-border select-none">·</span>
+          <span className="text-muted-foreground text-[11px]">
+            Net:{" "}
+            <strong
+              className={`font-extrabold ${
+                filteredNet >= 0
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : "text-rose-600 dark:text-rose-400"
+              }`}
+            >
+              {filteredNet >= 0
+                ? `+${money(filteredNet)}`
+                : `−${money(Math.abs(filteredNet))}`}
+            </strong>
+          </span>
+        </div>
+      </div>
 
       {/* Premium Reusable Transactions Table with Integrated Top Search Bar */}
       <TransactionTable

@@ -1,11 +1,32 @@
 import { useMemo, useState } from "react";
 import { Maximize2 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  AreaChart,
+  Area,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ReferenceLine,
+} from "recharts";
 import type { Transaction } from "@/lib/wealthtrack";
 import {
   type DateRangeValue,
   MONTH_NAMES,
   FULL_MONTH_NAMES,
 } from "@/components/shared/DateRangeFilter";
+import { formatChartTick } from "@/lib/formatters";
+
+export interface NetWealthPoint {
+  key: string;
+  label: string;
+  shortLabel: string;
+  fullLabel: string;
+  value: number;
+  delta: number;
+  day: number;
+}
 
 export function NetWealthLineChart({
   transactions,
@@ -15,6 +36,7 @@ export function NetWealthLineChart({
   subtitle = "Running cash flow accumulation across the selected timeframe",
   onExpand,
   className = "",
+  chartHeight,
 }: {
   transactions: Transaction[];
   dateRange: DateRangeValue;
@@ -23,31 +45,27 @@ export function NetWealthLineChart({
   subtitle?: string;
   onExpand?: () => void;
   className?: string;
+  chartHeight?: number;
 }) {
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-
   // Group transactions into sequential time points
-  const points = useMemo(() => {
+  const points = useMemo<NetWealthPoint[]>(() => {
     const isMonthly = dateRange.preset === "month" || dateRange.preset === "1m";
     const targetYear = dateRange.year ?? 2026;
     const targetMonth = dateRange.month ?? 10;
-    const isCurrentMonth = targetYear === 2026 && targetMonth === 10;
+    const now = new Date();
+    const today = now.getFullYear() === 2026 ? now : new Date(2026, 9, 27);
+    const todayDay = today.getDate();
+    const isCurrentMonth =
+      today.getFullYear() === targetYear && today.getMonth() + 1 === targetMonth;
     const daysInMonth = new Date(targetYear, targetMonth, 0).getDate();
-    const maxDay = isCurrentMonth ? 26 : daysInMonth;
+    const maxDay = isCurrentMonth ? todayDay : daysInMonth;
 
     if (isMonthly) {
       const monthPrefix = `${targetYear}-${String(targetMonth).padStart(2, "0")}`;
       const monthName = MONTH_NAMES[targetMonth - 1] ?? "Mo";
 
       let runningTotal = 0;
-      const dailyPoints: {
-        label: string;
-        shortLabel: string;
-        fullLabel: string;
-        value: number;
-        delta: number;
-        day: number;
-      }[] = [];
+      const dailyPoints: NetWealthPoint[] = [];
 
       for (let d = 1; d <= maxDay; d++) {
         const iso = `${monthPrefix}-${String(d).padStart(2, "0")}`;
@@ -74,10 +92,11 @@ export function NetWealthLineChart({
         runningTotal += netDay;
 
         dailyPoints.push({
+          key: iso,
           label: `${monthName} ${d}`,
           shortLabel: String(d),
           fullLabel: `${d} ${FULL_MONTH_NAMES[targetMonth - 1]} ${targetYear}${
-            d === 26 && isCurrentMonth ? " · Today" : ""
+            d === todayDay && isCurrentMonth ? " · Today" : ""
           }`,
           value: runningTotal,
           delta: netDay,
@@ -117,6 +136,7 @@ export function NetWealthLineChart({
       runningTotal += netMonth;
 
       return {
+        key: prefix,
         label: mName,
         shortLabel: mName,
         fullLabel: `${FULL_MONTH_NAMES[idx]} ${year}${
@@ -129,118 +149,123 @@ export function NetWealthLineChart({
     });
   }, [transactions, dateRange]);
 
-  // Coordinate geometry calculations (1000 x 180 grid)
-  const { pathD, areaD, coordinates, milestones, minVal, maxVal } = useMemo(() => {
+  const { minVal, maxVal, yAxisTicks } = useMemo(() => {
     if (points.length === 0) {
-      return { pathD: "", areaD: "", coordinates: [], milestones: [], minVal: 0, maxVal: 0 };
+      return { minVal: 0, maxVal: 1000, yAxisTicks: [0, 1000] };
     }
-
     const values = points.map((p) => p.value);
     const minRaw = Math.min(0, ...values);
     const maxRaw = Math.max(1000, ...values);
-    const range = maxRaw - minRaw || 1;
 
-    const width = 1000;
-    const height = 180;
-    const paddingX = 15;
-    const paddingTop = 14;
-    const paddingBottom = 14;
-    const innerWidth = width - paddingX * 2;
-    const innerHeight = height - paddingTop - paddingBottom;
-
-    const coords = points.map((p, idx) => {
-      const x = paddingX + (idx / Math.max(1, points.length - 1)) * innerWidth;
-      const normalizedY = (p.value - minRaw) / range;
-      const y = height - paddingBottom - normalizedY * innerHeight;
-      return { x, y, ...p };
-    });
-
-    // Generate smooth bezier curve path
-    let d = `M ${coords[0].x} ${coords[0].y}`;
-    for (let i = 0; i < coords.length - 1; i++) {
-      const curr = coords[i];
-      const next = coords[i + 1];
-      const controlX1 = curr.x + (next.x - curr.x) / 2;
-      const controlY1 = curr.y;
-      const controlX2 = curr.x + (next.x - curr.x) / 2;
-      const controlY2 = next.y;
-      d += ` C ${controlX1} ${controlY1}, ${controlX2} ${controlY2}, ${next.x} ${next.y}`;
-    }
-
-    const baselineY = height - paddingBottom;
-    const area = `${d} L ${coords[coords.length - 1].x} ${baselineY} L ${coords[0].x} ${baselineY} Z`;
-
-    const milestoneList = coords.filter(
-      (pt, idx) =>
-        idx === 0 ||
-        idx === coords.length - 1 ||
-        (pt.day && pt.day % 5 === 0) ||
-        pt.day === 26
-    );
+    const t1 = maxRaw;
+    const t2 = Math.round(minRaw + (maxRaw - minRaw) * 0.66);
+    const t3 = Math.round(minRaw + (maxRaw - minRaw) * 0.33);
+    const t4 = minRaw;
 
     return {
-      pathD: d,
-      areaD: area,
-      coordinates: coords,
-      milestones: milestoneList,
       minVal: minRaw,
       maxVal: maxRaw,
+      yAxisTicks: [t4, t3, t2, t1],
     };
   }, [points]);
 
-  // Y-axis tick calculations matching CashFlowVelocityChart (U+2212 minus sign)
-  const yAxisTicks = useMemo(() => {
-    const t1 = maxVal;
-    const t2 = minVal + (maxVal - minVal) * 0.66;
-    const t3 = minVal + (maxVal - minVal) * 0.33;
-    const t4 = minVal;
-    const formatTick = (val: number) => {
-      const isNeg = val < 0;
-      const abs = Math.abs(val);
-      const sign = isNeg ? "\u2212" : "";
-      if (abs >= 100000) {
-        return `${sign}₹${(abs / 100000).toFixed(1).replace(/\.0$/, "")}L`;
-      }
-      if (abs >= 1000) {
-        return `${sign}₹${Math.round(abs / 1000)}k`;
-      }
-      return `${sign}₹${Math.round(abs)}`;
-    };
-    return [
-      { val: t1, label: formatTick(t1) },
-      { val: t2, label: formatTick(t2) },
-      { val: t3, label: formatTick(t3) },
-      { val: t4, label: formatTick(t4) },
-    ];
-  }, [minVal, maxVal]);
+  const isMonthlyFilter = dateRange.preset === "month" || dateRange.preset === "1m";
 
-  const activeIndex = hoveredIndex !== null ? hoveredIndex : coordinates.length - 1;
-  const activePoint = coordinates[activeIndex];
+  // Collision-free milestone selection
+  const { milestoneTicks, milestoneLabelMap } = useMemo(() => {
+    const labelMap = new Map<string, string>();
+    const n = points.length;
+    if (n === 0) return { milestoneTicks: [], milestoneLabelMap: labelMap };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (coordinates.length === 0) return;
-    const rect = e.currentTarget.getBoundingClientRect();
-    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const idx = Math.min(
-      coordinates.length - 1,
-      Math.max(0, Math.round(ratio * (coordinates.length - 1)))
+    if (!isMonthlyFilter) {
+      let selectedPoints: NetWealthPoint[] = [];
+      if (n <= 6) {
+        selectedPoints = points;
+      } else {
+        const step = Math.ceil(n / 6);
+        selectedPoints = points.filter((_, idx) => idx === 0 || idx === n - 1 || idx % step === 0);
+      }
+      selectedPoints.forEach((p) => labelMap.set(p.shortLabel, p.shortLabel));
+      return {
+        milestoneTicks: selectedPoints.map((p) => p.shortLabel),
+        milestoneLabelMap: labelMap,
+      };
+    }
+
+    const candidateDays = [1, 5, 10, 15, 20, 25, n].filter(
+      (d, idx, arr) => d <= n && arr.indexOf(d) === idx
     );
-    setHoveredIndex(idx);
-  };
+
+    // Prune candidate days within 2 days of end point to prevent label collision
+    const filteredDays = candidateDays.filter(
+      (d) => d === n || Math.abs(d - n) >= 3
+    );
+
+    const cleanDays: number[] = [];
+    for (const d of filteredDays) {
+      const ratio = ((d - 1) / Math.max(1, n - 1)) * 100;
+      const prevRatio =
+        cleanDays.length > 0
+          ? ((cleanDays[cleanDays.length - 1] - 1) / Math.max(1, n - 1)) * 100
+          : -100;
+
+      if (ratio - prevRatio >= 8 || d === n) {
+        if (
+          d === n &&
+          cleanDays.length > 0 &&
+          ratio - prevRatio < 8 &&
+          cleanDays[cleanDays.length - 1] !== 1
+        ) {
+          cleanDays.pop();
+        }
+        cleanDays.push(d);
+      }
+    }
+
+    cleanDays.forEach((d) => {
+      const point = points.find((p) => p.day === d);
+      const isEnd = d === n;
+      const isToday = point?.fullLabel?.includes("Today");
+
+      const label =
+        d === 1
+          ? "Day 1"
+          : isEnd
+          ? isToday
+            ? `Today (${d})`
+            : `Day ${d}`
+          : String(d);
+
+      labelMap.set(String(d), label);
+    });
+
+    return {
+      milestoneTicks: cleanDays.map(String),
+      milestoneLabelMap: labelMap,
+    };
+  }, [points, isMonthlyFilter]);
 
   return (
-    <div className={`rounded-2xl border border-border/80 bg-card p-4 sm:p-5 pb-3.5 wt-shadow ${className}`}>
+    <div
+      className={`rounded-2xl border border-border/80 bg-card p-4 sm:p-5 pb-3.5 wt-shadow ${className}`}
+    >
       <div>
+        {/* Header with Title, Badge, and Always-Top-Right Expand CTA */}
         <div className="flex items-start justify-between gap-2.5 sm:gap-4 pb-3 border-b border-border/60">
           <div className="min-w-0 flex-1">
             <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-              <h3 className="wt-display text-sm sm:text-base font-bold text-foreground truncate">{title}</h3>
-              <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
+              <h3 className="wt-display text-sm sm:text-base font-bold text-foreground truncate">
+                {title}
+              </h3>
+              <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-700 dark:text-emerald-400">
                 Cumulative Trend
               </span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-none">{subtitle}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1 sm:line-clamp-none">
+              {subtitle}
+            </p>
           </div>
+
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
             {onExpand && (
               <button
@@ -256,194 +281,132 @@ export function NetWealthLineChart({
           </div>
         </div>
 
-        {/* Real-time Hover Inspection Readout Banner */}
-        {activePoint && (
-          <div className="mt-3 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border/70 bg-muted/30 px-3.5 py-2 text-xs">
-            <span className="font-bold text-foreground">
-              {activePoint.fullLabel}
-            </span>
-            <div className="flex items-center gap-3 tabular-nums text-xs">
-              <span className="font-semibold text-muted-foreground">Cumulative Net:</span>
-              <span
-                className={`font-black ${
-                  activePoint.value >= 0
-                    ? "text-emerald-600 dark:text-emerald-400"
-                    : "text-rose-600 dark:text-rose-400"
-                }`}
-              >
-                {activePoint.value >= 0 ? "+" : ""}{money(activePoint.value)}
-              </span>
-              <span className="text-muted-foreground">·</span>
-              <span className="text-muted-foreground font-semibold">
-                Daily Inflow/Outflow Delta:{" "}
-                <strong
-                  className={
-                    activePoint.delta >= 0
-                      ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
-                      : "text-rose-600 dark:text-rose-400 font-extrabold"
-                  }
-                >
-                  {activePoint.delta >= 0 ? "+" : ""}{money(activePoint.delta)}
-                </strong>
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Chart Canvas with Left Vertical Y-Axis Amounts and Smooth Area Wave */}
-      <div className="mt-3.5">
-        <div className="flex gap-2 sm:gap-3">
-          {/* Vertical Left Y-Axis Bar with Amount Numbers */}
-          <div className="flex flex-col justify-between items-end pr-2.5 h-[168px] text-[10px] font-bold text-muted-foreground tabular-nums select-none shrink-0 border-r border-border/80 min-w-[52px] sm:min-w-[64px] py-1">
-            {yAxisTicks.map((tick, i) => (
-              <span key={i} className="leading-none">
-                {tick.label}
-              </span>
-            ))}
-          </div>
-
-          {/* Continuous SVG Line & Area Container with Crosshair Mouse Move Tracking */}
-          <div
-            className="relative flex-1 h-[168px] cursor-crosshair select-none"
-            onMouseMove={handleMouseMove}
-            onMouseLeave={() => setHoveredIndex(null)}
-          >
-            <svg
-              viewBox="0 0 1000 180"
-              className="absolute inset-0 size-full overflow-visible"
-              preserveAspectRatio="none"
+        {/* Modern Recharts Area Chart */}
+        <div className="mt-3 w-full" style={{ height: chartHeight ?? 210 }}>
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={points}
+              margin={{ top: 12, right: 8, left: -16, bottom: 0 }}
             >
               <defs>
-                <linearGradient id="wealthGradient" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.45" />
-                  <stop offset="70%" stopColor="#10b981" stopOpacity="0.12" />
-                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                <linearGradient id="wealthTrendGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.38} />
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
 
-              {/* Horizontal Grid lines matching Y-Axis Ticks */}
-              <line
-                x1="0"
-                y1="14"
-                x2="1000"
-                y2="14"
-                stroke="currentColor"
-                strokeDasharray="4 4"
-                className="text-border/40"
-              />
-              <line
-                x1="0"
-                y1="64.6"
-                x2="1000"
-                y2="64.6"
-                stroke="currentColor"
-                strokeDasharray="4 4"
-                className="text-border/40"
-              />
-              <line
-                x1="0"
-                y1="115.3"
-                x2="1000"
-                y2="115.3"
-                stroke="currentColor"
-                strokeDasharray="4 4"
-                className="text-border/40"
-              />
-              <line
-                x1="0"
-                y1="166"
-                x2="1000"
-                y2="166"
-                stroke="currentColor"
-                className="text-border/80"
-                strokeWidth="1"
+              <CartesianGrid
+                strokeDasharray="3 3"
+                vertical={false}
+                stroke="hsl(var(--border))"
+                strokeOpacity={0.45}
               />
 
-              {/* Filled Area Gradient */}
-              {areaD && <path d={areaD} fill="url(#wealthGradient)" />}
-
-              {/* Continuous Smooth Line Stroke */}
-              {pathD && (
-                <path
-                  d={pathD}
-                  fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2.75"
-                  strokeLinecap="round"
-                  className="drop-shadow-xs"
+              {minVal < 0 && (
+                <ReferenceLine
+                  y={0}
+                  stroke="hsl(var(--border))"
+                  strokeWidth={1.5}
+                  strokeDasharray="4 4"
                 />
               )}
 
-              {/* Vertical Guide Line on Hover */}
-              {activePoint && (
-                <line
-                  x1={activePoint.x}
-                  y1="14"
-                  x2={activePoint.x}
-                  y2="166"
-                  stroke="#10b981"
-                  strokeDasharray="3 3"
-                  strokeWidth="1.5"
-                  className="opacity-75"
-                />
-              )}
+              <XAxis
+                dataKey="shortLabel"
+                axisLine={false}
+                tickLine={false}
+                ticks={milestoneTicks}
+                tickFormatter={(val) => milestoneLabelMap.get(String(val)) ?? String(val)}
+                tick={{
+                  fill: "hsl(var(--muted-foreground))",
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                }}
+                dy={6}
+              />
 
-              {/* Glowing Active Marker Point */}
-              {activePoint && (
-                <g>
-                  <circle
-                    cx={activePoint.x}
-                    cy={activePoint.y}
-                    r="8"
-                    fill="#10b981"
-                    fillOpacity="0.25"
-                    className="animate-ping"
-                  />
-                  <circle
-                    cx={activePoint.x}
-                    cy={activePoint.y}
-                    r="5"
-                    fill="#10b981"
-                    stroke="#ffffff"
-                    strokeWidth="2"
-                    className="shadow-sm"
-                  />
-                </g>
-              )}
-            </svg>
-          </div>
-        </div>
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                domain={[minVal, maxVal]}
+                ticks={yAxisTicks}
+                tickFormatter={(val) => formatChartTick(Number(val))}
+                tick={{
+                  fill: "hsl(var(--muted-foreground))",
+                  fontSize: 10.5,
+                  fontWeight: 600,
+                }}
+                dx={-4}
+              />
 
-        {/* Sharp, Crisp HTML X-Axis Milestone Labels below the chart */}
-        <div className="flex gap-2 sm:gap-3 mt-2">
-          <div className="w-[52px] sm:w-[64px] shrink-0" />
-          <div className="relative h-5 flex-1 text-[11px] font-bold text-muted-foreground select-none">
-            {milestones?.map((pt, idx) => {
-              const isFirst = idx === 0;
-              const isLast = idx === milestones.length - 1;
-              const isHovered =
-                hoveredIndex !== null && coordinates[hoveredIndex]?.day === pt.day;
-              const leftPct = (pt.x / 1000) * 100;
-              const transformClass = isFirst
-                ? "translate-x-0"
-                : isLast
-                ? "-translate-x-full"
-                : "-translate-x-1/2";
+              <Tooltip
+                content={({ active, payload }) => {
+                  if (!active || !payload?.length) return null;
+                  const item = payload[0]?.payload as NetWealthPoint;
+                  if (!item) return null;
 
-              return (
-                <span
-                  key={pt.label}
-                  style={{ left: `${leftPct}%` }}
-                  className={`absolute top-0 transform ${transformClass} whitespace-nowrap transition-colors ${
-                    isHovered ? "text-primary font-black" : ""
-                  }`}
-                >
-                  {pt.day === 1 ? "Day 1" : pt.day === 26 ? "Today (26)" : pt.shortLabel || pt.label}
-                </span>
-              );
-            })}
-          </div>
+                  return (
+                    <div className="rounded-xl border border-border/80 bg-card/95 backdrop-blur-md px-3.5 py-2.5 text-xs shadow-xl min-w-[175px]">
+                      <div className="flex items-center justify-between gap-2 border-b border-border/50 pb-1.5 mb-1.5 font-bold text-foreground">
+                        <span>{item.fullLabel}</span>
+                        {item.fullLabel?.includes("Today") && (
+                          <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.2 text-[9px] font-bold text-emerald-700 dark:text-emerald-400">
+                            Today
+                          </span>
+                        )}
+                      </div>
+                      <div className="space-y-1.5 tabular-nums text-xs">
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="text-muted-foreground">Cumulative Net</span>
+                          <strong
+                            className={
+                              item.value >= 0
+                                ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
+                                : "text-rose-600 dark:text-rose-400 font-extrabold"
+                            }
+                          >
+                            {item.value >= 0 ? "+" : "−"}
+                            {money(Math.abs(item.value))}
+                          </strong>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 pt-1 border-t border-border/40 font-bold">
+                          <span className="text-muted-foreground">Day Delta</span>
+                          <span
+                            className={
+                              item.delta >= 0
+                                ? "text-emerald-600 dark:text-emerald-400 font-extrabold"
+                                : "text-rose-600 dark:text-rose-400 font-extrabold"
+                            }
+                          >
+                            {item.delta >= 0 ? "+" : "−"}
+                            {money(Math.abs(item.delta))}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }}
+                cursor={{
+                  stroke: "hsl(var(--muted-foreground))",
+                  strokeWidth: 1.5,
+                  strokeDasharray: "3 3",
+                  strokeOpacity: 0.6,
+                }}
+              />
+
+              <Area
+                type="monotone"
+                dataKey="value"
+                name="Cumulative Net"
+                stroke="#10b981"
+                strokeWidth={2.75}
+                fillOpacity={1}
+                fill="url(#wealthTrendGrad)"
+                isAnimationActive={false}
+                activeDot={{ r: 5.5, strokeWidth: 2, stroke: "#ffffff", fill: "#10b981" }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>

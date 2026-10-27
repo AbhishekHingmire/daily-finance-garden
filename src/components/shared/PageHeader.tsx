@@ -56,11 +56,10 @@ export function PageHeader({
       <ActionMenu items={moreMenuItems} align="end" />
     ) : null);
 
-  const rightSide = actions ? (
-    <div className="flex flex-wrap items-center gap-2 min-w-0">{actions}</div>
-  ) : (
+  const rightSide = (
     <div className="flex flex-wrap items-center gap-2 min-w-0">
       {periodSlot ?? (isBalancePage ? <AsOfTodayCaption /> : null)}
+      {actions}
       {primaryAction}
       {renderedMoreMenu}
     </div>

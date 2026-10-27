@@ -2497,6 +2497,10 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 onAdd={beginTransaction}
                 onTransferClick={() => openTransferModal()}
                 onNavigate={goSection}
+                onFilterTransactions={(filter) => {
+                  if (filter.type) setTxType(filter.type);
+                  goSection("Transactions");
+                }}
                 onSelectTransaction={setSelectedTransaction}
                 onCategory={(id) => {
                   setTxCategory(id);

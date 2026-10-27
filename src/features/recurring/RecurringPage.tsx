@@ -200,7 +200,7 @@ export function RecurringPage({
       </div>
 
       {/* Sleek Minimalist Schedule Rows */}
-      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card wt-shadow">
+      <div className="overflow-hidden rounded-2xl border border-border/80 bg-card wt-shadow">
         <div className="divide-y divide-border/60">
           {filtered.map((item) => {
             const cat = data.categories.find((c) => c.id === item.categoryId);

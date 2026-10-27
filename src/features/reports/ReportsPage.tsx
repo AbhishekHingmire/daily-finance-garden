@@ -68,6 +68,16 @@ export function ReportsPage({
   const isSummary = true;
 
   const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
+
+  const handlePeriodChange = (newPeriod: { year: number; month: number }) => {
+    setSharedPeriod(newPeriod);
+    setDateRange?.({
+      preset: "1m",
+      year: newPeriod.year,
+      month: newPeriod.month,
+    });
+  };
+
   const unified = useMemo(() => migrateLegacyState(data), [data]);
   const periodMetrics = useMemo(
     () => getPeriodMetrics(unified.entries, sharedPeriod),
@@ -192,15 +202,16 @@ export function ReportsPage({
       <PageHeading
         title="Insights"
         description="Comprehensive cash flow velocity, category allocation, and wealth accumulation."
-        periodSlot={<PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />}
+        periodSlot={<PeriodPill period={sharedPeriod} onChange={handlePeriodChange} />}
         actions={
           <Button
             size="sm"
             variant="outline"
             onClick={onExport}
-            className="h-9 gap-1.5 text-xs font-semibold shadow-2xs"
+            className="h-8 gap-1.5 px-2.5 text-xs font-semibold shadow-2xs border-border/80 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer"
           >
-            <Download size={14} /> Export CSV
+            <Download size={14} className="text-primary" />
+            <span>Export CSV</span>
           </Button>
         }
       />
@@ -291,7 +302,7 @@ export function ReportsPage({
       </div>
 
       {/* Hero Financial Performance Metric Cards */}
-      <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-3 sm:p-6 wt-shadow hover:border-border transition-all divide-y divide-border/60 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
+      <div className="rounded-2xl border border-border/80 bg-card p-3 sm:p-6 wt-shadow transition-all divide-y divide-border/60 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
         {/* Net Surplus */}
         <div className="pb-2.5 sm:pb-0 flex items-center justify-between gap-3 sm:block">
           <div className="min-w-0">
@@ -354,7 +365,7 @@ export function ReportsPage({
       </div>
 
       {/* Side by Side Charts in 1 Row: Velocity Breakdown & Cumulative Net Cash Flow Trend */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 items-start">
         <CashFlowVelocityChart
           transactions={data.transactions}
           dateRange={dateRange}
@@ -372,527 +383,597 @@ export function ReportsPage({
         />
       </div>
 
-      {/* Two Column Visual Analytics: Allocation Donut & 50/30/20 Diagnostic */}
-      <div className="grid gap-6 lg:grid-cols-2 items-start">
-        {/* Interactive Category Pie / Donut Chart */}
-        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col space-y-4 h-auto">
-          <div>
-            <div className="flex items-center justify-between pb-3 border-b border-border/60">
-              <div>
-                <h3 className="wt-display text-base font-bold text-foreground">
-                  Where your money went
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Visual distribution across top 10 expense categories
-                </p>
+      {/* Visual Analytics Cockpit: Dynamic Balanced Dual-Column Grid */}
+      {(() => {
+        // CARD 1: Where your money went
+        const whereMoneyWentCardNode = (
+          <div
+            key="card-expenses"
+            className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col space-y-4 h-auto w-full"
+          >
+            <div>
+              <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                <div>
+                  <h3 className="wt-display text-base font-bold text-foreground">
+                    Where your money went
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Visual distribution across top 10 expense categories
+                  </p>
+                </div>
+                {onViewAllCategories && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={onViewAllCategories}
+                    className="h-7 text-xs font-semibold text-primary hover:text-primary gap-1 cursor-pointer"
+                  >
+                    <span>All Categories</span>
+                    <ArrowRight size={12} />
+                  </Button>
+                )}
               </div>
-              {onViewAllCategories && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={onViewAllCategories}
-                  className="h-7 text-xs font-semibold text-primary hover:text-primary gap-1 cursor-pointer"
-                >
-                  <span>All Categories</span>
-                  <ArrowRight size={12} />
-                </Button>
-              )}
+            </div>
+
+            <div>
+              <CategoryPieChart
+                categories={categorySpendList}
+                totalAmount={totalExpenses}
+                totalCategoriesCount={
+                  unified.categories.filter((c) => c.kind === "expense" && !c.archived).length
+                }
+                money={money}
+                onCategoryClick={onCategory}
+                onViewAllCategories={onViewAllCategories}
+              />
             </div>
           </div>
+        );
 
-          <div>
-            <CategoryPieChart
-              categories={categorySpendList}
-              totalAmount={totalExpenses}
-              totalCategoriesCount={unified.categories.filter((c) => c.kind === "expense" && !c.archived).length}
-              money={money}
-              onCategoryClick={onCategory}
-              onViewAllCategories={onViewAllCategories}
-            />
-          </div>
-        </div>
-
-        {/* 50 / 30 / 20 Budget Diagnostic & Allocations */}
-        <div className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col space-y-4 h-auto">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                  <div>
-                    <h3 className="wt-display text-base font-bold text-foreground">
-                      Needs, wants & savings
-                    </h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      50% Needs · 30% Wants · 20% Wealth compounding
-                    </p>
-                  </div>
-                </div>
-
-                {/* 3 Circular Percentage Gauge Charts */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  <CirclePercentageGauge
-                    label="Needs"
-                    percentage={needsPct}
-                    target="< 50%"
-                    amountFormatted={money(needsSpend)}
-                    metricId="needs_pct"
-                    amountMetricId="needs_amt"
-                    amountMetricValue={needsSpend}
-                    statusText={needsPct <= 50 ? "✓ Optimal" : "⚠ High"}
-                    statusVariant={needsPct <= 50 ? "success" : "warning"}
-                    strokeColor="#3b82f6"
-                  />
-
-                  <CirclePercentageGauge
-                    label="Wants"
-                    percentage={wantsPct}
-                    target="< 30%"
-                    amountFormatted={money(wantsSpend)}
-                    metricId="wants_pct"
-                    amountMetricId="wants_amt"
-                    amountMetricValue={wantsSpend}
-                    statusText={wantsPct <= 30 ? "✓ Disciplined" : "⚠ High"}
-                    statusVariant={wantsPct <= 30 ? "success" : "danger"}
-                    strokeColor="#f59e0b"
-                  />
-
-                  <CirclePercentageGauge
-                    label="Savings"
-                    percentage={savingsPct}
-                    target="> 20%"
-                    amountFormatted={money(netSavings)}
-                    metricId="savings_pct"
-                    amountMetricId="saved"
-                    amountMetricValue={netSavings}
-                    statusText={savingsPct >= 20 ? "★ Compounding" : "Boost"}
-                    statusVariant={savingsPct >= 20 ? "success" : "info"}
-                    strokeColor="#10b981"
-                  />
-                </div>
-
-                {/* Proportional Rule Allocation Distribution Bar */}
-                <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="font-semibold text-foreground">Income Distribution Split</span>
-                    <span className="text-[11px] text-muted-foreground font-medium tabular-nums">
-                      {needsPct}% Needs · {wantsPct}% Wants · {savingsPct}% Saved
-                    </span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted flex shadow-2xs">
-                    <div
-                      style={{ width: `${Math.min(needsPct, 100)}%` }}
-                      className="h-full bg-blue-500 transition-all duration-300"
-                      title={`Needs: ${needsPct}%`}
-                    />
-                    <div
-                      style={{ width: `${Math.min(wantsPct, 100 - Math.min(needsPct, 100))}%` }}
-                      className="h-full bg-amber-500 transition-all duration-300"
-                      title={`Wants: ${wantsPct}%`}
-                    />
-                    <div
-                      style={{
-                        width: `${Math.min(
-                          savingsPct,
-                          Math.max(0, 100 - Math.min(needsPct, 100) - Math.min(wantsPct, 100))
-                        )}%`,
-                      }}
-                      className="h-full bg-emerald-500 transition-all duration-300"
-                      title={`Savings: ${savingsPct}%`}
-                    />
-                  </div>
-                  <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[10px] text-muted-foreground">
-                    <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center gap-1">
-                        <span className="size-1.5 rounded-full bg-blue-500" /> Needs Target ≤50%
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="size-1.5 rounded-full bg-amber-500" /> Wants Target ≤30%
-                      </span>
-                      <span className="inline-flex items-center gap-1">
-                        <span className="size-1.5 rounded-full bg-emerald-500" /> Savings Target ≥20%
-                      </span>
-                    </div>
-                    <span className="font-medium text-foreground">
-                      {needsPct <= 50 && wantsPct <= 30 && savingsPct >= 20
-                        ? "✓ Rule Compliant"
-                        : "Adjustments Recommended"}
-                    </span>
-                  </div>
+        // CARD 2: Needs, wants & savings (50/30/20 Diagnostic)
+        const diagnostic503020CardNode = (
+          <div
+            key="card-diagnostic"
+            className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col space-y-4 h-auto w-full"
+          >
+            <div className="space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-border/60">
+                <div>
+                  <h3 className="wt-display text-base font-bold text-foreground">
+                    Needs, wants & savings
+                  </h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    50% Needs · 30% Wants · 20% Wealth compounding
+                  </p>
                 </div>
               </div>
 
-              {/* Dynamic Advisor Insight Strip */}
-              <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-200 border border-emerald-500/20">
-                <Award size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
-                <span>
-                  <strong>Advisor Insight:</strong>{" "}
-                  {savingsPct >= 20 && wantsPct <= 30
-                    ? `Disciplined capital stewardship. Your lifestyle expenses are controlled at ${wantsPct}%, enabling a ${savingsPct}% savings rate that compounds portfolio wealth.`
-                    : wantsPct > 30
-                    ? `Discretionary spending is elevated at ${wantsPct}% (target ≤ 30%). Moderating non-essential wants will channel higher cash flow into wealth compounding.`
-                    : needsPct > 50
-                    ? `Essential living costs consume ${needsPct}% of inflows. Look for recurring utility, subscription, or fixed bill optimizations to increase headroom.`
-                    : `Balanced cash flow profile. Direct surplus capital into automated recurring SIPs or debt reduction to accelerate wealth compounding.`}
-                </span>
-              </div>
-          </div>
-      </div>
+              {/* 3 Circular Percentage Gauge Charts */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <CirclePercentageGauge
+                  label="Needs"
+                  percentage={needsPct}
+                  target="< 50%"
+                  amountFormatted={money(needsSpend)}
+                  metricId="needs_pct"
+                  amountMetricId="needs_amt"
+                  amountMetricValue={needsSpend}
+                  statusText={needsPct <= 50 ? "✓ Optimal" : "⚠ High"}
+                  statusVariant={needsPct <= 50 ? "success" : "warning"}
+                  strokeColor="#3b82f6"
+                />
 
-      {/* 3-Pillar Capital Flow: Income Streams, Investments, and Debt/Loan Cash Flow */}
-      <div className="grid gap-6 md:grid-cols-3">
-        {/* Income Breakdown */}
-        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border">
-              <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <span className="grid size-8 sm:size-9 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
-                    <ArrowDownLeft size={16} />
+                <CirclePercentageGauge
+                  label="Wants"
+                  percentage={wantsPct}
+                  target="< 30%"
+                  amountFormatted={money(wantsSpend)}
+                  metricId="wants_pct"
+                  amountMetricId="wants_amt"
+                  amountMetricValue={wantsSpend}
+                  statusText={wantsPct <= 30 ? "✓ Disciplined" : "⚠ High"}
+                  statusVariant={wantsPct <= 30 ? "success" : "danger"}
+                  strokeColor="#f59e0b"
+                />
+
+                <CirclePercentageGauge
+                  label="Savings"
+                  percentage={savingsPct}
+                  target="> 20%"
+                  amountFormatted={money(netSavings)}
+                  metricId="savings_pct"
+                  amountMetricId="saved"
+                  amountMetricValue={netSavings}
+                  statusText={savingsPct >= 20 ? "★ Compounding" : "Boost"}
+                  statusVariant={savingsPct >= 20 ? "success" : "info"}
+                  strokeColor="#10b981"
+                />
+              </div>
+
+              {/* Proportional Rule Allocation Distribution Bar */}
+              <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-semibold text-foreground">Income Distribution Split</span>
+                  <span className="text-[11px] text-muted-foreground font-medium tabular-nums">
+                    {needsPct}% Needs · {wantsPct}% Wants · {savingsPct}% Saved
                   </span>
-                  <div>
-                    <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
-                      Where your income came from
-                    </h3>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
-                      Sources of funds deposited
-                    </p>
-                  </div>
                 </div>
-                <span className="shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                <div className="h-2 w-full overflow-hidden rounded-full bg-muted flex shadow-2xs">
+                  <div
+                    style={{ width: `${Math.min(needsPct, 100)}%` }}
+                    className="h-full bg-blue-500 transition-all duration-300"
+                    title={`Needs: ${needsPct}%`}
+                  />
+                  <div
+                    style={{ width: `${Math.min(wantsPct, 100 - Math.min(needsPct, 100))}%` }}
+                    className="h-full bg-amber-500 transition-all duration-300"
+                    title={`Wants: ${wantsPct}%`}
+                  />
+                  <div
+                    style={{
+                      width: `${Math.min(
+                        savingsPct,
+                        Math.max(0, 100 - Math.min(needsPct, 100) - Math.min(wantsPct, 100))
+                      )}%`,
+                    }}
+                    className="h-full bg-emerald-500 transition-all duration-300"
+                    title={`Savings: ${savingsPct}%`}
+                  />
+                </div>
+                <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[10px] text-muted-foreground">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center gap-1">
+                      <span className="size-1.5 rounded-full bg-blue-500" /> Needs Target ≤50%
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="size-1.5 rounded-full bg-amber-500" /> Wants Target ≤30%
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <span className="size-1.5 rounded-full bg-emerald-500" /> Savings Target ≥20%
+                    </span>
+                  </div>
+                  <span className="font-medium text-foreground">
+                    {needsPct <= 50 && wantsPct <= 30 && savingsPct >= 20
+                      ? "✓ Rule Compliant"
+                      : "Adjustments Recommended"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Dynamic Advisor Insight Strip */}
+            <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-200 border border-emerald-500/20">
+              <Award size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <span>
+                <strong>Advisor Insight:</strong>{" "}
+                {savingsPct >= 20 && wantsPct <= 30
+                  ? `Disciplined capital stewardship. Your lifestyle expenses are controlled at ${wantsPct}%, enabling a ${savingsPct}% savings rate that compounds portfolio wealth.`
+                  : wantsPct > 30
+                  ? `Discretionary spending is elevated at ${wantsPct}% (target ≤ 30%). Moderating non-essential wants will channel higher cash flow into wealth compounding.`
+                  : needsPct > 50
+                  ? `Essential living costs consume ${needsPct}% of inflows. Look for recurring utility, subscription, or fixed bill optimizations to increase headroom.`
+                  : `Balanced cash flow profile. Direct surplus capital into automated recurring SIPs or debt reduction to accelerate wealth compounding.`}
+              </span>
+            </div>
+          </div>
+        );
+
+        // CARD 3: Where your income came from
+        const whereIncomeCameFromCardNode = (
+          <div
+            key="card-income"
+            className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border w-full"
+          >
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="grid size-8 sm:size-9 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                  <ArrowDownLeft size={16} />
+                </span>
+                <div>
+                  <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
+                    Where your income came from
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+                    Sources of funds deposited
+                  </p>
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
+                +{money(totalIncome)}
+              </span>
+            </div>
+
+            <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2">
+              {incomeSources.length === 0 ? (
+                <div className="py-7 px-4 text-center rounded-xl border border-dashed border-border/70 bg-muted/15 space-y-2 my-auto">
+                  <span className="grid size-10 mx-auto place-items-center rounded-full bg-muted/60 text-muted-foreground">
+                    <Wallet size={18} className="opacity-60" />
+                  </span>
+                  <p className="text-xs font-bold text-foreground">No Inflows Recorded</p>
+                  <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                    Income deposits logged in this period will be classified here automatically.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {incomeSources.map((inc) => (
+                    <div
+                      key={inc.id}
+                      className="rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/40 p-2.5 transition-colors space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="grid size-7 place-items-center rounded-lg bg-card shadow-2xs text-sm shrink-0">
+                            {inc.icon || "💰"}
+                          </span>
+                          <div className="min-w-0">
+                            <p className="text-xs font-bold text-foreground truncate">{inc.name}</p>
+                            <p className="text-[10px] text-muted-foreground">
+                              {inc.count} deposit{inc.count > 1 ? "s" : ""}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
+                            +{money(inc.amount)}
+                          </p>
+                          <span className="text-[10px] text-muted-foreground font-semibold">
+                            {inc.pct}% of income
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Visual Contribution Bar */}
+                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                        <div
+                          style={{ width: `${Math.min(inc.pct, 100)}%` }}
+                          className="h-full bg-emerald-500 rounded-full transition-all duration-300"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
+              <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center justify-between">
+                <span className="font-medium">Total Inflows</span>
+                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
                   +{money(totalIncome)}
                 </span>
               </div>
+            </div>
+          </div>
+        );
 
-              <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2">
-                {incomeSources.length === 0 ? (
-                  <div className="py-7 px-4 text-center rounded-xl border border-dashed border-border/70 bg-muted/15 space-y-2 my-auto">
-                    <span className="grid size-10 mx-auto place-items-center rounded-full bg-muted/60 text-muted-foreground">
-                      <Wallet size={18} className="opacity-60" />
-                    </span>
-                    <p className="text-xs font-bold text-foreground">No Inflows Recorded</p>
-                    <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                      Income deposits logged in this period will be classified here automatically.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {incomeSources.map((inc) => (
-                      <div
-                        key={inc.id}
-                        className="rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/40 p-2.5 transition-colors space-y-1.5"
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <span className="grid size-7 place-items-center rounded-lg bg-card shadow-2xs text-sm shrink-0">
-                              {inc.icon || "💰"}
-                            </span>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-foreground truncate">{inc.name}</p>
-                              <p className="text-[10px] text-muted-foreground">
-                                {inc.count} deposit{inc.count > 1 ? "s" : ""}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                              +{money(inc.amount)}
-                            </p>
-                            <span className="text-[10px] text-muted-foreground font-semibold">
-                              {inc.pct}% of income
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Visual Contribution Bar */}
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            style={{ width: `${Math.min(inc.pct, 100)}%` }}
-                            className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                          />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
-                <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center justify-between">
-                  <span className="font-medium">Total Inflows</span>
-                  <span className="font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                    +{money(totalIncome)}
-                  </span>
+        // CARD 4: Investments
+        const investmentsCardNode = (
+          <div
+            key="card-investments"
+            className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border w-full"
+          >
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="grid size-8 sm:size-9 place-items-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0">
+                  <TrendingUp size={16} />
+                </span>
+                <div>
+                  <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
+                    Investments
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+                    Wealth-building allocations
+                  </p>
                 </div>
               </div>
+              <span className="shrink-0 rounded-full bg-violet-500/10 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-violet-700 dark:text-violet-300">
+                {data.investments && data.investments.length > 0
+                  ? `${data.investments.length} Assets`
+                  : "Portfolio"}
+              </span>
             </div>
 
-          {/* Investment & Wealth Deployment */}
-          <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border">
-              <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <span className="grid size-8 sm:size-9 place-items-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0">
-                    <TrendingUp size={16} />
+            <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2.5">
+              {!hasInvestmentActivity ? (
+                <div className="py-7 px-4 text-center rounded-xl border border-dashed border-border/70 bg-muted/15 space-y-2 my-auto">
+                  <span className="grid size-10 mx-auto place-items-center rounded-full bg-muted/60 text-muted-foreground">
+                    <TrendingUp size={18} className="opacity-60" />
                   </span>
-                  <div>
-                    <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
-                      Investments
-                    </h3>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
-                      Wealth-building allocations
-                    </p>
-                  </div>
+                  <p className="text-xs font-bold text-foreground">No Active Investments</p>
+                  <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                    Track mutual funds, stocks, and SIPs to monitor long-term wealth compounding.
+                  </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-violet-500/10 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-violet-700 dark:text-violet-300">
-                  {data.investments && data.investments.length > 0 ? `${data.investments.length} Assets` : "Portfolio"}
-                </span>
-              </div>
-
-              <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2.5">
-                {!hasInvestmentActivity ? (
-                  <div className="py-7 px-4 text-center rounded-xl border border-dashed border-border/70 bg-muted/15 space-y-2 my-auto">
-                    <span className="grid size-10 mx-auto place-items-center rounded-full bg-muted/60 text-muted-foreground">
-                      <TrendingUp size={18} className="opacity-60" />
-                    </span>
-                    <p className="text-xs font-bold text-foreground">No Active Investments</p>
-                    <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                      Track mutual funds, stocks, and SIPs to monitor long-term wealth compounding.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                          Capital Deployed
-                        </span>
-                        <span className="wt-display text-sm sm:text-base font-extrabold text-foreground mt-0.5 block tabular-nums">
-                          {money(displayCapitalDeployed)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground mt-0.5 block truncate">
-                          {activeSipMonthly > 0 ? `SIP: ${money(activeSipMonthly)}/mo` : "Mutual funds & SIPs"}
-                        </span>
-                      </div>
-
-                      <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                          Returns & Yield
-                        </span>
-                        <span className="wt-display text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block tabular-nums">
-                          +{money(displayReturns)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground mt-0.5 block truncate">
-                          {holdingsSummary.returnPercentage > 0 ? `+${holdingsSummary.returnPercentage.toFixed(1)}% growth` : "Asset payouts"}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Portfolio Status Banner */}
-                    <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-2.5 text-xs text-violet-700 dark:text-violet-300 flex items-center justify-between">
-                      <span className="font-semibold">Total Portfolio Net Worth</span>
-                      <span className="font-extrabold tabular-nums">
-                        {money(holdingsSummary.currentValue)}
+              ) : (
+                <div className="space-y-2.5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                        Capital Deployed
+                      </span>
+                      <span className="wt-display text-sm sm:text-base font-extrabold text-foreground mt-0.5 block tabular-nums">
+                        {money(displayCapitalDeployed)}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground mt-0.5 block truncate">
+                        {activeSipMonthly > 0
+                          ? `SIP: ${money(activeSipMonthly)}/mo`
+                          : "Mutual funds & SIPs"}
                       </span>
                     </div>
 
-                    {/* Holdings breakdown if any exist */}
-                    {data.investments && data.investments.length > 0 && (
-                      <div className="space-y-1.5 pt-1">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Tracked Assets ({data.investments.length})
-                        </p>
-                        {data.investments.map((inv) => (
-                          <div
-                            key={inv.id}
-                            className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-xs"
-                          >
-                            <div className="min-w-0">
-                              <p className="font-semibold text-foreground truncate">{inv.name}</p>
-                              <p className="text-[10px] text-muted-foreground">{inv.assetType}</p>
-                            </div>
-                            <div className="text-right shrink-0">
-                              <p className="font-bold text-foreground tabular-nums">
-                                {money(inv.currentAmount ?? inv.investedAmount)}
-                              </p>
-                              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                                {inv.currentAmount && inv.investedAmount
-                                  ? `${inv.currentAmount >= inv.investedAmount ? "+" : ""}${(((inv.currentAmount - inv.investedAmount) / inv.investedAmount) * 100).toFixed(1)}%`
-                                  : "Active"}
-                              </span>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                        Returns & Yield
+                      </span>
+                      <span className="wt-display text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block tabular-nums">
+                        +{money(displayReturns)}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground mt-0.5 block truncate">
+                        {holdingsSummary.returnPercentage > 0
+                          ? `+${holdingsSummary.returnPercentage.toFixed(1)}% growth`
+                          : "Asset payouts"}
+                      </span>
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
-                <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center gap-2">
-                  <Compass size={14} className="shrink-0 text-primary" />
-                  <span className="truncate">
-                    {activeSipMonthly > 0
-                      ? `${money(activeSipMonthly)}/mo automated discipline active`
-                      : "Investments kept distinct from living burn rate"}
-                  </span>
+                  {/* Portfolio Status Banner */}
+                  <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-2.5 text-xs text-violet-700 dark:text-violet-300 flex items-center justify-between">
+                    <span className="font-semibold">Total Portfolio Net Worth</span>
+                    <span className="font-extrabold tabular-nums">
+                      {money(holdingsSummary.currentValue)}
+                    </span>
+                  </div>
+
+                  {/* Holdings breakdown if any exist */}
+                  {data.investments && data.investments.length > 0 && (
+                    <div className="space-y-1.5 pt-1">
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                        Tracked Assets ({data.investments.length})
+                      </p>
+                      {data.investments.map((inv) => (
+                        <div
+                          key={inv.id}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-xs"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-semibold text-foreground truncate">{inv.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{inv.assetType}</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-bold text-foreground tabular-nums">
+                              {money(inv.currentAmount ?? inv.investedAmount)}
+                            </p>
+                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
+                              {inv.currentAmount && inv.investedAmount
+                                ? `${inv.currentAmount >= inv.investedAmount ? "+" : ""}${(((inv.currentAmount - inv.investedAmount) / inv.investedAmount) * 100).toFixed(1)}%`
+                                : "Active"}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </div>
+              )}
             </div>
 
-          {/* Debt, Loan & Borrowing Cash Flow */}
-          <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border">
-              <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
-                <div className="flex items-center gap-2.5">
-                  <span className={`grid size-8 sm:size-9 place-items-center rounded-xl shrink-0 ${
-                    hasDebtActivity ? "bg-rose-500/10 text-rose-600 dark:text-rose-400" : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-                  }`}>
-                    {hasDebtActivity ? <Landmark size={16} /> : <ShieldCheck size={16} />}
-                  </span>
-                  <div>
-                    <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
-                      Loans & EMIs
-                    </h3>
-                    <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
-                      EMIs serviced & loan advances
-                    </p>
-                  </div>
-                </div>
-                <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold ${
-                  hasDebtActivity
-                    ? "bg-rose-500/10 text-rose-700 dark:text-rose-300"
-                    : "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                }`}>
-                  {hasDebtActivity ? `${data.loans?.length || 1} Active Debt` : "Debt-Free"}
+            <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
+              <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center gap-2">
+                <Compass size={14} className="shrink-0 text-primary" />
+                <span className="truncate">
+                  {activeSipMonthly > 0
+                    ? `${money(activeSipMonthly)}/mo automated discipline active`
+                    : "Investments kept distinct from living burn rate"}
                 </span>
               </div>
+            </div>
+          </div>
+        );
 
-              <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2.5">
-                {!hasDebtActivity ? (
-                  <div className="py-7 px-4 text-center rounded-xl border border-dashed border-emerald-500/30 bg-emerald-500/5 space-y-2 my-auto">
-                    <span className="grid size-10 mx-auto place-items-center rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
-                      <ShieldCheck size={20} />
+        // CARD 5: Loans & EMIs (Only rendered when user has debt / borrowing commitments)
+        const loansDebtCardNode = hasDebtActivity ? (
+          <div
+            key="card-loans"
+            className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border w-full"
+          >
+            <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <span className="grid size-8 sm:size-9 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 shrink-0">
+                  <Landmark size={16} />
+                </span>
+                <div>
+                  <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
+                    Loans & EMIs
+                  </h3>
+                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
+                    EMIs serviced & loan advances
+                  </p>
+                </div>
+              </div>
+              <span className="shrink-0 rounded-full bg-rose-500/10 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-rose-700 dark:text-rose-300">
+                {data.loans?.length || 1} Active Debt
+              </span>
+            </div>
+
+            <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2.5">
+              <div className="space-y-2.5">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      EMIs Serviced
                     </span>
-                    <p className="text-xs font-bold text-foreground">🎉 Zero Debt Obligations</p>
-                    <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                      You have no outstanding loans or borrowing commitments. 100% of your earnings stay yours.
-                    </p>
+                    <span className="wt-display text-sm sm:text-base font-extrabold text-rose-600 dark:text-rose-400 mt-0.5 block tabular-nums">
+                      {money(displayEmiPaid)}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground block">
+                      Monthly obligation
+                    </span>
                   </div>
-                ) : (
-                  <div className="space-y-2.5">
-                    <div className="grid grid-cols-2 gap-2">
+
+                  <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Total Outstanding
+                    </span>
+                    <span className="wt-display text-sm sm:text-base font-extrabold text-foreground mt-0.5 block tabular-nums">
+                      <Metric id="total_debt" value={wealthMetrics.totalDebt} />
+                    </span>
+                    <span className="text-[10px] text-muted-foreground block">
+                      Active balance
+                    </span>
+                  </div>
+
+                  {(borrowedInPeriod > 0 || recoveredInPeriod > 0) && (
+                    <>
                       <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                          EMIs Serviced
+                          Borrowed
                         </span>
-                        <span className="wt-display text-sm sm:text-base font-extrabold text-rose-600 dark:text-rose-400 mt-0.5 block tabular-nums">
-                          {money(displayEmiPaid)}
+                        <span className="wt-display text-sm sm:text-base font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block tabular-nums">
+                          +{money(displayBorrowed)}
                         </span>
                         <span className="text-[10px] text-muted-foreground block">
-                          Monthly obligation
+                          In this period
                         </span>
                       </div>
 
                       <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                          Total Outstanding
+                          Recovered
                         </span>
-                        <span className="wt-display text-sm sm:text-base font-extrabold text-foreground mt-0.5 block tabular-nums">
-                          <Metric id="total_debt" value={wealthMetrics.totalDebt} />
+                        <span className="wt-display text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block tabular-nums">
+                          +{money(recoveredInPeriod)}
                         </span>
                         <span className="text-[10px] text-muted-foreground block">
-                          Active balance
+                          Advances returned
                         </span>
                       </div>
+                    </>
+                  )}
 
-                      {(borrowedInPeriod > 0 || recoveredInPeriod > 0) && (
-                        <>
-                          <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                              Borrowed
-                            </span>
-                            <span className="wt-display text-sm sm:text-base font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block tabular-nums">
-                              +{money(displayBorrowed)}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground block">
-                              In this period
-                            </span>
-                          </div>
-
-                          <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                              Recovered
-                            </span>
-                            <span className="wt-display text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block tabular-nums">
-                              +{money(recoveredInPeriod)}
-                            </span>
-                            <span className="text-[10px] text-muted-foreground block">
-                              Advances returned
-                            </span>
-                          </div>
-                        </>
-                      )}
-
-                      {lentInPeriod > 0 && !(borrowedInPeriod > 0 || recoveredInPeriod > 0) && (
-                        <div className="col-span-2 rounded-xl border border-border/70 bg-muted/20 p-2.5 flex items-center justify-between">
-                          <div>
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                              Money Lent
-                            </span>
-                            <span className="text-[10px] text-muted-foreground">Advances given to peers</span>
-                          </div>
-                          <span className="wt-display text-sm sm:text-base font-extrabold text-violet-600 dark:text-violet-400 tabular-nums">
-                            <Metric id="lent_out" value={lentInPeriod} />
-                          </span>
-                        </div>
-                      )}
+                  {lentInPeriod > 0 && !(borrowedInPeriod > 0 || recoveredInPeriod > 0) && (
+                    <div className="col-span-2 rounded-xl border border-border/70 bg-muted/20 p-2.5 flex items-center justify-between">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                          Money Lent
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">Advances given to peers</span>
+                      </div>
+                      <span className="wt-display text-sm sm:text-base font-extrabold text-violet-600 dark:text-violet-400 tabular-nums">
+                        <Metric id="lent_out" value={lentInPeriod} />
+                      </span>
                     </div>
+                  )}
+                </div>
 
-                    {/* Active Loans list if available */}
-                    {unified.loans && unified.loans.length > 0 && (
-                      <div className="space-y-1.5 pt-1">
-                        <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Active Loans ({unified.loans.length})
-                        </p>
-                        {unified.loans.map((loan) => {
-                          const derived = getDerivedLoanState(loan, unified.entries, sharedPeriod);
-                          return (
-                            <div
-                              key={loan.id}
-                              className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-xs"
-                            >
-                              <div className="min-w-0">
-                                <p className="font-semibold text-foreground truncate">{loan.name}</p>
-                                <p className="text-[10px] text-muted-foreground">EMI: {money(loan.emi)}/mo</p>
-                              </div>
-                              <div className="text-right shrink-0">
-                                <p className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
-                                  <Metric id={`loan_outstanding:${loan.id}`} value={derived.currentOutstanding} />
-                                </p>
-                                <span className="text-[10px] text-muted-foreground">Outstanding</span>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
+                {/* Active Loans list if available */}
+                {unified.loans && unified.loans.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                      Active Loans ({unified.loans.length})
+                    </p>
+                    {unified.loans.map((loan) => {
+                      const derived = getDerivedLoanState(loan, unified.entries, sharedPeriod);
+                      return (
+                        <div
+                          key={loan.id}
+                          className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-xs"
+                        >
+                          <div className="min-w-0">
+                            <p className="font-semibold text-foreground truncate">{loan.name}</p>
+                            <p className="text-[10px] text-muted-foreground">EMI: {money(loan.emi)}/mo</p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
+                              <Metric
+                                id={`loan_outstanding:${loan.id}`}
+                                value={derived.currentOutstanding}
+                              />
+                            </p>
+                            <span className="text-[10px] text-muted-foreground">Outstanding</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
+            </div>
 
-              <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
-                <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center justify-between">
-                  <span className="font-medium">Monthly Liability Load</span>
-                  <span
-                    className={`font-bold tabular-nums ${
-                      loansSummary.totalMonthlyEmi > 0
-                        ? "text-rose-600 dark:text-rose-400"
-                        : "text-emerald-600 dark:text-emerald-400"
-                    }`}
-                  >
-                    {loansSummary.totalMonthlyEmi > 0
-                      ? `${money(loansSummary.totalMonthlyEmi)}/mo`
-                      : "Zero (Debt Free)"}
-                  </span>
-                </div>
+            <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
+              <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center justify-between">
+                <span className="font-medium">Monthly Liability Load</span>
+                <span
+                  className={`font-bold tabular-nums ${
+                    loansSummary.totalMonthlyEmi > 0
+                      ? "text-rose-600 dark:text-rose-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                  }`}
+                >
+                  {loansSummary.totalMonthlyEmi > 0
+                    ? `${money(loansSummary.totalMonthlyEmi)}/mo`
+                    : "Zero (Debt Free)"}
+                </span>
               </div>
             </div>
-        </div>
+          </div>
+        ) : null;
+
+        // Auto-rearranging card distribution: place cards into column with lowest cumulative estimated height
+        const cardsToPlace = [
+          {
+            id: "categories",
+            node: whereMoneyWentCardNode,
+            estHeight: 320 + Math.min(categorySpendList.length, 10) * 28,
+          },
+          {
+            id: "diagnostic",
+            node: diagnostic503020CardNode,
+            estHeight: 460,
+          },
+          {
+            id: "income",
+            node: whereIncomeCameFromCardNode,
+            estHeight: 180 + Math.min(incomeSources.length, 5) * 40,
+          },
+          {
+            id: "investments",
+            node: investmentsCardNode,
+            estHeight: 240 + Math.min(data.investments?.length || 0, 4) * 45,
+          },
+          ...(hasDebtActivity && loansDebtCardNode
+            ? [
+                {
+                  id: "loans",
+                  node: loansDebtCardNode,
+                  estHeight: 240 + Math.min(data.loans?.length || 0, 4) * 45,
+                },
+              ]
+            : []),
+        ];
+
+        const col1: React.ReactNode[] = [];
+        const col2: React.ReactNode[] = [];
+        let h1 = 0;
+        let h2 = 0;
+
+        for (const card of cardsToPlace) {
+          if (h1 <= h2) {
+            col1.push(card.node);
+            h1 += card.estHeight;
+          } else {
+            col2.push(card.node);
+            h2 += card.estHeight;
+          }
+        }
+
+        return (
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2 items-start">
+            <div className="flex flex-col gap-4 sm:gap-6 items-start w-full">{col1}</div>
+            <div className="flex flex-col gap-4 sm:gap-6 items-start w-full">{col2}</div>
+          </div>
+        );
+      })()}
 
       {/* Expanded Large Chart Modal Popup */}
       {expandedChart && (
@@ -926,6 +1007,7 @@ export function ReportsPage({
                   dateRange={dateRange}
                   money={money}
                   title="Cash Flow Velocity Breakdown"
+                  chartHeight={320}
                   className="border-0 shadow-none p-0"
                 />
               ) : (
@@ -934,6 +1016,7 @@ export function ReportsPage({
                   dateRange={dateRange}
                   money={money}
                   title="Cumulative Net Cash Flow Trend"
+                  chartHeight={320}
                   className="border-0 shadow-none p-0"
                 />
               )}

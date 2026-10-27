@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { ArrowRight, Tags } from "lucide-react";
+import { ResponsiveContainer, PieChart, Pie, Cell } from "recharts";
 
 export interface PieCategoryItem {
   id: string;
@@ -83,61 +84,6 @@ export function CategoryPieChart({
     return result;
   }, [categories, totalAmount]);
 
-  // Total for the entire circular donut (always 100% full circle)
-  const chartTotal = useMemo(() => {
-    return activeItems.reduce((sum, item) => sum + item.amount, 0);
-  }, [activeItems]);
-
-  // Compute SVG slice paths for a donut chart
-  const slices = useMemo(() => {
-    if (chartTotal <= 0 || activeItems.length === 0) return [];
-
-    const size = 180;
-    const center = size / 2;
-    const outerRadius = 78;
-    const innerRadius = 52;
-
-    let cumulativeAngle = -Math.PI / 2; // start at top 12 o'clock
-
-    return activeItems.map((item, idx) => {
-      const sliceAngle = (item.amount / chartTotal) * (2 * Math.PI);
-      const startAngle = cumulativeAngle;
-      const endAngle = cumulativeAngle + sliceAngle;
-      cumulativeAngle = endAngle;
-
-      // Arc coordinates
-      const x1 = center + outerRadius * Math.cos(startAngle);
-      const y1 = center + outerRadius * Math.sin(startAngle);
-      const x2 = center + outerRadius * Math.cos(endAngle);
-      const y2 = center + outerRadius * Math.sin(endAngle);
-
-      const x3 = center + innerRadius * Math.cos(endAngle);
-      const y3 = center + innerRadius * Math.sin(endAngle);
-      const x4 = center + innerRadius * Math.cos(startAngle);
-      const y4 = center + innerRadius * Math.sin(startAngle);
-
-      const largeArc = sliceAngle > Math.PI ? 1 : 0;
-
-      // Donut slice path
-      const pathData = [
-        `M ${x1} ${y1}`,
-        `A ${outerRadius} ${outerRadius} 0 ${largeArc} 1 ${x2} ${y2}`,
-        `L ${x3} ${y3}`,
-        `A ${innerRadius} ${innerRadius} 0 ${largeArc} 0 ${x4} ${y4}`,
-        "Z",
-      ].join(" ");
-
-      const color = PALETTE[idx % PALETTE.length];
-
-      return {
-        ...item,
-        pathData,
-        color,
-        index: idx,
-      };
-    });
-  }, [activeItems, chartTotal]);
-
   const activeCategory = useMemo(() => {
     if (hoveredId) {
       return activeItems.find((c) => c.id === hoveredId) ?? null;
@@ -155,32 +101,42 @@ export function CategoryPieChart({
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-5 sm:gap-6">
-      {/* SVG Donut */}
-      <div className="relative shrink-0 flex items-center justify-center">
-        <svg
-          viewBox="0 0 180 180"
-          className="size-44 sm:size-48 drop-shadow-xs transition-transform"
-        >
-          {slices.map((slice) => {
-            const isHovered = hoveredId === slice.id;
-            return (
-              <path
-                key={slice.id}
-                d={slice.pathData}
-                fill={slice.color}
-                className="cursor-pointer transition-all duration-200"
-                style={{
-                  opacity: hoveredId && !isHovered ? 0.45 : 1,
-                  transformOrigin: "90px 90px",
-                  transform: isHovered ? "scale(1.05)" : "scale(1)",
-                }}
-                onMouseEnter={() => setHoveredId(slice.id)}
-                onMouseLeave={() => setHoveredId(null)}
-                onClick={() => onCategoryClick?.(slice.id)}
-              />
-            );
-          })}
-        </svg>
+      {/* Modern Recharts Donut Pie */}
+      <div className="relative shrink-0 flex items-center justify-center size-44 sm:size-48">
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={activeItems}
+              dataKey="amount"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              innerRadius={52}
+              outerRadius={78}
+              paddingAngle={2}
+              stroke="hsl(var(--card))"
+              strokeWidth={2}
+              isAnimationActive={false}
+              onMouseEnter={(_, index) => setHoveredId(activeItems[index]?.id ?? null)}
+              onMouseLeave={() => setHoveredId(null)}
+              onClick={(_, index) => {
+                const item = activeItems[index];
+                if (item) onCategoryClick?.(item.id);
+              }}
+            >
+              {activeItems.map((entry, index) => (
+                <Cell
+                  key={`cell-${entry.id}`}
+                  fill={PALETTE[index % PALETTE.length]}
+                  className="cursor-pointer transition-opacity"
+                  style={{
+                    opacity: hoveredId && hoveredId !== entry.id ? 0.45 : 1,
+                  }}
+                />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
 
         {/* Center Readout */}
         <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center p-2">

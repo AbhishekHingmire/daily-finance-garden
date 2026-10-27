@@ -125,66 +125,72 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
 
   return (
     <>
-      <div className="relative overflow-hidden rounded-xl sm:rounded-2xl border border-border/70 bg-card p-3.5 sm:p-4 wt-shadow hover:border-border transition-all">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="relative overflow-hidden rounded-2xl border border-emerald-500/30 bg-gradient-to-r from-emerald-500/[0.08] via-card to-card p-4 sm:p-5 wt-shadow">
+        <div className="flex flex-col gap-3.5 sm:flex-row sm:items-center sm:justify-between">
           {/* Left section: Icon + Payday details */}
-          <div className="flex items-center gap-3">
-            <div className="grid size-10 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
-              <CalendarDays className="size-5" />
+          <div className="flex items-center gap-3 sm:gap-3.5">
+            <div className="relative shrink-0">
+              <span className="grid size-11 sm:size-12 place-items-center rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400">
+                <CalendarDays size={20} className="sm:size-5.5" />
+              </span>
+              <span className="absolute -bottom-1 -right-1 grid size-4.5 sm:size-5 place-items-center rounded-full bg-primary text-primary-foreground text-[10px] font-bold">
+                ₹
+              </span>
             </div>
 
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                   Payroll & Payday
                 </span>
                 {isToday ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.2 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                    <Sparkles size={10} /> Today
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300 animate-pulse">
+                    <Sparkles size={11} /> Today is Payday!
                   </span>
                 ) : daysRemaining === 1 ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.2 text-[10px] font-bold text-emerald-700 dark:text-emerald-300">
-                    <Clock size={10} /> Tomorrow
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2.5 py-0.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
+                    <Clock size={11} /> Tomorrow is Payday
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-muted border border-border/60 px-2 py-0.2 text-[10px] font-semibold text-muted-foreground">
-                    <Clock size={10} /> In {daysRemaining} days
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/15 px-2.5 py-0.5 text-[11px] font-extrabold text-emerald-700 dark:text-emerald-300">
+                    <Clock size={11} /> {daysRemaining} Days Remaining
                   </span>
                 )}
               </div>
 
-              <div className="mt-0.5 flex flex-wrap items-baseline gap-2">
-                <span className="wt-display text-base sm:text-lg font-bold text-foreground tabular-nums whitespace-nowrap">
+              <div className="mt-1 flex flex-wrap items-baseline gap-2">
+                <span className="wt-display text-lg sm:text-xl font-black text-foreground tabular-nums whitespace-nowrap">
                   {money(currentSalaryAmount)}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  on <strong className="text-foreground font-semibold">{formatDisplayDate(nextDate)}</strong>
+                  expected on <strong className="text-foreground">{formatDisplayDate(nextDate)}</strong>
                 </span>
-                {receivingAccount && (
-                  <span className="text-xs text-muted-foreground hidden sm:inline">
-                    · <span className="text-foreground/90 font-medium">{receivingAccount.name}</span>
-                  </span>
-                )}
+              </div>
+
+              {/* Receiving account pill */}
+              <div className="mt-1.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                <span className="hidden sm:inline">Credit account:</span>
+                <div className="inline-flex items-center gap-1.5 rounded-lg border border-border/70 bg-card px-2 py-0.5 text-foreground font-semibold">
+                  <InstitutionLogo name={receivingAccount?.institution || receivingAccount?.name} size="xs" />
+                  <span className="truncate max-w-[140px] sm:max-w-none">{receivingAccount?.name}</span>
+                  {receivingAccount?.identifier && (
+                    <span className="text-muted-foreground font-normal hidden sm:inline">{receivingAccount.identifier}</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
           {/* Right section: Quick Edit CTA */}
-          <div className="flex items-center justify-between sm:justify-end gap-2 shrink-0 border-t border-border/50 pt-2.5 sm:border-t-0 sm:pt-0">
-            {receivingAccount && (
-              <span className="text-xs text-muted-foreground sm:hidden truncate max-w-[180px]">
-                Account: <strong className="text-foreground font-medium">{receivingAccount.name}</strong>
-              </span>
-            )}
+          <div className="flex items-center justify-end gap-2 shrink-0 border-t border-border/50 pt-2.5 sm:border-t-0 sm:pt-0">
             <Button
-              size="icon"
+              size="sm"
               variant="outline"
               onClick={handleOpenModal}
-              className="size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted shadow-2xs"
-              title="Edit Payroll & Payday"
-              aria-label="Edit Payroll & Payday"
+              className="h-8.5 sm:h-9 gap-1.5 text-xs font-semibold border-emerald-500/40 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/10 hover:border-emerald-500/60 transition-colors shadow-2xs"
             >
-              <Pencil size={13} />
+              <Pencil size={12} />
+              <span>Edit Salary</span>
             </Button>
           </div>
         </div>

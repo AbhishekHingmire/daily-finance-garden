@@ -426,12 +426,12 @@ export function FundsPage({
                 return (
                   <div
                     key={fund.id}
-                    className={`flex flex-col justify-between rounded-xl border p-4 sm:p-4.5 wt-shadow transition-all hover:shadow-xs h-auto max-h-[580px] ${
+                    className={`flex flex-col justify-between rounded-2xl border p-4 sm:p-5 wt-shadow transition-all h-auto max-h-[580px] ${
                       isFulfilled
-                        ? "border-emerald-500/30 bg-emerald-500/[0.03]"
+                        ? "border-emerald-500/40 bg-gradient-to-br from-card via-card to-emerald-500/5 ring-1 ring-emerald-500/20"
                         : isSkippedThisMonth
                         ? "border-amber-500/30 bg-card/90"
-                        : "border-border/60 bg-card hover:border-border"
+                        : "border-border/80 bg-card hover:border-primary/40 hover:shadow-md"
                     }`}
                   >
                     <div>

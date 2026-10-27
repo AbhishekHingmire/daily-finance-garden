@@ -50,6 +50,7 @@ export function Dashboard({
   onAdd,
   onTransferClick,
   onNavigate,
+  onFilterTransactions,
   onSelectTransaction,
   onCategory,
   onUpdateSalary,
@@ -59,6 +60,7 @@ export function Dashboard({
   onAdd: (preset?: Partial<Transaction>) => void;
   onTransferClick?: () => void;
   onNavigate: (section: Section) => void;
+  onFilterTransactions?: (filter: { type?: string }) => void;
   onSelectTransaction: (transaction: Transaction) => void;
   onCategory: (id: string) => void;
   onUpdateSalary?: (payload: any) => void;
@@ -182,9 +184,13 @@ export function Dashboard({
         tabIndex={0}
         onClick={() => onNavigate("Wealth")}
         onKeyDown={(e) => e.key === "Enter" && onNavigate("Wealth")}
-        className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/80 bg-card hover:bg-card/90 p-4 sm:p-5 shadow-xs hover:border-primary/50 transition-all text-left"
+        className="group relative cursor-pointer overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-card via-card to-emerald-500/[0.04] p-4 sm:p-5 wt-shadow hover:border-primary/50 transition-all text-left"
       >
-        <div className="flex flex-col gap-3">
+        {/* Subtle decorative ambient glow from main */}
+        <div className="pointer-events-none absolute -right-12 -top-12 size-48 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute right-1/3 -bottom-12 size-36 rounded-full bg-primary/10 blur-2xl" />
+
+        <div className="flex flex-col gap-3 relative z-10">
           {/* Top header row: Label on left, View Wealth on right */}
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
@@ -329,13 +335,23 @@ export function Dashboard({
           <div
             role="button"
             tabIndex={0}
-            onClick={() => onNavigate("Transactions")}
-            onKeyDown={(e) => e.key === "Enter" && onNavigate("Transactions")}
-            className="group cursor-pointer rounded-xl border border-border/70 bg-card p-2.5 sm:p-4 shadow-2xs hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all min-w-0"
+            onClick={() => {
+              if (onFilterTransactions) onFilterTransactions({ type: "Income" });
+              else onNavigate("Transactions");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (onFilterTransactions) onFilterTransactions({ type: "Income" });
+                else onNavigate("Transactions");
+              }
+            }}
+            className="group cursor-pointer rounded-2xl border border-border/80 bg-card p-2.5 sm:p-4 wt-shadow hover:border-emerald-500/50 hover:bg-emerald-500/[0.03] transition-all min-w-0"
           >
-            <div className="flex items-center justify-between text-muted-foreground mb-1">
+            <div className="flex items-center justify-between text-muted-foreground mb-1 sm:mb-1.5">
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Money In</span>
-              <ArrowDownLeft size={14} className="text-emerald-500 shrink-0 group-hover:scale-110 transition-transform" />
+              <span className="grid size-6 place-items-center rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:scale-110 transition-transform">
+                <ArrowDownLeft size={13} />
+              </span>
             </div>
             <div className="text-sm sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums truncate">
               <Metric id="money_in" value={periodMetrics.moneyIn} signed />
@@ -347,13 +363,23 @@ export function Dashboard({
           <div
             role="button"
             tabIndex={0}
-            onClick={() => onNavigate("Transactions")}
-            onKeyDown={(e) => e.key === "Enter" && onNavigate("Transactions")}
-            className="group cursor-pointer rounded-xl border border-border/70 bg-card p-2.5 sm:p-4 shadow-2xs hover:border-rose-500/50 hover:bg-rose-500/5 transition-all min-w-0"
+            onClick={() => {
+              if (onFilterTransactions) onFilterTransactions({ type: "Expense" });
+              else onNavigate("Transactions");
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                if (onFilterTransactions) onFilterTransactions({ type: "Expense" });
+                else onNavigate("Transactions");
+              }
+            }}
+            className="group cursor-pointer rounded-2xl border border-border/80 bg-card p-2.5 sm:p-4 wt-shadow hover:border-rose-500/50 hover:bg-rose-500/[0.03] transition-all min-w-0"
           >
-            <div className="flex items-center justify-between text-muted-foreground mb-1">
+            <div className="flex items-center justify-between text-muted-foreground mb-1 sm:mb-1.5">
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Money Out</span>
-              <ArrowUpRight size={14} className="text-rose-500 shrink-0 group-hover:scale-110 transition-transform" />
+              <span className="grid size-6 place-items-center rounded-lg bg-rose-500/15 text-rose-600 dark:text-rose-400 shrink-0 group-hover:scale-110 transition-transform">
+                <ArrowUpRight size={13} />
+              </span>
             </div>
             <div className="text-sm sm:text-2xl font-extrabold text-foreground tabular-nums truncate">
               <Metric id="money_out" value={periodMetrics.moneyOut} />
@@ -367,13 +393,15 @@ export function Dashboard({
           <div
             role="button"
             tabIndex={0}
-            onClick={() => onNavigate("Transactions")}
-            onKeyDown={(e) => e.key === "Enter" && onNavigate("Transactions")}
-            className="group cursor-pointer rounded-xl border border-border/70 bg-card p-2.5 sm:p-4 shadow-2xs hover:border-primary/50 hover:bg-primary/5 transition-all min-w-0"
+            onClick={() => onNavigate("Reports")}
+            onKeyDown={(e) => e.key === "Enter" && onNavigate("Reports")}
+            className="group cursor-pointer rounded-2xl border border-border/80 bg-card p-2.5 sm:p-4 wt-shadow hover:border-primary/50 hover:bg-primary/[0.03] transition-all min-w-0"
           >
-            <div className="flex items-center justify-between text-muted-foreground mb-1">
+            <div className="flex items-center justify-between text-muted-foreground mb-1 sm:mb-1.5">
               <span className="text-[10px] sm:text-xs font-bold uppercase tracking-wider truncate">Saved</span>
-              <PiggyBank size={14} className="text-primary shrink-0 group-hover:scale-110 transition-transform" />
+              <span className="grid size-6 place-items-center rounded-lg bg-primary/15 text-primary shrink-0 group-hover:scale-110 transition-transform">
+                <PiggyBank size={13} />
+              </span>
             </div>
             <div className="text-sm sm:text-2xl font-extrabold text-foreground tabular-nums truncate">
               <Metric id="saved" value={periodMetrics.saved} />
@@ -386,45 +414,61 @@ export function Dashboard({
         </div>
       </div>
 
-      {/* BLOCK 3: Health Card — 50/30/20 & Vital Chips */}
-      <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border/60 pb-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <Activity size={16} className="text-primary" />
-              <h3 className="text-sm font-bold text-foreground">Monthly Financial Health</h3>
+      {/* BLOCK 3: Modern Minimalistic Monthly Financial Health Card */}
+      <div className="rounded-2xl border border-border/70 bg-card p-4 sm:p-5 wt-shadow hover:border-border transition-all space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-border/60 pb-3">
+          <div className="flex items-center gap-2.5">
+            <span className="grid size-8 place-items-center rounded-xl bg-primary/10 text-primary shrink-0">
+              <Activity size={16} />
+            </span>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground">Monthly Financial Health</h3>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                    (periodMetrics.savingsRatePct ?? 0) >= (data.profile?.savingsRateTarget || 35)
+                      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                      : "bg-primary/10 text-primary"
+                  }`}
+                >
+                  {(periodMetrics.savingsRatePct ?? 0) >= (data.profile?.savingsRateTarget || 35)
+                    ? "Target Met"
+                    : "In Progress"}
+                </span>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Saving <strong className="text-foreground">{periodMetrics.savingsRatePct ?? 0}%</strong> of income · Target:{" "}
+                {data.profile?.savingsRateTarget || 35}%
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Saving <strong className="text-foreground">{periodMetrics.savingsRatePct ?? 0}%</strong> of income — target is{" "}
-              {data.profile?.savingsRateTarget || 35}%
-            </p>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => onNavigate("Reports")}
-            className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline self-start sm:self-auto"
+            className="h-7 text-xs font-semibold text-primary hover:text-primary gap-1 self-start sm:self-auto cursor-pointer"
           >
             <span>See insights</span>
-            <ChevronRight size={14} />
-          </button>
+            <ChevronRight size={13} />
+          </Button>
         </div>
 
         {/* 3-Segment 50/30/20 Proportional Bar */}
-        <div className="space-y-2">
-          <div className="h-3.5 w-full rounded-full bg-muted overflow-hidden flex shadow-inner">
+        <div className="space-y-2.5">
+          <div className="h-2.5 sm:h-3 w-full rounded-full bg-muted/70 overflow-hidden flex gap-0.5 p-0.5 shadow-2xs">
             <div
               style={{ width: `${periodMetrics.split503020.needsPct}%` }}
-              className="bg-blue-500 transition-all duration-500"
+              className="bg-blue-500 rounded-full transition-all duration-500"
               title={`Needs: ${periodMetrics.split503020.needsPct}%`}
             />
             <div
               style={{ width: `${periodMetrics.split503020.wantsPct}%` }}
-              className="bg-violet-500 transition-all duration-500"
+              className="bg-violet-500 rounded-full transition-all duration-500"
               title={`Wants: ${periodMetrics.split503020.wantsPct}%`}
             />
             <div
               style={{ width: `${periodMetrics.split503020.savingsPct}%` }}
-              className="bg-emerald-500 transition-all duration-500"
+              className="bg-emerald-500 rounded-full transition-all duration-500"
               title={`Savings: ${periodMetrics.split503020.savingsPct}%`}
             />
           </div>
@@ -463,9 +507,9 @@ export function Dashboard({
           </div>
         </div>
 
-        {/* Vital Health Chips */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
-          <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
+        {/* Minimalist Vital Health Metrics Strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+          <div className="rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/35 p-2.5 sm:p-3 transition-colors">
             <div className="flex items-center justify-between gap-1">
               <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">Cash runway</span>
               <TooltipProvider delayDuration={100}>
@@ -491,7 +535,7 @@ export function Dashboard({
               <Metric id="runway_months" value={runwayMetrics.cashRunwayMonths} format="months" />
             </span>
           </div>
-          <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
+          <div className="rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/35 p-2.5 sm:p-3 transition-colors">
             <div className="flex items-center justify-between gap-1">
               <span className="text-[10px] uppercase font-bold text-muted-foreground block truncate">Emergency cover</span>
               <TooltipProvider delayDuration={100}>
@@ -517,13 +561,13 @@ export function Dashboard({
               <Metric id="emergency_cover_months" value={runwayMetrics.emergencyCoverageMonths} format="months" />
             </span>
           </div>
-          <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
+          <div className="rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/35 p-2.5 sm:p-3 transition-colors">
             <span className="text-[10px] uppercase font-bold text-muted-foreground block">EMI load</span>
             <span className="text-sm font-extrabold text-foreground tabular-nums">
               <Metric id="emi_load_pct" value={emiToIncomePct} format="percent" />
             </span>
           </div>
-          <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5">
+          <div className="rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/35 p-2.5 sm:p-3 transition-colors">
             <span className="text-[10px] uppercase font-bold text-muted-foreground block">Budget used</span>
             <span className="text-sm font-extrabold text-foreground tabular-nums">
               <Metric id="budget_used_pct" value={budgetMetrics.budgetUsedPct} format="percent" />
@@ -536,7 +580,7 @@ export function Dashboard({
       {(() => {
         // CARD 1: Coming Up Card
         const comingUpCardNode = hasComingUp ? (
-          <div key="card-coming-up" className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-1 md:order-none">
+          <div key="card-coming-up" className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-1 md:order-none">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
@@ -594,7 +638,7 @@ export function Dashboard({
 
         // CARD 2: Monthly EMIs & Debt Overview Card
         const loansCardNode = hasLoans ? (
-          <div key="card-loans" className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-2 md:order-none">
+          <div key="card-loans" className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-2 md:order-none">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
@@ -706,7 +750,7 @@ export function Dashboard({
 
         // CARD 3: Top Spending Categories
         const topSpendingCardNode = hasTopSpending ? (
-          <div key="card-top-spending" className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-3 md:order-none">
+          <div key="card-top-spending" className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-3 md:order-none">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div>
@@ -775,7 +819,7 @@ export function Dashboard({
 
         // CARD 4: Goals & Sinking Funds Card
         const goalsCardNode = hasGoals ? (
-          <div key="card-goals" className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-4 md:order-none">
+          <div key="card-goals" className="rounded-2xl border border-border/80 bg-card p-5 wt-shadow flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px] order-4 md:order-none">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div>
@@ -833,49 +877,84 @@ export function Dashboard({
           </div>
         ) : null;
 
-        // Distribute active upper cards into two clean column streams on desktop
-        const col1Cards: React.ReactNode[] = [];
-        const col2Cards: React.ReactNode[] = [];
+        // Distribute active upper cards dynamically into height-balanced columns on desktop
+        // To eliminate blank white voids, we calculate estimated visual heights and greedily
+        // assign cards to the shorter column, ensuring both columns end at nearly the exact same height.
+        interface ActiveCardItem {
+          id: string;
+          node: React.ReactNode;
+          height: number;
+          priority: number; // 1: Coming Up, 2: Loans, 3: Top Spending, 4: Goals
+        }
 
-        const bothSidesActive = (hasComingUp || hasTopSpending) && (hasLoans || hasGoals);
+        const activeUpperCards: ActiveCardItem[] = [];
 
-        if (bothSidesActive) {
-          // Cashflow column (Left on desktop): Coming Up + Top Spending (directly stacked, ZERO vertical gap!)
-          if (hasComingUp) col1Cards.push(comingUpCardNode);
-          if (hasTopSpending) col1Cards.push(topSpendingCardNode);
+        if (hasComingUp) {
+          // Base header/footer (~130px) + per coming up item (~55px)
+          const h = 130 + Math.min(3, comingUpItems.length) * 55;
+          activeUpperCards.push({ id: "coming-up", node: comingUpCardNode, height: h, priority: 1 });
+        }
+        if (hasLoans) {
+          // Base header/footer (~140px) + summary strip (~80px) + per loan item (~75px)
+          const h = 220 + loansSummary.activeLoans.length * 75;
+          activeUpperCards.push({ id: "loans", node: loansCardNode, height: h, priority: 2 });
+        }
+        if (hasTopSpending) {
+          // Base header/footer (~130px) + per budget category bar item (~45px)
+          const h = 130 + topCategories.length * 45;
+          activeUpperCards.push({ id: "top-spending", node: topSpendingCardNode, height: h, priority: 3 });
+        }
+        if (hasGoals) {
+          // Base header/footer (~140px) + per goal progress bar item (~70px)
+          const h = 140 + Math.min(3, unified.goals.length) * 70;
+          activeUpperCards.push({ id: "goals", node: goalsCardNode, height: h, priority: 4 });
+        }
 
-          // Balance Sheet column (Right on desktop): Monthly EMIs + Goals & Sinking Funds (directly stacked, ZERO vertical gap!)
-          if (hasLoans) col2Cards.push(loansCardNode);
-          if (hasGoals) col2Cards.push(goalsCardNode);
-        } else {
-          // Dynamic distribution when user has an asymmetrical subset of cards
-          const activeUpperList: React.ReactNode[] = [
-            comingUpCardNode,
-            loansCardNode,
-            topSpendingCardNode,
-            goalsCardNode,
-          ].filter(Boolean);
+        const col1Items: ActiveCardItem[] = [];
+        const col2Items: ActiveCardItem[] = [];
 
-          if (activeUpperList.length >= 2) {
-            col1Cards.push(activeUpperList[0]);
-            col2Cards.push(activeUpperList[1]);
-            if (activeUpperList[2]) col1Cards.push(activeUpperList[2]);
-          } else if (activeUpperList.length === 1) {
-            col1Cards.push(activeUpperList[0]);
+        if (activeUpperCards.length === 1) {
+          col1Items.push(activeUpperCards[0]);
+        } else if (activeUpperCards.length === 2) {
+          // With 2 cards, place 1 in each column side-by-side
+          col1Items.push(activeUpperCards[0]);
+          col2Items.push(activeUpperCards[1]);
+        } else if (activeUpperCards.length > 2) {
+          // Greedy height-balancing algorithm:
+          // Sort descending by height, then place each card in the column that is currently shorter.
+          const sorted = [...activeUpperCards].sort((a, b) => b.height - a.height);
+          let col1H = 0;
+          let col2H = 0;
+
+          for (const card of sorted) {
+            if (col1H <= col2H) {
+              col1Items.push(card);
+              col1H += card.height;
+            } else {
+              col2Items.push(card);
+              col2H += card.height;
+            }
           }
         }
+
+        // Sort each column by natural priority so the page hierarchy is consistent and predictable
+        col1Items.sort((a, b) => a.priority - b.priority);
+        col2Items.sort((a, b) => a.priority - b.priority);
+
+        const col1Cards: React.ReactNode[] = col1Items.map((c) => c.node);
+        const col2Cards: React.ReactNode[] = col2Items.map((c) => c.node);
 
         return (
           <div className="space-y-4 lg:space-y-6">
             {(col1Cards.length > 0 || col2Cards.length > 0) && (
               <div className={`grid grid-cols-1 ${col2Cards.length > 0 ? "md:grid-cols-2" : ""} gap-4 lg:gap-6 items-start`}>
                 {col1Cards.length > 0 && (
-                  <div className={`contents md:flex md:flex-col md:gap-4 lg:gap-6 ${col2Cards.length === 0 ? "md:col-span-2" : ""}`}>
+                  <div className={`flex flex-col gap-4 lg:gap-6 ${col2Cards.length === 0 ? "md:col-span-2" : ""}`}>
                     {col1Cards}
                   </div>
                 )}
                 {col2Cards.length > 0 && (
-                  <div className="contents md:flex md:flex-col md:gap-4 lg:gap-6">
+                  <div className="flex flex-col gap-4 lg:gap-6">
                     {col2Cards}
                   </div>
                 )}

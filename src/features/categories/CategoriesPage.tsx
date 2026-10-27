@@ -74,7 +74,7 @@ export function CategoriesPage({
       />
 
       {/* Top Budget Summary Hero Card */}
-      <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-2xs space-y-3 min-w-0 w-full overflow-hidden">
+      <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow space-y-3 min-w-0 w-full overflow-hidden">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 min-w-0">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
@@ -224,7 +224,7 @@ export function CategoriesPage({
             <div
               key={category.id}
               onClick={() => onEdit(category)}
-              className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-border hover:shadow-xs cursor-pointer h-auto"
+              className="group relative flex flex-col justify-between rounded-xl border border-border/80 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-primary/50 hover:shadow-xs cursor-pointer h-auto"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">

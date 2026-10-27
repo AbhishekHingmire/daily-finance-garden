@@ -293,9 +293,9 @@ export function TransactionTable({
     paginatedTransactions.every((t) => selectedIds.includes(t.id));
 
   return (
-    <div className="rounded-xl border border-border/70 bg-card overflow-hidden wt-shadow hover:border-border transition-colors">
+    <div className="rounded-2xl border border-border/80 bg-card overflow-hidden wt-shadow transition-colors">
       {/* Integrated Top Search & Controls Bar Inside the Table */}
-      <div className="border-b border-border/50 bg-muted/15 px-3 sm:px-4 py-2.5">
+      <div className="border-b border-border/60 bg-muted/20 px-3.5 sm:px-4 py-2.5">
         {/* Mobile Expanded Search Bar */}
         {isMobileSearchOpen ? (
           <div className="flex items-center gap-2 sm:hidden animate-in fade-in-50 duration-150">
@@ -486,7 +486,7 @@ export function TransactionTable({
 
       {/* Balanced Compact Table Grid Header */}
       <div
-        className={`hidden md:grid items-center gap-3 bg-muted/30 px-4 py-1.5 text-[9.5px] sm:text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/80 border-b border-border/70 select-none ${
+        className={`hidden md:grid items-center gap-3 bg-muted/35 px-4 py-2 text-[10.5px] font-bold uppercase tracking-wider text-muted-foreground border-b border-border/70 select-none ${
           showAccountColumn
             ? "grid-cols-[36px_minmax(0,1.2fr)_150px_130px_105px_120px_60px]"
             : "grid-cols-[36px_minmax(0,1.4fr)_160px_110px_120px_60px]"
@@ -540,8 +540,8 @@ export function TransactionTable({
             return (
               <div
                 key={`desktop-${tx.id}`}
-                className={`group/row transition-colors hover:bg-muted/30 ${
-                  isSelected ? "bg-primary/[0.04]" : ""
+                className={`group/row transition-colors hover:bg-muted/40 ${
+                  isSelected ? "bg-primary/[0.06]" : ""
                 }`}
               >
                 <div
