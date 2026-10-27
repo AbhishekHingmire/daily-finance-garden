@@ -1,12 +1,12 @@
 import { useState } from "react";
-import { Calculator, Landmark, Plus } from "lucide-react";
+import { AlertCircle, AlertTriangle, Calculator, Landmark, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
 import { CategoryModal } from "@/features/categories/CategoryModal";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
-import type { Category, RecurringItem, WealthState } from "@/lib/wealthtrack";
+import { getAccountBalance, type Category, type RecurringItem, type WealthState } from "@/lib/wealthtrack";
 
 export function RecurringModal({
   item,
@@ -68,6 +68,14 @@ export function RecurringModal({
   const paidNum = Number(paidInstallments) || 0;
   const remainingInstallments = Math.max(0, totalNum - paidNum);
 
+  const selectedAcc = data.accounts.find((a) => a.id === form.accountId);
+  const selectedAccBalance = selectedAcc ? getAccountBalance(selectedAcc, data.transactions) : 0;
+  const numAmt = Number(form.amount) || 0;
+  const isDebit = form.type !== "Income";
+  const isBankOrCash = selectedAcc && !["Credit Card", "Loan"].includes(selectedAcc.kind);
+  const isInsufficient = isDebit && isBankOrCash && numAmt > selectedAccBalance;
+  const isLowBalance = isDebit && isBankOrCash && !isInsufficient && selectedAccBalance - numAmt < 2000 && numAmt > 0;
+
   const handleQuickCreateCategory = (catForm: Partial<Category>) => {
     if (!catForm.name?.trim()) return;
     const newCat: Category = {
@@ -119,6 +127,19 @@ export function RecurringModal({
 
     if (form.amount === undefined || form.amount === null || Number(form.amount) <= 0) {
       errs.amount = "Enter an amount greater than 0.";
+    }
+
+    if (!form.accountId) {
+      errs.accountId = "Please select an account for this schedule.";
+    } else {
+      const selectedAcc = data.accounts.find((a) => a.id === form.accountId);
+      const accBal = selectedAcc ? getAccountBalance(selectedAcc, data.transactions) : 0;
+      const numAmt = Number(form.amount) || 0;
+      if (selectedAcc && !["Credit Card", "Loan"].includes(selectedAcc.kind)) {
+        if (form.type !== "Income" && numAmt > accBal) {
+          errs.accountId = `Insufficient balance in ${selectedAcc.name}. Available: ${currencySymbol}${accBal.toLocaleString("en-IN")}, Required: ${currencySymbol}${numAmt.toLocaleString("en-IN")}`;
+        }
+      }
     }
 
     if (isInstallmentPlan) {
@@ -410,14 +431,49 @@ export function RecurringModal({
               ]}
             />
           </div>
-          <SelectField
-            label="Account"
-            value={form.accountId ?? ""}
-            onChange={(accountId) => setForm((f) => ({ ...f, accountId }))}
-            options={data.accounts
-              .filter((a) => !a.archived)
-              .map((a) => ({ value: a.id, label: a.name }))}
-          />
+          <div>
+            <SelectField
+              label={form.type === "Income" ? "Deposit into Account *" : "Debit from Account *"}
+              value={form.accountId ?? ""}
+              onChange={(accountId) => {
+                setForm((f) => ({ ...f, accountId }));
+                if (errors.accountId) setErrors((prev) => ({ ...prev, accountId: "" }));
+              }}
+              options={[
+                { value: "", label: "-- Choose Account --" },
+                ...data.accounts
+                  .filter((a) => !a.archived)
+                  .map((a) => {
+                    const bal = getAccountBalance(a, data.transactions);
+                    return {
+                      value: a.id,
+                      label: `${a.name} (${a.institution || a.kind}) · ${currencySymbol}${bal.toLocaleString("en-IN")}`,
+                    };
+                  }),
+              ]}
+              error={errors.accountId}
+              required
+            />
+            {selectedAcc && (
+              <div className="mt-1 text-[11px]">
+                {isInsufficient ? (
+                  <p className="text-destructive font-semibold flex items-center gap-1">
+                    <AlertCircle size={12} className="shrink-0" />
+                    Insufficient balance: Available {currencySymbol}{selectedAccBalance.toLocaleString("en-IN")}
+                  </p>
+                ) : isLowBalance ? (
+                  <p className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                    <AlertTriangle size={12} className="shrink-0" />
+                    Low balance alert: Balance will drop to {currencySymbol}{(selectedAccBalance - numAmt).toLocaleString("en-IN")}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    Available balance: {currencySymbol}{selectedAccBalance.toLocaleString("en-IN")}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         </div>
 
         <div

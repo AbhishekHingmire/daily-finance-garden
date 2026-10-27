@@ -170,12 +170,12 @@ export function AccountsPage({
   // to avoid leaving an orphan 4th card on a second row
   const gridColsClass =
     activeAccounts.length === 4
-      ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
+      ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-4 items-start"
       : activeAccounts.length % 3 === 0
-      ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      ? "grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-start"
       : activeAccounts.length % 2 === 0
-      ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-4"
-      : "grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+      ? "grid gap-4 sm:grid-cols-2 xl:grid-cols-4 items-start"
+      : "grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 items-start";
 
   // Auto-scroll to partial view smoothly when an account is selected
   useEffect(() => {
@@ -354,7 +354,7 @@ export function AccountsPage({
                   setSelected(isSelected ? null : account);
                 }
               }}
-              className={`group cursor-pointer rounded-xl border p-4 sm:p-5 transition-all wt-shadow bg-card hover:border-primary/50 hover:shadow-xs flex flex-col justify-between select-none w-full min-w-0 max-w-full overflow-hidden ${
+              className={`group cursor-pointer rounded-xl border p-4 sm:p-5 transition-all wt-shadow bg-card hover:border-primary/50 hover:shadow-xs flex flex-col justify-between select-none w-full min-w-0 max-w-full overflow-hidden h-auto max-h-[480px] ${
                 isSelected
                   ? "border-primary ring-2 ring-primary/20 bg-primary/[0.03]"
                   : "border-border/70"

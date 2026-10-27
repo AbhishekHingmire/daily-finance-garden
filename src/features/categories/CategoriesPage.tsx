@@ -197,7 +197,7 @@ export function CategoriesPage({
       </div>
 
       {/* Categories Grid: Compact rows, 2 columns at lg+, 1 column below */}
-      <div className="grid gap-2.5 grid-cols-1 lg:grid-cols-2">
+      <div className="grid gap-2.5 grid-cols-1 lg:grid-cols-2 items-start">
         {categories.map((category) => {
           const row = budgetMetrics.categoryRows.find((r) => r.category.id === category.id);
           const isExpense = category.kind === "Expense";
@@ -224,7 +224,7 @@ export function CategoriesPage({
             <div
               key={category.id}
               onClick={() => onEdit(category)}
-              className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-border hover:shadow-xs cursor-pointer"
+              className="group relative flex flex-col justify-between rounded-xl border border-border/70 bg-card p-3 sm:p-3.5 transition-all duration-200 hover:border-border hover:shadow-xs cursor-pointer h-auto"
             >
               <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5 min-w-0">

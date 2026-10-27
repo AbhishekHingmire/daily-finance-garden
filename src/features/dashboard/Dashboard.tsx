@@ -533,10 +533,10 @@ export function Dashboard({
       </div>
 
       {/* Dynamic Adaptive Dashboard Grid: Shows only configured sections, auto-balances odd card counts */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 [&>*:last-child:nth-child(odd)]:md:col-span-2">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 items-start [&>*:last-child:nth-child(odd)]:md:col-span-2">
         {/* CARD 1: Coming Up Card (Rendered only if upcoming commitments exist) */}
         {hasComingUp && (
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-border transition-colors">
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px]">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
@@ -550,7 +550,7 @@ export function Dashboard({
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[380px] overflow-y-auto wt-scrollbar pr-0.5">
                 {comingUpItems.slice(0, 3).map((item) => (
                   <div
                     key={item.id}
@@ -576,7 +576,7 @@ export function Dashboard({
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-border/40">
+            <div className="flex items-center justify-between pt-2.5 border-t border-border/40 mt-1">
               <span className="text-[11px] text-muted-foreground">
                 Total monthly commitments: <strong className="text-foreground">{money(commitments.total)}</strong>
               </span>
@@ -594,7 +594,7 @@ export function Dashboard({
 
         {/* CARD 2: Monthly EMIs & Debt Overview Card (Rendered if user has active loans) */}
         {hasLoans && (
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-border transition-colors">
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px]">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div className="flex items-center gap-2">
@@ -631,7 +631,7 @@ export function Dashboard({
               </div>
 
               {/* Active Loans List */}
-              <div className="space-y-2">
+              <div className="space-y-2 max-h-[380px] overflow-y-auto wt-scrollbar pr-0.5">
                 {loansSummary.activeLoans.map((loan) => {
                   const acc = data.accounts.find((a) => a.id === loan.repaymentAccountId);
                   const paidCount = loan.paidEmisCount || 0;
@@ -688,7 +688,7 @@ export function Dashboard({
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-2 border-t border-border/40">
+            <div className="flex items-center justify-between pt-2.5 border-t border-border/40 mt-1">
               <span className="text-[11px] text-muted-foreground">
                 Managed under Wealth liabilities
               </span>
@@ -706,7 +706,7 @@ export function Dashboard({
 
         {/* CARD 3: Top Spending Categories (Rendered if spending exists in this period) */}
         {hasTopSpending && (
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-border transition-colors">
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px]">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div>
@@ -725,7 +725,7 @@ export function Dashboard({
                 </Button>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[380px] overflow-y-auto wt-scrollbar pr-0.5">
                 {topCategories.map((r) => {
                   const pct = r.cap > 0 ? Math.round((r.spent / r.cap) * 100) : 100;
                   const isOver = r.isOverBudget;
@@ -759,7 +759,7 @@ export function Dashboard({
               </div>
             </div>
 
-            <div className="pt-2 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground">
+            <div className="pt-2.5 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground mt-1">
               <span>Updated live from posted transactions</span>
               <Button
                 variant="ghost"
@@ -775,7 +775,7 @@ export function Dashboard({
 
         {/* CARD 4: Goals & Sinking Funds (Rendered if user has configured goals) */}
         {hasGoals && (
-          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-border transition-colors">
+          <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px]">
             <div className="space-y-3.5">
               <div className="flex items-center justify-between border-b border-border/60 pb-3">
                 <div>
@@ -797,7 +797,7 @@ export function Dashboard({
                 </Button>
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3 max-h-[380px] overflow-y-auto wt-scrollbar pr-0.5">
                 {unified.goals.map((g) => {
                   const pct = g.target > 0 ? Math.min(100, Math.round((g.opening_amount / g.target) * 100)) : 100;
                   return (
@@ -819,7 +819,7 @@ export function Dashboard({
               </div>
             </div>
 
-            <div className="pt-2 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground">
+            <div className="pt-2.5 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground mt-1">
               <span>Target date progress</span>
               <Button
                 variant="ghost"
@@ -834,7 +834,7 @@ export function Dashboard({
         )}
 
         {/* CARD 5: Recent Activity (Compulsory: Ledger Transactions) */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col justify-between space-y-3.5 hover:border-border transition-colors">
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex flex-col space-y-3.5 hover:border-border transition-colors h-auto max-h-[580px]">
           <div className="space-y-3.5">
             <div className="flex items-center justify-between border-b border-border/60 pb-3">
               <div>
@@ -864,7 +864,7 @@ export function Dashboard({
                 </Button>
               </div>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1 max-h-[380px] overflow-y-auto wt-scrollbar pr-0.5">
                 {recentTransactions.map((tx) => (
                   <TransactionRow
                     key={tx.id}
@@ -879,7 +879,7 @@ export function Dashboard({
             )}
           </div>
 
-          <div className="pt-2 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground">
+          <div className="pt-2.5 flex items-center justify-between border-t border-border/40 text-[11px] text-muted-foreground mt-1">
             <span>Showing latest {recentTransactions.length} entries</span>
             <Button
               variant="ghost"

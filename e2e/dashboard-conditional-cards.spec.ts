@@ -14,8 +14,8 @@ test.describe("Dashboard Conditional Cards & EMI Overview (SPEC)", () => {
       } catch {}
     });
 
-    await page.goto("http://localhost:8081/", { waitUntil: "networkidle" });
-    await page.waitForTimeout(400);
+    await page.goto("http://localhost:8081/", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(600);
 
     // Verify Monthly EMIs & Debt card exists with all necessary details
     const emiCard = page.locator("h3:has-text('Monthly EMIs & Debt')");
@@ -49,8 +49,8 @@ test.describe("Dashboard Conditional Cards & EMI Overview (SPEC)", () => {
       } catch {}
     });
 
-    await page.goto("http://localhost:8081/", { waitUntil: "networkidle" });
-    await page.waitForTimeout(400);
+    await page.goto("http://localhost:8081/", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(600);
 
     // Verify EMI card on mobile
     await expect(page.locator("h3:has-text('Monthly EMIs & Debt')")).toBeVisible();
@@ -73,8 +73,8 @@ test.describe("Dashboard Conditional Cards & EMI Overview (SPEC)", () => {
       } catch {}
     });
 
-    await page.goto("http://localhost:8081/", { waitUntil: "networkidle" });
-    await page.waitForTimeout(400);
+    await page.goto("http://localhost:8081/", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(600);
 
     // Goals card should NOT be visible
     await expect(page.locator("h3:has-text('Goals & Sinking Funds')")).not.toBeVisible();
@@ -102,8 +102,8 @@ test.describe("Dashboard Conditional Cards & EMI Overview (SPEC)", () => {
       } catch {}
     });
 
-    await page.goto("http://localhost:8081/", { waitUntil: "networkidle" });
-    await page.waitForTimeout(400);
+    await page.goto("http://localhost:8081/", { waitUntil: "domcontentloaded" });
+    await page.waitForTimeout(600);
 
     // Optional cards must be hidden
     await expect(page.locator("h3:has-text('Monthly EMIs & Debt')")).not.toBeVisible();

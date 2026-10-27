@@ -96,6 +96,10 @@ export function TransferModal({
       setError("Please enter a transfer amount greater than zero.");
       return;
     }
+    if (fromAccount && !["Credit card", "Loan"].includes(fromAccount.kind) && parsedAmount > fromBalance) {
+      setError(`Insufficient balance in ${fromAccount.name}. Available: ${formatMoney(fromBalance, currency)}, Transfer: ${formatMoney(parsedAmount, currency)}`);
+      return;
+    }
 
     onTransfer({
       fromAccountId,

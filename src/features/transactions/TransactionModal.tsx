@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ChevronUp, FileSpreadsheet, FileUp, Landmark, Plus, Sparkles } from "lucide-react";
+import { AlertCircle, AlertTriangle, ChevronDown, ChevronUp, FileSpreadsheet, FileUp, Landmark, Plus, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
@@ -7,6 +7,7 @@ import { CategoryModal } from "@/features/categories/CategoryModal";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
 import {
   DEBT_TRANSACTION_TYPES,
+  getAccountBalance,
   type Category,
   type Transaction,
   type TransactionType,
@@ -301,41 +302,111 @@ export function TransactionModal({
         )}
 
         {/* 3. Account Selection */}
-        {type === "Transfer" ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <SelectField
-              label="Transfer From"
-              value={form.accountId ?? ""}
-              onChange={(v) => set("accountId", v)}
-              options={data.accounts
-                .filter((a) => !a.archived)
-                .map((a) => ({ value: a.id, label: a.name }))}
-              error={errors.accountId}
-              required
-            />
-            <SelectField
-              label="Transfer To"
-              value={form.destinationAccountId ?? ""}
-              onChange={(v) => set("destinationAccountId", v)}
-              options={data.accounts
-                .filter((a) => !a.archived)
-                .map((a) => ({ value: a.id, label: a.name }))}
-              error={errors.destinationAccountId}
-              required
-            />
-          </div>
-        ) : (
-          <SelectField
-            label={isInflowType ? "Deposit into Account" : "Paid with Account"}
-            value={form.accountId ?? ""}
-            onChange={(v) => set("accountId", v)}
-            options={data.accounts
-              .filter((a) => !a.archived)
-              .map((a) => ({ value: a.id, label: `${a.name} (${a.kind})` }))}
-            error={errors.accountId}
-            required
-          />
-        )}
+        {(() => {
+          const selectedAcc = data.accounts.find((a) => a.id === form.accountId);
+          const selectedAccBalance = selectedAcc ? getAccountBalance(selectedAcc, data.transactions) : 0;
+          const numAmt = Number(form.amount) || 0;
+          const isDebit = !isInflowType;
+          const isBankOrCash = selectedAcc && !["Credit Card", "Loan"].includes(selectedAcc.kind);
+          const isInsufficient = isDebit && isBankOrCash && numAmt > selectedAccBalance;
+          const isLowBalance = isDebit && isBankOrCash && !isInsufficient && selectedAccBalance - numAmt < 2000 && numAmt > 0;
+
+          return type === "Transfer" ? (
+            <div className="space-y-2">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <SelectField
+                  label="Transfer From *"
+                  value={form.accountId ?? ""}
+                  onChange={(v) => set("accountId", v)}
+                  options={data.accounts
+                    .filter((a) => !a.archived)
+                    .map((a) => {
+                      const bal = getAccountBalance(a, data.transactions);
+                      return {
+                        value: a.id,
+                        label: `${a.name} (${a.kind}) · ${currencySymbol}${bal.toLocaleString("en-IN")}`,
+                      };
+                    })}
+                  error={errors.accountId}
+                  required
+                />
+                <SelectField
+                  label="Transfer To *"
+                  value={form.destinationAccountId ?? ""}
+                  onChange={(v) => set("destinationAccountId", v)}
+                  options={data.accounts
+                    .filter((a) => !a.archived && a.id !== form.accountId)
+                    .map((a) => {
+                      const bal = getAccountBalance(a, data.transactions);
+                      return {
+                        value: a.id,
+                        label: `${a.name} (${a.kind}) · ${currencySymbol}${bal.toLocaleString("en-IN")}`,
+                      };
+                    })}
+                  error={errors.destinationAccountId}
+                  required
+                />
+              </div>
+              {selectedAcc && (
+                <div className="text-[11px] px-1">
+                  {isInsufficient ? (
+                    <p className="text-destructive font-semibold flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      Insufficient balance in {selectedAcc.name}: Available {currencySymbol}{selectedAccBalance.toLocaleString("en-IN")}
+                    </p>
+                  ) : isLowBalance ? (
+                    <p className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                      <AlertTriangle size={12} className="shrink-0" />
+                      Low balance alert: Balance will drop to {currencySymbol}{(selectedAccBalance - numAmt).toLocaleString("en-IN")}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      Source account balance: {currencySymbol}{selectedAccBalance.toLocaleString("en-IN")}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div>
+              <SelectField
+                label={isInflowType ? "Deposit into Account *" : "Paid with Account *"}
+                value={form.accountId ?? ""}
+                onChange={(v) => set("accountId", v)}
+                options={data.accounts
+                  .filter((a) => !a.archived)
+                  .map((a) => {
+                    const bal = getAccountBalance(a, data.transactions);
+                    return {
+                      value: a.id,
+                      label: `${a.name} (${a.kind}) · ${currencySymbol}${bal.toLocaleString("en-IN")}`,
+                    };
+                  })}
+                error={errors.accountId}
+                required
+              />
+              {selectedAcc && (
+                <div className="mt-1 text-[11px] px-1">
+                  {isInsufficient ? (
+                    <p className="text-destructive font-semibold flex items-center gap-1">
+                      <AlertCircle size={12} className="shrink-0" />
+                      Insufficient balance: Available {currencySymbol}{selectedAccBalance.toLocaleString("en-IN")}, Required {currencySymbol}{numAmt.toLocaleString("en-IN")}
+                    </p>
+                  ) : isLowBalance ? (
+                    <p className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                      <AlertTriangle size={12} className="shrink-0" />
+                      Low balance alert: Balance will drop to {currencySymbol}{(selectedAccBalance - numAmt).toLocaleString("en-IN")}
+                    </p>
+                  ) : (
+                    <p className="text-muted-foreground">
+                      Available balance: {currencySymbol}{selectedAccBalance.toLocaleString("en-IN")}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* 4. Collapsible Accordion: More options (optional) */}
         <div className="border-t border-border pt-2">

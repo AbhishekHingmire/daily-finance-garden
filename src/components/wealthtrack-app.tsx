@@ -1126,6 +1126,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     if (!transactionForm.date) errors.date = "Choose a date.";
     if (!transactionForm.accountId) errors.accountId = "Choose an account.";
     if (!accountById(transactionForm.accountId ?? "")) errors.accountId = "Choose an available account.";
+    const acc = accountById(transactionForm.accountId ?? "");
+    const accBal = acc ? getAccountBalance(acc, data.transactions) : 0;
+    const numAmt = Number(transactionForm.amount) || 0;
+    const isDebit = ["Expense", "EMI / Loan Payment", "Lend / Loan Given", "Transfer", "Investment"].includes(type);
+    if (acc && !["Credit Card", "Loan"].includes(acc.kind) && isDebit && numAmt > accBal) {
+      errors.accountId = `Insufficient balance in ${acc.name}. Available: ${money(accBal)}, Amount: ${money(numAmt)}`;
+    }
     if (type === "Transfer" && !transactionForm.destinationAccountId) errors.destinationAccountId = "Choose a destination account.";
     if (type === "Transfer" && transactionForm.accountId === transactionForm.destinationAccountId) errors.destinationAccountId = "Choose a different destination.";
     if (type !== "Transfer" && (!transactionForm.categoryId || !categoryById(transactionForm.categoryId))) errors.categoryId = "Category is required.";
@@ -1586,6 +1593,31 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const recordRecurringNow = (item: RecurringItem) => {
     if (savingLockRef.current) return;
     savingLockRef.current = true;
+
+    if (!item.accountId) {
+      toast.error("No account linked to this schedule", {
+        description: "Please edit this recurring schedule and choose an account.",
+      });
+      savingLockRef.current = false;
+      return;
+    }
+
+    const linkedAcc = data.accounts.find((a) => a.id === item.accountId);
+    const linkedAccBal = linkedAcc ? getAccountBalance(linkedAcc, data.transactions) : 0;
+    const isDebit = item.type !== "Income";
+    if (linkedAcc && !["Credit Card", "Loan"].includes(linkedAcc.kind) && isDebit && item.amount > linkedAccBal) {
+      toast.error(`Insufficient balance in ${linkedAcc.name}`, {
+        description: `Available: ${money(linkedAccBal)}, Required: ${money(item.amount)}`,
+      });
+      savingLockRef.current = false;
+      return;
+    }
+
+    if (linkedAcc && !["Credit Card", "Loan"].includes(linkedAcc.kind) && isDebit && linkedAccBal - item.amount < 2000) {
+      toast.warning(`Low balance alert on ${linkedAcc.name}`, {
+        description: `Remaining balance will drop to ${money(linkedAccBal - item.amount)}`,
+      });
+    }
 
     const transaction: Transaction = {
       id: createTransactionId(),
@@ -3197,6 +3229,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         categories={unified.categories}
         holdings={unified.holdings}
         loans={unified.loans}
+        entries={unified.entries}
         defaultAccount={data.preferences.defaultAccount}
         onSaveEntry={handleSaveGlobalEntry}
         onOpenBulkImport={() => setModal("import")}

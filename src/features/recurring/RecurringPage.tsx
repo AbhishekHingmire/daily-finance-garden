@@ -69,7 +69,7 @@ export function RecurringPage({
       />
 
       {/* Standardized Summary Metric Cards */}
-      <div className="grid gap-2.5 sm:gap-4 sm:grid-cols-4">
+      <div className="grid gap-2.5 sm:gap-4 sm:grid-cols-4 items-start">
         {/* Card 1: Monthly Expenses & EMIs */}
         <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
           <div className="flex items-center justify-between sm:mb-2">

@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { toast } from "sonner";
 import {
   CalendarDays,
   CheckCircle2,
@@ -116,11 +117,34 @@ export function FundsPage({
 
   const handleDepositSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (depositFund && Number(depositAmount)) {
-      onQuickDepositFund(depositFund.id, Number(depositAmount), depositSourceAccountId || undefined);
-      setDepositFund(null);
-      setDepositAmount("");
+    if (!depositFund) return;
+    const numDeposit = Number(depositAmount);
+    if (!numDeposit || isNaN(numDeposit) || numDeposit <= 0) {
+      toast.error("Please enter a valid deposit amount.");
+      return;
     }
+    if (!depositSourceAccountId) {
+      toast.error("Please choose a source bank account.");
+      return;
+    }
+
+    const srcBal = accountBalances.get(depositSourceAccountId) ?? 0;
+    if (numDeposit > srcBal) {
+      toast.error("Insufficient balance in account", {
+        description: `Available: ${money(srcBal)}, Deposit: ${money(numDeposit)}`,
+      });
+      return;
+    }
+
+    if (srcBal - numDeposit < 2000) {
+      toast.warning("Low balance alert", {
+        description: `Remaining balance will drop to ${money(srcBal - numDeposit)}`,
+      });
+    }
+
+    onQuickDepositFund(depositFund.id, numDeposit, depositSourceAccountId);
+    setDepositFund(null);
+    setDepositAmount("");
   };
 
   return (
@@ -392,7 +416,7 @@ export function FundsPage({
 
           {/* Custom Funds Grid or Empty State */}
           {displayedFunds.length > 0 ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-start">
               {displayedFunds.map((fund) => {
                 const pct = fund.targetAmount > 0 ? Math.min(100, Math.round((fund.currentAmount / fund.targetAmount) * 100)) : 0;
                 const isFulfilled = fund.targetAmount > 0 && fund.currentAmount >= fund.targetAmount;
@@ -402,7 +426,7 @@ export function FundsPage({
                 return (
                   <div
                     key={fund.id}
-                    className={`flex flex-col justify-between rounded-xl border p-4 sm:p-4.5 wt-shadow transition-all hover:shadow-xs ${
+                    className={`flex flex-col justify-between rounded-xl border p-4 sm:p-4.5 wt-shadow transition-all hover:shadow-xs h-auto max-h-[580px] ${
                       isFulfilled
                         ? "border-emerald-500/30 bg-emerald-500/[0.03]"
                         : isSkippedThisMonth

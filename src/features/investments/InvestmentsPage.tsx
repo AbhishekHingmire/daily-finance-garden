@@ -275,7 +275,7 @@ export function InvestmentsPage({
           </Button>
         </div>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 items-start">
           {filteredHoldings.map((h) => {
             const invested = safeAmount(h.investedAmount);
             const current = safeAmount(h.currentAmount);

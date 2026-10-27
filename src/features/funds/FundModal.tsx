@@ -127,15 +127,16 @@ export function FundModal({
             ]}
           />
           <SelectField
-            label="Linked Bank / Wallet"
+            label="Linked Bank / Wallet *"
             value={linkedAccountId}
             onChange={setLinkedAccountId}
             options={accounts
               .filter((a) => !a.archived && a.kind !== "Credit card")
               .map((a) => ({
                 value: a.id,
-                label: `${a.name} (${a.institution})`,
+                label: `${a.name} (${a.institution}) · ₹${(a.openingBalance || 0).toLocaleString("en-IN")}`,
               }))}
+            required
           />
         </div>
 

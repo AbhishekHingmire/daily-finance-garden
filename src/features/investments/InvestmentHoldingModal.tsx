@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react";
-import { TrendingDown, TrendingUp } from "lucide-react";
+import { AlertCircle, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
-import type { AssetType, InvestmentHolding, WealthState } from "@/lib/wealthtrack";
+import { getAccountBalance, type AssetType, type InvestmentHolding, type WealthState } from "@/lib/wealthtrack";
 
 const ASSET_TYPES: AssetType[] = [
   "Mutual fund",
@@ -75,8 +75,20 @@ export function InvestmentHoldingModal({
     if (!startMonthYear) errs.startMonthYear = "Start Month & Year is mandatory.";
     if (investedAmount === "" || investedNum < 0) errs.investedAmount = "Enter a valid invested amount.";
     if (currentAmount === "" || currentNum < 0) errs.currentAmount = "Enter a valid current valuation.";
-    if (isRecurring && (!sipAmount || Number(sipAmount) <= 0)) {
-      errs.sipAmount = "Enter a valid SIP installment amount.";
+    if (isRecurring) {
+      if (!sipAmount || Number(sipAmount) <= 0) {
+        errs.sipAmount = "Enter a valid SIP installment amount.";
+      }
+      if (!sipAccountId) {
+        errs.sipAccountId = "Select a bank account for SIP debit.";
+      } else {
+        const acc = data.accounts.find((a) => a.id === sipAccountId);
+        const bal = acc ? getAccountBalance(acc, data.transactions) : 0;
+        const sipNum = Number(sipAmount) || 0;
+        if (acc && !["Credit card", "Loan"].includes(acc.kind) && sipNum > bal) {
+          errs.sipAmount = `Insufficient balance in ${acc.name} (${currencySymbol}${bal.toLocaleString("en-IN")}) for SIP installment (${currencySymbol}${sipNum.toLocaleString("en-IN")}).`;
+        }
+      }
     }
 
     setErrors(errs);
@@ -320,20 +332,55 @@ export function InvestmentHoldingModal({
               </div>
 
               <div>
-                <span className="wt-label">Debit Bank Account</span>
+                <span className="wt-label">Debit Bank Account *</span>
                 <select
-                  className="wt-field text-xs font-semibold"
+                  className="wt-field text-xs font-semibold cursor-pointer"
                   value={sipAccountId}
                   onChange={(e) => setSipAccountId(e.target.value)}
+                  required
                 >
+                  <option value="">-- Select Bank Account --</option>
                   {data.accounts
                     .filter((a) => !a.archived)
-                    .map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name}
-                      </option>
-                    ))}
+                    .map((a) => {
+                      const bal = getAccountBalance(a, data.transactions);
+                      return (
+                        <option key={a.id} value={a.id}>
+                          {a.name} ({a.institution || a.kind}) · {currencySymbol}{bal.toLocaleString("en-IN")}
+                        </option>
+                      );
+                    })}
                 </select>
+                {errors.sipAccountId && (
+                  <span className="mt-1 block text-[10px] text-destructive">{errors.sipAccountId}</span>
+                )}
+                {(() => {
+                  const acc = data.accounts.find((a) => a.id === sipAccountId);
+                  if (!acc) return null;
+                  const bal = getAccountBalance(acc, data.transactions);
+                  const sipNum = Number(sipAmount) || 0;
+                  const isInsufficient = sipNum > 0 && bal < sipNum;
+                  const isLow = sipNum > 0 && !isInsufficient && bal - sipNum < 2000;
+                  return (
+                    <div className="mt-1 text-[11px]">
+                      {isInsufficient ? (
+                        <p className="text-destructive font-semibold flex items-center gap-1">
+                          <AlertCircle size={12} className="shrink-0" />
+                          Insufficient balance: Available {currencySymbol}{bal.toLocaleString("en-IN")}
+                        </p>
+                      ) : isLow ? (
+                        <p className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                          <AlertTriangle size={12} className="shrink-0" />
+                          Low balance alert: Balance will drop to {currencySymbol}{(bal - sipNum).toLocaleString("en-IN")}
+                        </p>
+                      ) : (
+                        <p className="text-muted-foreground">
+                          Available balance: {currencySymbol}{bal.toLocaleString("en-IN")}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
           )}

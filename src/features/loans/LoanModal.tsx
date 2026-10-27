@@ -3,7 +3,7 @@ import { AlertCircle, CheckCircle2, ChevronRight, Calculator, Landmark, Percent,
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
-import type { LoanLiability, LoanType, WealthState } from "@/lib/wealthtrack";
+import { getAccountBalance, type LoanLiability, type LoanType, type WealthState } from "@/lib/wealthtrack";
 
 const LOAN_TYPES: LoanType[] = [
   "Home Loan",
@@ -458,18 +458,48 @@ export function LoanModal({
         {/* Bank Account Selection for EMI Auto-debit */}
         <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-3">
           <SelectField
-            label="Repayment Bank Account (Auto-Debit Source)"
+            label="Repayment Bank Account (Auto-Debit Source) *"
             value={repaymentAccountId}
             onChange={setRepaymentAccountId}
             options={data.accounts
               .filter((a) => !a.archived)
-              .map((a) => ({
-                value: a.id,
-                label: `${a.institution ? `${a.institution} · ` : ""}${a.name} (${currencySymbol}${a.openingBalance.toLocaleString()})`,
-              }))}
+              .map((a) => {
+                const bal = getAccountBalance(a, data.transactions);
+                return {
+                  value: a.id,
+                  label: `${a.institution ? `${a.institution} · ` : ""}${a.name} (${currencySymbol}${bal.toLocaleString("en-IN")})`,
+                };
+              })}
             error={errors.repaymentAccountId}
             required
           />
+
+          {(() => {
+            const acc = data.accounts.find((a) => a.id === repaymentAccountId);
+            if (!acc) return null;
+            const bal = getAccountBalance(acc, data.transactions);
+            const isInsufficient = emiNum > 0 && bal < emiNum;
+            const isLow = emiNum > 0 && !isInsufficient && bal - emiNum < 2000;
+            return (
+              <div className="text-[11px] px-1">
+                {isInsufficient ? (
+                  <p className="text-destructive font-semibold flex items-center gap-1">
+                    <AlertCircle size={12} className="shrink-0" />
+                    Insufficient balance for EMI: Available {currencySymbol}{bal.toLocaleString("en-IN")} vs EMI {currencySymbol}{emiNum.toLocaleString("en-IN")}
+                  </p>
+                ) : isLow ? (
+                  <p className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
+                    <ShieldAlert size={12} className="shrink-0" />
+                    Low balance alert: Balance after EMI debit will be {currencySymbol}{(bal - emiNum).toLocaleString("en-IN")}
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">
+                    Available balance: {currencySymbol}{bal.toLocaleString("en-IN")}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
 
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input
