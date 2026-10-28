@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
+  AlertTriangle,
   ArrowLeft,
   ArrowLeftRight,
   Bell,
@@ -13,6 +14,7 @@ import {
   Menu,
   MoreHorizontal,
   Plus,
+  RefreshCw,
   Search,
   Settings2,
   ShieldCheck,
@@ -30,7 +32,7 @@ import { AppLogo } from "@/components/shared/AppLogo";
 import { Modal } from "@/components/shared/Modal";
 import { matchesDateRange, type DateRangeValue } from "@/components/shared/DateRangeFilter";
 import { AuthPage, type AuthView } from "@/features/auth/AuthPage";
-import { authApi, authStorage, type AuthResponseData, getWealthRepository } from "@/services/api";
+import { authApi, authStorage, type AuthResponseData, getWealthRepository, getApiBaseUrl } from "@/services/api";
 import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { Dashboard } from "@/features/dashboard/Dashboard";
 import { TransactionsPage } from "@/features/transactions/TransactionsPage";
@@ -180,6 +182,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const [globalAddOpen, setGlobalAddOpen] = useState(false);
   const [dataHealthOpen, setDataHealthOpen] = useState(false);
   const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
+  const [apiDownError, setApiDownError] = useState<{ isDown: boolean; message: string; statusCode?: number } | null>(null);
+  const [isRetryingApi, setIsRetryingApi] = useState(false);
 
   useEffect(() => {
     const onFlagChange = (e: any) => {
@@ -435,6 +439,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
     repository.getState().then((res) => {
       if (res.success && res.data) {
+        setApiDownError(null);
         // Upgrade legacy icons & ensure every category has proper emoji icon
         const upgradedCategories = res.data.categories.map((c) => {
           if (c.id === "cat-food" || c.name.toLowerCase().includes("food") || c.name.toLowerCase().includes("dining")) {
@@ -514,6 +519,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         });
       } else {
         // Network or transient server startup error: DO NOT log out user; keep 72h session intact
+        const host = (() => {
+          try { return new URL(getApiBaseUrl()).host; } catch { return "onefinancetracker.runasp.net"; }
+        })();
+        setApiDownError({
+          isDown: true,
+          message: res?.error || `Connecting to backend API (${host}) failed. Running in offline view.`,
+          statusCode: res?.statusCode,
+        });
+
         const cachedUser = authStorage.getUser();
         setData((prev) => ({
           ...prev,
@@ -533,8 +547,16 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         }));
       }
       setLoaded(true);
-    }).catch(() => {
+    }).catch((err: any) => {
       // Do not clear storage on transient connection error; preserve 72h session
+      const host = (() => {
+        try { return new URL(getApiBaseUrl()).host; } catch { return "onefinancetracker.runasp.net"; }
+      })();
+      setApiDownError({
+        isDown: true,
+        message: err?.message || `Network error connecting to backend API (${host}).`,
+      });
+
       const cachedUser = authStorage.getUser();
       setData((prev) => ({
         ...prev,
@@ -555,6 +577,49 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       setLoaded(true);
     });
   }, [repository]);
+
+  const handleRetryApiConnection = async () => {
+    setIsRetryingApi(true);
+    try {
+      const res = await repository.getState();
+      if (res.success && res.data) {
+        setApiDownError(null);
+        toast.success("Connected to backend API successfully!");
+        const upgradedCategories = res.data.categories.map((c) => {
+          if (c.id === "cat-food" || c.name.toLowerCase().includes("food") || c.name.toLowerCase().includes("dining")) return { ...c, icon: "🍽️" };
+          if (c.id === "cat-housing" || c.name.toLowerCase().includes("housing") || c.name.toLowerCase().includes("rent")) return { ...c, icon: "🏠" };
+          if (c.id === "cat-travel" || c.name.toLowerCase().includes("transport")) return { ...c, icon: "🚗" };
+          if (c.id === "cat-shopping" || c.name.toLowerCase().includes("shopping")) return { ...c, icon: "🛍️" };
+          if (c.id === "cat-bills" || c.name.toLowerCase().includes("bill") || c.name.toLowerCase().includes("utilit")) return { ...c, icon: "💡" };
+          if (c.id === "cat-health" || c.name.toLowerCase().includes("health") || c.name.toLowerCase().includes("medic")) return { ...c, icon: "🏥" };
+          if (c.id === "cat-entertainment" || c.name.toLowerCase().includes("entertainment")) return { ...c, icon: "🎬" };
+          if (c.id === "cat-salary" || c.name.toLowerCase().includes("salary")) return { ...c, icon: "💼" };
+          if (c.id === "cat-freelance" || c.name.toLowerCase().includes("freelance")) return { ...c, icon: "💻" };
+          if (c.id === "cat-investments" || c.name.toLowerCase().includes("invest")) return { ...c, icon: "📈" };
+          if (c.id === "cat-other-income" || c.name.toLowerCase().includes("income")) return { ...c, icon: "💰" };
+          const isLegacyOrInvalid = !c.icon || c.icon === "?" || ["⌂", "↗", "◇", "ϟ", "＋", "♫", "↙"].includes(c.icon);
+          if (isLegacyOrInvalid) return { ...c, icon: matchCategoryIcon(c.name, "📁") };
+          return c;
+        });
+        const baseState: WealthState = syncLoansWithRecurring({
+          ...res.data,
+          categories: upgradedCategories,
+        });
+        const { updatedState } = processDueRecurringTransactions(baseState);
+        setData({ ...updatedState, session: true, onboarded: true });
+      } else {
+        toast.error("API is still unreachable", {
+          description: res.error || "Please verify the backend server status.",
+        });
+      }
+    } catch (err: any) {
+      toast.error("Retry failed", {
+        description: err?.message || "Could not reach backend API server.",
+      });
+    } finally {
+      setIsRetryingApi(false);
+    }
+  };
 
   useEffect(() => {
     if (initialSection && initialSection !== active) {
@@ -2506,6 +2571,30 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     return (
       <>
         <Toaster position="top-right" richColors />
+        {apiDownError?.isDown && (
+          <div
+            role="alert"
+            className="w-full bg-amber-500/15 border-b border-amber-500/30 text-amber-900 dark:text-amber-200 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 shadow-xs"
+          >
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 animate-pulse" />
+              <span>
+                <strong>API is down currently:</strong> {apiDownError.message}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isRetryingApi}
+                onClick={handleRetryApiConnection}
+                className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 px-2 py-0.5 text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-50"
+              >
+                <RefreshCw className={`size-3 ${isRetryingApi ? "animate-spin" : ""}`} />
+                <span>{isRetryingApi ? "Retrying..." : "Retry"}</span>
+              </button>
+            </div>
+          </div>
+        )}
         <OnboardingFlow
           data={data}
           onComplete={() => updateData({ onboarded: true })}
@@ -2526,9 +2615,44 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   }
 
   return (
-    <div className="min-h-screen bg-background w-full">
+    <div className="min-h-screen bg-background w-full flex flex-col">
       <Toaster position="top-right" richColors />
-      <div className="flex min-h-screen w-full">
+
+      {/* Top Banner: Backend API Down / Unreachable Error */}
+      {apiDownError?.isDown && (
+        <div
+          role="alert"
+          className="sticky top-0 z-modal w-full bg-amber-500/15 border-b border-amber-500/30 text-amber-900 dark:text-amber-200 px-4 py-2 text-xs flex flex-wrap items-center justify-between gap-2 backdrop-blur-md shadow-xs"
+        >
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="size-4 shrink-0 text-amber-600 dark:text-amber-400 animate-pulse" />
+            <span>
+              <strong>API is down currently:</strong> {apiDownError.message}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              disabled={isRetryingApi}
+              onClick={handleRetryApiConnection}
+              className="inline-flex items-center gap-1.5 rounded-md bg-amber-600 hover:bg-amber-700 text-white dark:bg-amber-500 dark:hover:bg-amber-600 px-2.5 py-1 text-[11px] font-bold transition-colors cursor-pointer disabled:opacity-50"
+            >
+              <RefreshCw className={`size-3 ${isRetryingApi ? "animate-spin" : ""}`} />
+              <span>{isRetryingApi ? "Retrying..." : "Retry Connection"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setApiDownError(null)}
+              className="text-amber-700 hover:text-amber-950 dark:text-amber-400 dark:hover:text-amber-100 text-sm font-bold px-1.5 py-0.5 rounded cursor-pointer"
+              aria-label="Dismiss banner"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="flex flex-1 w-full">
         {/* Sidebar Navigation: Tablet icon rail (72px) / Desktop full sidebar (248px) */}
         <aside
           className="hidden md:flex fixed left-0 top-0 bottom-0 z-sidebar shrink-0 flex-col border-r border-border bg-card h-[100dvh] overflow-y-auto w-[72px] lg:w-[248px]"

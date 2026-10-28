@@ -105,7 +105,7 @@ export function InvestmentHoldingModal({
   const [assetType, setAssetType] = useState<AssetType>(existing?.assetType ?? "Mutual fund");
   const [institution, setInstitution] = useState(existing?.institution ?? "");
   const [startMonthYear, setStartMonthYear] = useState(
-    existing?.startMonthYear ?? new Date().toISOString().slice(0, 7)
+    existing?.startMonthYear ?? ""
   );
   const [endMonthYear, setEndMonthYear] = useState(existing?.endMonthYear ?? "");
   const [investedAmount, setInvestedAmount] = useState<number | "">(
@@ -486,7 +486,6 @@ export function InvestmentHoldingModal({
     if (e) e.preventDefault();
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = "Enter the name of the holding.";
-    if (!startMonthYear) errs.startMonthYear = "Start Month & Year is mandatory.";
     if (investedAmount === "" || investedNum < 0) errs.investedAmount = "Enter a valid invested amount.";
     if (currentNum < 0) errs.currentAmount = "Current valuation cannot be negative.";
 
@@ -725,14 +724,13 @@ export function InvestmentHoldingModal({
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="wt-label">
-              Start Date (Month & Year) <span className="text-destructive">*</span>
+              Start Date (Month & Year) <span className="text-muted-foreground text-[10px] font-normal">(optional)</span>
             </span>
             <input
               type="month"
-              className="wt-field font-semibold text-xs"
+              className="wt-field font-semibold text-xs bg-background"
               value={startMonthYear}
               onChange={(e) => handleStartMonthYearChange(e.target.value)}
-              required
             />
             {errors.startMonthYear && (
               <span className="mt-1 block text-xs text-destructive">{errors.startMonthYear}</span>
@@ -879,7 +877,7 @@ export function InvestmentHoldingModal({
               </div>
 
               {/* Historical SIP Installments & Capital Calculator */}
-              {startMonthYear && (
+              {startMonthYear ? (
                 <div className="rounded-lg bg-background border border-border p-2.5 text-xs flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <span className="text-muted-foreground block text-[11px]">
@@ -899,6 +897,13 @@ export function InvestmentHoldingModal({
                       Use Computed Total: {currencySymbol}{sipHistory.totalEstimatedInvested.toLocaleString("en-IN")}
                     </button>
                   )}
+                </div>
+              ) : (
+                <div className="rounded-lg bg-background border border-border/70 p-2.5 text-xs text-muted-foreground flex items-center gap-2">
+                  <span>💡</span>
+                  <span>
+                    Start date not specified · Please enter your total invested capital directly in the <strong>Invested Amount</strong> field below.
+                  </span>
                 </div>
               )}
             </div>
@@ -960,11 +965,15 @@ export function InvestmentHoldingModal({
                 <span>
                   Invested Amount / Capital ({currencySymbol}) <span className="text-destructive">*</span>
                 </span>
-                {investmentStyle === "SIP" && Number(sipAmount) > 0 && (
+                {investmentStyle === "SIP" && Number(sipAmount) > 0 && startMonthYear ? (
                   <span className="text-[10px] text-primary font-semibold">
                     Derived from {sipHistory.elapsedInstallments} SIP installments
                   </span>
-                )}
+                ) : investmentStyle === "SIP" ? (
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    Enter total capital invested to date
+                  </span>
+                ) : null}
               </span>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">
