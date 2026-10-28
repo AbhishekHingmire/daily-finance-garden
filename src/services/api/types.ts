@@ -34,6 +34,7 @@ export interface WealthRepository {
 
   // Transactions
   addTransaction(transaction: Transaction): Promise<ApiResponse<Transaction>>;
+  createTransaction(transaction: Transaction): Promise<ApiResponse<Transaction>>;
   updateTransaction(transaction: Transaction): Promise<ApiResponse<Transaction>>;
   deleteTransaction(id: string): Promise<ApiResponse<void>>;
   bulkDeleteTransactions(ids: string[]): Promise<ApiResponse<void>>;

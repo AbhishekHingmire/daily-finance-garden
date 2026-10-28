@@ -59,6 +59,10 @@ export class LocalStorageWealthRepository implements WealthRepository {
     }
   }
 
+  async createTransaction(transaction: Transaction): Promise<ApiResponse<Transaction>> {
+    return this.addTransaction(transaction);
+  }
+
   async addTransaction(transaction: Transaction): Promise<ApiResponse<Transaction>> {
     const state = this.readRaw();
     const updated = [transaction, ...state.transactions];

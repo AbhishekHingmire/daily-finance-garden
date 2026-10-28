@@ -119,7 +119,7 @@ export class RestWealthRepository implements WealthRepository {
         kind: a.kind,
         institution: a.institution || "",
         identifier: a.identifier || "",
-        openingBalance: a.openingBalance || 0,
+        openingBalance: Number(a.openingBalance ?? a.balance ?? a.currentBalance ?? 0),
         notes: a.notes || "",
         archived: a.archived,
       })),
@@ -243,6 +243,10 @@ export class RestWealthRepository implements WealthRepository {
   }
 
   // Transactions
+  async createTransaction(transaction: Transaction): Promise<ApiResponse<Transaction>> {
+    return this.addTransaction(transaction);
+  }
+
   async addTransaction(transaction: Transaction): Promise<ApiResponse<Transaction>> {
     const payload = {
       date: transaction.date,
