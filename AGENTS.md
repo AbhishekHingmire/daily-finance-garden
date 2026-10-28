@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+Keep the WealthTrack interface and state in its client-side app module, with pure finance calculations in `src/lib/wealthtrack.ts`, to maintain frontend-only local behavior.
