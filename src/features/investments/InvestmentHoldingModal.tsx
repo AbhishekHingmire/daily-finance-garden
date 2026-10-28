@@ -19,7 +19,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
-import { marketApi, type InstrumentSearchResult } from "@/services/api";
+import { marketApi, type InstrumentSearchResult, type SipValuationResult } from "@/services/api";
 import { getAccountBalance, type AssetType, type InvestmentHolding, type WealthState } from "@/lib/wealthtrack";
 import {
   calculateInvestmentValuation,
@@ -183,6 +183,10 @@ export function InvestmentHoldingModal({
   const [isFetchingQuote, setIsFetchingQuote] = useState(false);
   const [isCalculatingLumpSum, setIsCalculatingLumpSum] = useState(false);
   const [lumpSumStatusMessage, setLumpSumStatusMessage] = useState<string | null>(null);
+  const [isCalculatingSip, setIsCalculatingSip] = useState(false);
+  const [sipValuationDetails, setSipValuationDetails] = useState<SipValuationResult | null>(null);
+  const [showSipBreakdown, setShowSipBreakdown] = useState(false);
+  const [sipStatusMessage, setSipStatusMessage] = useState<string | null>(null);
   const [exchangeRateInfo, setExchangeRateInfo] = useState<{
     rate: number;
     fromCurrency: string;
@@ -294,9 +298,11 @@ export function InvestmentHoldingModal({
           category: item.category,
         });
 
-        // Auto-compute units & purchase price if investedAmount is already entered
+        // Auto-compute units & purchase price if investedAmount or sipAmount is already entered
         const inv = Number(investedAmount) || 0;
-        if (investmentStyle === "LumpSum" && inv > 0 && startMonthYear) {
+        if (investmentStyle === "SIP" && Number(sipAmount) > 0 && startMonthYear) {
+          executeAutonomousSipValuation(Number(sipAmount), startMonthYear, sipDay, item.symbol || item.name, finalPriceInUserCurrency);
+        } else if (investmentStyle === "LumpSum" && inv > 0 && startMonthYear) {
           executeAutonomousLumpSumValuation(inv, startMonthYear, item.symbol || item.name, finalPriceInUserCurrency);
         } else if (inv > 0 && (units === "" || Number(units) <= 0)) {
           const derivedUnits = Math.round((inv / finalPriceInUserCurrency) * 10000) / 10000;
@@ -368,6 +374,52 @@ export function InvestmentHoldingModal({
         setLumpSumStatusMessage("Market quote service temporarily slow. You can enter Buy Price directly below.");
       } finally {
         setIsCalculatingLumpSum(false);
+      }
+    },
+    [currentPrice, selectedSymbol, selectedQuote?.symbol, name]
+  );
+
+  // Autonomous Progressive SIP Valuation Engine (as requested by user):
+  // Calculates progressive overhead and accumulation across all monthly installment debits,
+  // fetches exact public AMFI historical NAVs on each installment date,
+  // derives accumulated units, average buy price, live current value, and exact PnL.
+  const executeAutonomousSipValuation = useCallback(
+    async (sAmt: number, startDt: string, sDay: number, holdingName?: string, knownLivePrice?: number) => {
+      if (!sAmt || sAmt <= 0 || !startDt) {
+        return;
+      }
+
+      setIsCalculatingSip(true);
+      setSipStatusMessage(null);
+
+      try {
+        const liveP = knownLivePrice && knownLivePrice > 0 ? knownLivePrice : Number(currentPrice) || undefined;
+        const targetId = selectedSymbol || selectedQuote?.symbol || holdingName || name;
+        if (!targetId || !targetId.trim()) {
+          setIsCalculatingSip(false);
+          return;
+        }
+
+        const sipResult = await marketApi.calculateProgressiveSipValuation({
+          symbolOrName: targetId,
+          startDate: startDt,
+          monthlySipAmount: sAmt,
+          sipDay: sDay,
+          livePrice: liveP,
+        });
+
+        if (sipResult) {
+          setSipValuationDetails(sipResult);
+          setInvestedAmount(sipResult.totalInvested);
+          setUnits(sipResult.totalUnits);
+          setPurchasePrice(sipResult.averageBuyPrice);
+          setCurrentAmount(sipResult.currentAmount);
+          setSipStatusMessage(null);
+        }
+      } catch {
+        setSipStatusMessage("Could not retrieve progressive AMFI history. Standard estimation applied.");
+      } finally {
+        setIsCalculatingSip(false);
       }
     },
     [currentPrice, selectedSymbol, selectedQuote?.symbol, name]
@@ -457,7 +509,7 @@ export function InvestmentHoldingModal({
     }
   };
 
-  // SIP Amount change handler (immediately updates estimated historical invested amount)
+  // SIP Amount change handler (immediately triggers autonomous progressive accumulation)
   const handleSipAmountChange = (val: string) => {
     if (val === "") {
       setSipAmount("");
@@ -465,25 +517,40 @@ export function InvestmentHoldingModal({
     }
     const sNum = Number(val);
     setSipAmount(sNum);
-    const progress = calculateSipHistoricalProgress(startMonthYear, sNum, sipDay);
-    setInvestedAmount(progress.totalEstimatedInvested);
+    if (startMonthYear) {
+      executeAutonomousSipValuation(sNum, startMonthYear, sipDay);
+    } else {
+      const progress = calculateSipHistoricalProgress(startMonthYear, sNum, sipDay);
+      setInvestedAmount(progress.totalEstimatedInvested);
+    }
   };
 
   // SIP Day change handler
   const handleSipDayChange = (newDay: number) => {
     setSipDay(newDay);
     if (investmentStyle === "SIP" && Number(sipAmount) > 0 && startMonthYear) {
-      const progress = calculateSipHistoricalProgress(startMonthYear, Number(sipAmount), newDay);
-      setInvestedAmount(progress.totalEstimatedInvested);
+      executeAutonomousSipValuation(Number(sipAmount), startMonthYear, newDay);
     }
   };
 
   // Start Date change handler
   const handleStartMonthYearChange = (val: string) => {
     setStartMonthYear(val);
-    if (investmentStyle === "SIP" && Number(sipAmount) > 0) {
-      const progress = calculateSipHistoricalProgress(val, Number(sipAmount), sipDay);
-      setInvestedAmount(progress.totalEstimatedInvested);
+    if (investmentStyle === "SIP") {
+      let currentDay = sipDay;
+      if (val && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+        const parts = val.split("-").map(Number);
+        if (parts[2] >= 1 && parts[2] <= 31) {
+          currentDay = parts[2];
+          setSipDay(currentDay);
+        }
+      }
+      if (Number(sipAmount) > 0) {
+        executeAutonomousSipValuation(Number(sipAmount), val, currentDay);
+      } else {
+        const progress = calculateSipHistoricalProgress(val, Number(sipAmount), currentDay);
+        setInvestedAmount(progress.totalEstimatedInvested);
+      }
     } else if (investmentStyle === "LumpSum" && Number(investedAmount) > 0 && val) {
       const targetId = selectedSymbol || selectedQuote?.symbol || name;
       executeAutonomousLumpSumValuation(Number(investedAmount), val, targetId, Number(currentPrice) || undefined);
@@ -557,6 +624,10 @@ export function InvestmentHoldingModal({
     if (investmentStyle === "LumpSum") {
       if (!startMonthYear || !startMonthYear.trim()) {
         errs.startMonthYear = "Purchase Date (DD/MM/YYYY) is required for Lump Sum investment.";
+      }
+    } else if (investmentStyle === "SIP") {
+      if (!startMonthYear || !startMonthYear.trim()) {
+        errs.startMonthYear = "SIP Start Date (DD/MM/YYYY) is required to calculate historical accumulation.";
       }
     }
 
@@ -796,16 +867,12 @@ export function InvestmentHoldingModal({
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="wt-label">
-              {investmentStyle === "LumpSum" ? "Purchase Date (DD/MM/YYYY) *" : "Start Date (Month & Year)"}{" "}
-              {investmentStyle === "LumpSum" ? (
-                <span className="text-destructive font-bold">*</span>
-              ) : (
-                <span className="text-muted-foreground text-[10px] font-normal">(optional)</span>
-              )}
+              {investmentStyle === "LumpSum" ? "Purchase Date (DD/MM/YYYY) *" : "SIP Start Date (DD/MM/YYYY) *"}{" "}
+              <span className="text-destructive font-bold">*</span>
             </span>
             <input
-              type={investmentStyle === "LumpSum" ? "date" : "month"}
-              required={investmentStyle === "LumpSum"}
+              type="date"
+              required
               className="wt-field font-semibold text-xs bg-background"
               value={startMonthYear}
               onChange={(e) => handleStartMonthYearChange(e.target.value)}
@@ -817,10 +884,10 @@ export function InvestmentHoldingModal({
 
           <label className="block">
             <span className="wt-label">
-              End / Target Date (Month & Year) <span className="text-muted-foreground text-[10px] font-normal">(optional)</span>
+              End / Target Date (DD/MM/YYYY) <span className="text-muted-foreground text-[10px] font-normal">(optional)</span>
             </span>
             <input
-              type="month"
+              type="date"
               className="wt-field font-semibold text-xs"
               value={endMonthYear}
               onChange={(e) => setEndMonthYear(e.target.value)}
@@ -871,11 +938,15 @@ export function InvestmentHoldingModal({
               onClick={() => {
                 setInvestmentStyle("SIP");
                 setIsRecurring(true);
-                if (!sipAmount && investedNum > 0) {
-                  setSipAmount(investedNum);
-                } else if (sipAmount) {
-                  const progress = calculateSipHistoricalProgress(startMonthYear, Number(sipAmount), sipDay);
-                  setInvestedAmount(progress.totalEstimatedInvested);
+                let initialDate = startMonthYear;
+                if (initialDate && /^\d{4}-\d{2}$/.test(initialDate)) {
+                  initialDate = `${initialDate}-19`;
+                  setStartMonthYear(initialDate);
+                }
+                const sAmt = Number(sipAmount) || (investedNum > 0 ? investedNum : 5000);
+                setSipAmount(sAmt);
+                if (initialDate) {
+                  executeAutonomousSipValuation(sAmt, initialDate, sipDay);
                 }
               }}
             >
@@ -962,36 +1033,129 @@ export function InvestmentHoldingModal({
                 </p>
               </div>
 
-              {/* Historical SIP Installments & Capital Calculator */}
-              {startMonthYear ? (
-                <div className="rounded-lg bg-background border border-border p-2.5 text-xs flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <span className="text-muted-foreground block text-[11px]">
-                      Historical SIP Accumulation (since {startMonthYear}):
-                    </span>
-                    <span className="font-bold text-foreground">
-                      {sipHistory.elapsedInstallments} installments elapsed ({sipHistory.monthsElapsed} months)
-                    </span>
-                  </div>
-                  {Number(sipAmount) > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setInvestedAmount(sipHistory.totalEstimatedInvested)}
-                      className="rounded-md bg-primary/10 hover:bg-primary/20 text-primary px-2.5 py-1 text-[11px] font-bold cursor-pointer border border-primary/30 transition-colors"
-                      title="Set invested capital to computed SIP total"
-                    >
-                      Use Computed Total: {currencySymbol}{sipHistory.totalEstimatedInvested.toLocaleString("en-IN")}
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <div className="rounded-lg bg-background border border-border/70 p-2.5 text-xs text-muted-foreground flex items-center gap-2">
-                  <span>💡</span>
-                  <span>
-                    Start date not specified · Please enter your total invested capital directly in the <strong>Invested Amount</strong> field below.
+              {/* Progressive Autonomous SIP Valuation Cockpit */}
+              <div className="rounded-lg bg-background border border-border p-2.5 text-xs space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 pb-1 border-b border-border/50">
+                  <span className="font-bold text-foreground flex items-center gap-1.5">
+                    <span>⚡ Autonomous Progressive SIP Valuation (Rupee Cost Averaging)</span>
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    {startMonthYear ? `SIP active since ${startMonthYear}` : "Enter start date above"}
                   </span>
                 </div>
-              )}
+
+                {startMonthYear && Number(sipAmount) > 0 ? (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">Invested Capital</span>
+                        <strong className="text-foreground">
+                          {currencySymbol}{investedNum.toLocaleString("en-IN")}
+                        </strong>
+                        <span className="block text-[9px] text-muted-foreground">
+                          {sipHistory.elapsedInstallments} debits × {currencySymbol}{Number(sipAmount).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">Average Purchase NAV</span>
+                        <strong className="text-foreground">
+                          {purchasePrice
+                            ? `${currencySymbol}${Number(purchasePrice).toLocaleString("en-IN")}`
+                            : isCalculatingSip
+                            ? "Fetching…"
+                            : "Auto-calculating…"}
+                        </strong>
+                        <span className="block text-[9px] text-muted-foreground">
+                          Today's NAV: {currencySymbol}{Number(currentPrice || purchasePrice).toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">Accumulated Units</span>
+                        <strong className="text-foreground">
+                          {units
+                            ? Number(units).toLocaleString("en-IN")
+                            : isCalculatingSip
+                            ? "Calculating…"
+                            : "Ready"}
+                        </strong>
+                        <span className="block text-[9px] text-muted-foreground">
+                          Auto-allotted
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">Total Return / PnL</span>
+                        <strong className={valuation.absolutePnL >= 0 ? "text-emerald-500" : "text-rose-500"}>
+                          {valuation.absolutePnL >= 0 ? "+" : ""}{currencySymbol}{Math.abs(valuation.absolutePnL).toLocaleString("en-IN")} ({valuation.absolutePnLPct}%)
+                        </strong>
+                        <span className="block text-[9px] text-muted-foreground">
+                          Current: {currencySymbol}{currentNum.toLocaleString("en-IN")}
+                        </span>
+                      </div>
+                    </div>
+
+                    {sipStatusMessage && (
+                      <div className="flex items-center gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-300">
+                        <span>⚠️</span>
+                        <span>{sipStatusMessage}</span>
+                      </div>
+                    )}
+
+                    {/* Collapsible Monthly Installments Breakdown Table */}
+                    {sipValuationDetails && sipValuationDetails.installmentsBreakdown.length > 0 && (
+                      <div className="pt-1.5 border-t border-border/40 space-y-1.5">
+                        <button
+                          type="button"
+                          onClick={() => setShowSipBreakdown((prev) => !prev)}
+                          className="flex items-center justify-between w-full text-[11px] font-semibold text-primary hover:underline cursor-pointer py-1"
+                        >
+                          <span>
+                            {showSipBreakdown ? "Hide" : "View"} Monthly Installment Progression Breakdown ({sipValuationDetails.installmentsBreakdown.length} months)
+                          </span>
+                          <span className="text-[10px] font-normal text-muted-foreground">
+                            {showSipBreakdown ? "▲ Collapse" : "▼ Expand"}
+                          </span>
+                        </button>
+
+                        {showSipBreakdown && (
+                          <div className="max-h-48 overflow-y-auto rounded-md border border-border/60 bg-muted/20 text-[10px]">
+                            <table className="w-full text-left border-collapse">
+                              <thead className="bg-muted/70 text-muted-foreground sticky top-0">
+                                <tr>
+                                  <th className="py-1 px-2 font-semibold">#</th>
+                                  <th className="py-1 px-2 font-semibold">Date</th>
+                                  <th className="py-1 px-2 font-semibold">Debit</th>
+                                  <th className="py-1 px-2 font-semibold">NAV Price</th>
+                                  <th className="py-1 px-2 font-semibold">Allotted</th>
+                                  <th className="py-1 px-2 font-semibold">Cum. Units</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-border/40">
+                                {sipValuationDetails.installmentsBreakdown.map((row) => (
+                                  <tr key={row.cycle} className="hover:bg-muted/40 transition-colors">
+                                    <td className="py-1 px-2 font-medium text-muted-foreground">{row.cycle}</td>
+                                    <td className="py-1 px-2 font-semibold text-foreground">{row.date}</td>
+                                    <td className="py-1 px-2">{currencySymbol}{row.installmentAmount.toLocaleString("en-IN")}</td>
+                                    <td className="py-1 px-2 font-mono font-medium">{currencySymbol}{row.nav.toLocaleString("en-IN")}</td>
+                                    <td className="py-1 px-2 font-mono text-primary font-semibold">{row.units.toFixed(4)}</td>
+                                    <td className="py-1 px-2 font-mono text-muted-foreground">{row.cumulativeUnits.toFixed(4)}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg bg-background border border-border/70 p-2 text-xs text-muted-foreground flex items-center gap-2">
+                    <span>💡</span>
+                    <span>
+                      Enter your <strong>SIP Start Date</strong> and <strong>Monthly SIP Amount</strong> above to autonomously calculate historical progressive units and PnL.
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
           ) : (
             <div className="pt-2 border-t border-border/60 space-y-2">

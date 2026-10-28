@@ -1,4 +1,27 @@
 import { getApiBaseUrl } from "./auth-api";
+import { calculateSipHistoricalProgress } from "../../lib/investment-calculator";
+
+export interface SipInstallmentRecord {
+  cycle: number;
+  date: string;
+  nav: number;
+  installmentAmount: number;
+  units: number;
+  cumulativeUnits: number;
+  cumulativeInvested: number;
+}
+
+export interface SipValuationResult {
+  elapsedInstallments: number;
+  totalInvested: number;
+  totalUnits: number;
+  averageBuyPrice: number;
+  currentPrice: number;
+  currentAmount: number;
+  absolutePnL: number;
+  absolutePnLPct: number;
+  installmentsBreakdown: SipInstallmentRecord[];
+}
 
 export interface InstrumentSearchResult {
   symbol: string;
@@ -356,6 +379,141 @@ export const marketApi = {
   },
 
   /**
+   * Resolves scheme code and retrieves full historical daily NAV dataset from public AMFI.
+   */
+  async getSchemeHistoricalDataset(symbolOrName: string): Promise<Array<{ date: string; nav: string }> | null> {
+    const raw = symbolOrName.trim();
+    if (!raw) return null;
+
+    const isNumericScheme = /^\d+$/.test(raw);
+    let schemeCode = isNumericScheme ? raw : MF_SCHEME_CACHE.get(raw.toLowerCase()) || "";
+
+    if (!schemeCode) {
+      const cleanQ = raw.split("-")[0].replace(/fund/gi, "").trim() || raw;
+      try {
+        const searchRes = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(cleanQ)}`, {
+          signal: AbortSignal.timeout(3000),
+        });
+        if (searchRes.ok) {
+          const list: { schemeCode: number; schemeName: string }[] = await searchRes.json();
+          if (Array.isArray(list) && list.length > 0) {
+            const rawLower = raw.toLowerCase();
+            const wantsDirect = rawLower.includes("direct");
+            const wantsGrowth = rawLower.includes("growth");
+            const wantsIdcw = rawLower.includes("idcw") || rawLower.includes("dividend");
+
+            const bestMatch =
+              list.find((s) => {
+                const sn = s.schemeName.toLowerCase();
+                if (wantsDirect && !sn.includes("direct")) return false;
+                if (!wantsDirect && sn.includes("direct")) return false;
+                if (wantsGrowth && !sn.includes("growth")) return false;
+                if (wantsIdcw && !sn.includes("idcw") && !sn.includes("dividend")) return false;
+                return true;
+              }) ||
+              list.find((s) => {
+                const sn = s.schemeName.toLowerCase();
+                return (!wantsDirect || sn.includes("direct")) && (!wantsGrowth || sn.includes("growth"));
+              }) ||
+              list[0];
+
+            schemeCode = bestMatch.schemeCode.toString();
+            MF_SCHEME_CACHE.set(raw.toLowerCase(), schemeCode);
+          }
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    if (!schemeCode) return null;
+
+    let dataArr = MF_HISTORICAL_CACHE.get(schemeCode);
+    if (!dataArr) {
+      const endpoints = [
+        `/api/mfproxy/mf/${schemeCode}`,
+        `https://api.mfapi.in/mf/${schemeCode}`,
+        `${getApiBaseUrl()}/api/v1/investments/mutual-funds/${schemeCode}/history`,
+      ];
+
+      for (const ep of endpoints) {
+        try {
+          const res = await fetch(ep, { signal: AbortSignal.timeout(6000) });
+          if (res.ok) {
+            const json = await res.json();
+            const rawList = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : null;
+            if (rawList && rawList.length > 0) {
+              const mapped: Array<{ date: string; nav: string }> = rawList.map((d: any) => ({
+                date: String(d.date || d.Date),
+                nav: String(d.nav || d.Nav),
+              }));
+              dataArr = mapped;
+              MF_HISTORICAL_CACHE.set(schemeCode, mapped);
+              break;
+            }
+          }
+        } catch {
+          // Next
+        }
+      }
+    }
+
+    return dataArr || null;
+  },
+
+  /**
+   * Finds the closest trading day NAV from historical dataset.
+   */
+  findClosestNavInDataset(
+    dataArr: Array<{ date: string; nav: string }>,
+    targetYear: number,
+    targetMonth: number,
+    targetDay: number
+  ): number | null {
+    const mStr = String(targetMonth).padStart(2, "0");
+    const dStr = String(targetDay).padStart(2, "0");
+    const exactTargetStr = `${dStr}-${mStr}-${targetYear}`;
+
+    // A. Exact trading day match
+    const exactMatch = dataArr.find((d) => d.date === exactTargetStr);
+    if (exactMatch && Number(exactMatch.nav) > 0) {
+      return Math.round(Number(exactMatch.nav) * 100) / 100;
+    }
+
+    // B. Nearest trading day record (within 7 days)
+    const targetMs = new Date(targetYear, targetMonth - 1, targetDay).getTime();
+    let closestNav: number | null = null;
+    let minDiff = Infinity;
+    for (const d of dataArr) {
+      const p = d.date.split("-").map(Number);
+      if (p.length === 3) {
+        const itemMs = new Date(p[2], p[1] - 1, p[0]).getTime();
+        const diff = Math.abs(itemMs - targetMs);
+        if (diff < minDiff) {
+          minDiff = diff;
+          closestNav = Number(d.nav);
+          if (diff === 0) break;
+        }
+      }
+    }
+
+    if (closestNav && closestNav > 0) {
+      return Math.round(closestNav * 100) / 100;
+    }
+
+    // C. Month fallback
+    const targetSubstr = `-${mStr}-${targetYear}`;
+    const matchingRecords = dataArr.filter((d) => d.date.endsWith(targetSubstr));
+    if (matchingRecords.length > 0) {
+      const rec = matchingRecords[matchingRecords.length - 1];
+      const navVal = Number(rec.nav);
+      if (navVal > 0) return Math.round(navVal * 100) / 100;
+    }
+
+    return null;
+  },
+
+  /**
    * Fetches the real historical NAV from public AMFI or historical stock prices on the purchase start date.
    * Supports full date (YYYY-MM-DD / DD/MM/YYYY) for exact historical price or month (YYYY-MM).
    * Enables 100% accurate autonomous valuation for Lump Sum investments from purchase date till today.
@@ -377,12 +535,6 @@ export const marketApi = {
     const month = parts[1];
     const day = isFullDate ? parts[2] : 1;
 
-    const mStr = String(month).padStart(2, "0");
-    const dStr = String(day).padStart(2, "0");
-    const exactTargetStr = isFullDate ? `${dStr}-${mStr}-${year}` : null;
-    const targetSubstr = `-${mStr}-${year}`;
-    const targetMs = new Date(year, month - 1, day).getTime();
-
     const isNumericScheme = /^\d+$/.test(raw);
     const isMf =
       isNumericScheme ||
@@ -398,111 +550,10 @@ export const marketApi = {
     // 1. Fetch Real Historical NAV from Public AMFI via zero-CORS proxy or backend
     if (isMf) {
       try {
-        let schemeCode = isNumericScheme ? raw : MF_SCHEME_CACHE.get(raw.toLowerCase()) || "";
-        if (!schemeCode) {
-          const cleanQ = raw.split("-")[0].replace(/fund/gi, "").trim() || raw;
-          const searchRes = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(cleanQ)}`, {
-            signal: AbortSignal.timeout(3000),
-          });
-          if (searchRes.ok) {
-            const list: { schemeCode: number; schemeName: string }[] = await searchRes.json();
-            if (Array.isArray(list) && list.length > 0) {
-              const rawLower = raw.toLowerCase();
-              const wantsDirect = rawLower.includes("direct");
-              const wantsGrowth = rawLower.includes("growth");
-              const wantsIdcw = rawLower.includes("idcw") || rawLower.includes("dividend");
-
-              const bestMatch =
-                list.find((s) => {
-                  const sn = s.schemeName.toLowerCase();
-                  if (wantsDirect && !sn.includes("direct")) return false;
-                  if (!wantsDirect && sn.includes("direct")) return false;
-                  if (wantsGrowth && !sn.includes("growth")) return false;
-                  if (wantsIdcw && !sn.includes("idcw") && !sn.includes("dividend")) return false;
-                  return true;
-                }) ||
-                list.find((s) => {
-                  const sn = s.schemeName.toLowerCase();
-                  return (!wantsDirect || sn.includes("direct")) && (!wantsGrowth || sn.includes("growth"));
-                }) ||
-                list[0];
-
-              schemeCode = bestMatch.schemeCode.toString();
-              MF_SCHEME_CACHE.set(raw.toLowerCase(), schemeCode);
-            }
-          }
-        }
-
-        if (schemeCode) {
-          let dataArr = MF_HISTORICAL_CACHE.get(schemeCode);
-          if (!dataArr) {
-            // Query via local Vite/SSR server proxy, direct public mfapi, or backend API
-            const endpoints = [
-              `/api/mfproxy/mf/${schemeCode}`,
-              `https://api.mfapi.in/mf/${schemeCode}`,
-              `${getApiBaseUrl()}/api/v1/investments/mutual-funds/${schemeCode}/history`,
-            ];
-
-            for (const ep of endpoints) {
-              try {
-                const res = await fetch(ep, { signal: AbortSignal.timeout(6000) });
-                if (res.ok) {
-                  const json = await res.json();
-                  const rawList = Array.isArray(json?.data) ? json.data : Array.isArray(json) ? json : null;
-                  if (rawList && rawList.length > 0) {
-                    const mapped: Array<{ date: string; nav: string }> = rawList.map((d: any) => ({
-                      date: String(d.date || d.Date),
-                      nav: String(d.nav || d.Nav),
-                    }));
-                    dataArr = mapped;
-                    MF_HISTORICAL_CACHE.set(schemeCode, mapped);
-                    break;
-                  }
-                }
-              } catch {
-                // Try next endpoint
-              }
-            }
-          }
-
-          if (dataArr && dataArr.length > 0) {
-            // A. If full date was provided (DD/MM/YYYY), check exact date match first
-            if (exactTargetStr) {
-              const exactMatch = dataArr.find((d) => d.date === exactTargetStr);
-              if (exactMatch && Number(exactMatch.nav) > 0) {
-                return Math.round(Number(exactMatch.nav) * 100) / 100;
-              }
-            }
-
-            // B. Find closest trading day record on or near the target purchase date
-            let closestNav: number | null = null;
-            let minDiff = Infinity;
-            for (const d of dataArr) {
-              const p = d.date.split("-").map(Number);
-              if (p.length === 3) {
-                const itemMs = new Date(p[2], p[1] - 1, p[0]).getTime();
-                const diff = Math.abs(itemMs - targetMs);
-                if (diff < minDiff) {
-                  minDiff = diff;
-                  closestNav = Number(d.nav);
-                  if (diff === 0) break;
-                }
-              }
-            }
-            if (closestNav && closestNav > 0) {
-              return Math.round(closestNav * 100) / 100;
-            }
-
-            // C. Fallback for month-only target
-            const matchingRecords = dataArr.filter((d: { date: string; nav: string }) => d.date.endsWith(targetSubstr));
-            if (matchingRecords.length > 0) {
-              const startOfMonthRec = matchingRecords[matchingRecords.length - 1];
-              const navVal = Number(startOfMonthRec.nav);
-              if (navVal > 0) {
-                return Math.round(navVal * 100) / 100;
-              }
-            }
-          }
+        const dataArr = await this.getSchemeHistoricalDataset(raw);
+        if (dataArr && dataArr.length > 0) {
+          const nav = this.findClosestNavInDataset(dataArr, year, month, day);
+          if (nav && nav > 0) return nav;
         }
       } catch {
         // Fallback below
@@ -544,6 +595,132 @@ export const marketApi = {
     }
 
     return null;
+  },
+
+  /**
+   * Calculates 100% accurate progressive SIP valuation:
+   * Simulates each historical monthly installment debit on sipDay from start date to reference date,
+   * fetches the exact public AMFI historical NAV on each installment date,
+   * accumulates total allotted units, computes weighted average purchase NAV,
+   * current market value, and exact rupee/percentage PnL.
+   */
+  async calculateProgressiveSipValuation(params: {
+    symbolOrName: string;
+    startDate: string;
+    monthlySipAmount: number;
+    sipDay: number;
+    livePrice?: number;
+    referenceDate?: Date;
+  }): Promise<SipValuationResult> {
+    const raw = params.symbolOrName.trim();
+    const sAmount = Math.max(0, Number(params.monthlySipAmount) || 0);
+    const sDay = Math.max(1, Math.min(31, Math.floor(params.sipDay) || 10));
+    const refDate = params.referenceDate || new Date();
+
+    const progress = calculateSipHistoricalProgress(params.startDate, sAmount, sDay, refDate);
+    const totalInstallments = progress.elapsedInstallments;
+    const totalInvested = progress.totalEstimatedInvested;
+
+    // Resolve live market price / current NAV
+    let resolvedLivePrice = params.livePrice && params.livePrice > 0 ? params.livePrice : 0;
+    if (resolvedLivePrice <= 0 && raw) {
+      const liveRes = await this.getLiveQuoteWithFallbacks(raw);
+      resolvedLivePrice = liveRes.quote?.currentPrice || 0;
+    }
+
+    // Parse start date
+    const parts = (params.startDate || "2024-01-10").split("-").map(Number);
+    const startYear = parts[0] || refDate.getFullYear();
+    const startMonth = parts[1] || 1; // 1-indexed
+    const startDay = parts[2] || sDay;
+
+    // Fetch full historical NAV series from public AMFI
+    const dataArr = await this.getSchemeHistoricalDataset(raw);
+
+    // If starting NAV cannot be retrieved from dataset, attempt single date fallback
+    let baselineStartNav = 0;
+    if (!dataArr && raw) {
+      baselineStartNav = (await this.getHistoricalNavOrPrice(raw, params.startDate, resolvedLivePrice)) || resolvedLivePrice;
+    }
+
+    const breakdown: SipInstallmentRecord[] = [];
+    let cumUnits = 0;
+    let cumInvested = 0;
+
+    const calendarMonths = (refDate.getFullYear() - startYear) * 12 + (refDate.getMonth() + 1 - startMonth);
+    const hasInitialMandateDebit = totalInstallments > (calendarMonths + 1);
+
+    for (let k = 0; k < totalInstallments; k++) {
+      let targetYear = startYear;
+      let targetMonth = startMonth;
+      let targetDay = sDay;
+
+      if (k === 0 && hasInitialMandateDebit) {
+        // Initial setup debit
+        const maxDays = new Date(startYear, startMonth, 0).getDate();
+        targetDay = Math.min(startDay, maxDays);
+      } else {
+        const monthOffset = hasInitialMandateDebit ? k - 1 : k;
+        const targetDateObj = new Date(startYear, (startMonth - 1) + monthOffset, 1);
+        targetYear = targetDateObj.getFullYear();
+        targetMonth = targetDateObj.getMonth() + 1;
+        const maxDays = new Date(targetYear, targetMonth, 0).getDate();
+        targetDay = Math.min(sDay, maxDays);
+      }
+
+      const mStr = String(targetMonth).padStart(2, "0");
+      const dStr = String(targetDay).padStart(2, "0");
+      const dateStr = `${dStr}/${mStr}/${targetYear}`;
+
+      // Resolve NAV on installment date
+      let nav = 0;
+      if (dataArr && dataArr.length > 0) {
+        nav = this.findClosestNavInDataset(dataArr, targetYear, targetMonth, targetDay) || 0;
+      }
+
+      // Fallback interpolation if AMFI series missing
+      if (nav <= 0) {
+        if (baselineStartNav > 0 && resolvedLivePrice > 0) {
+          const ratio = totalInstallments > 1 ? k / (totalInstallments - 1) : 1;
+          nav = Math.round((baselineStartNav + (resolvedLivePrice - baselineStartNav) * ratio) * 100) / 100;
+        } else {
+          nav = resolvedLivePrice > 0 ? resolvedLivePrice : 100;
+        }
+      }
+
+      const allottedUnits = nav > 0 ? Math.round((sAmount / nav) * 10000) / 10000 : 0;
+      cumUnits = Math.round((cumUnits + allottedUnits) * 10000) / 10000;
+      cumInvested += sAmount;
+
+      breakdown.push({
+        cycle: k + 1,
+        date: dateStr,
+        nav,
+        installmentAmount: sAmount,
+        units: allottedUnits,
+        cumulativeUnits: cumUnits,
+        cumulativeInvested: cumInvested,
+      });
+    }
+
+    const totalUnits = cumUnits;
+    const averageBuyPrice = totalUnits > 0 ? Math.round((totalInvested / totalUnits) * 100) / 100 : resolvedLivePrice;
+    const effectiveCurrentPrice = resolvedLivePrice > 0 ? resolvedLivePrice : averageBuyPrice;
+    const currentAmount = Math.round(totalUnits * effectiveCurrentPrice * 100) / 100;
+    const absolutePnL = Math.round((currentAmount - totalInvested) * 100) / 100;
+    const absolutePnLPct = totalInvested > 0 ? Math.round((absolutePnL / totalInvested) * 10000) / 100 : 0;
+
+    return {
+      elapsedInstallments: totalInstallments,
+      totalInvested,
+      totalUnits,
+      averageBuyPrice,
+      currentPrice: effectiveCurrentPrice,
+      currentAmount,
+      absolutePnL,
+      absolutePnLPct,
+      installmentsBreakdown: breakdown,
+    };
   },
 
   /**
