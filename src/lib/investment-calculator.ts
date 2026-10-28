@@ -76,8 +76,8 @@ export function calculateInvestmentValuation(input: ValuationInput): ValuationRe
 
   // Calculate elapsed holding period
   let elapsedMonths = 1;
-  if (input.startMonthYear && /^\d{4}-\d{2}$/.test(input.startMonthYear)) {
-    const [year, month] = input.startMonthYear.split("-").map(Number);
+  if (input.startMonthYear && /^\d{4}-\d{2}(-\d{2})?$/.test(input.startMonthYear)) {
+    const [year, month] = input.startMonthYear.slice(0, 7).split("-").map(Number);
     const start = new Date(year, month - 1, 1);
     const now = new Date();
     elapsedMonths = Math.max(
@@ -104,9 +104,9 @@ export function calculateInvestmentValuation(input: ValuationInput): ValuationRe
     fdAccruedInterest = Math.max(0, currentAmount - investedAmount);
 
     // Optional maturity calculation if endMonthYear is provided
-    if (input.endMonthYear && /^\d{4}-\d{2}$/.test(input.endMonthYear)) {
-      const [endYear, endMonth] = input.endMonthYear.split("-").map(Number);
-      const [startYear, startMonth] = (input.startMonthYear || "2024-01").split("-").map(Number);
+    if (input.endMonthYear && /^\d{4}-\d{2}(-\d{2})?$/.test(input.endMonthYear)) {
+      const [endYear, endMonth] = input.endMonthYear.slice(0, 7).split("-").map(Number);
+      const [startYear, startMonth] = (input.startMonthYear || "2024-01").slice(0, 7).split("-").map(Number);
       const totalTenureMonths = Math.max(1, (endYear - startYear) * 12 + (endMonth - startMonth));
       const totalTenureYears = totalTenureMonths / 12;
       fdMaturityAmount = Math.round(investedAmount * Math.pow(1 + rate / n, n * totalTenureYears) * 100) / 100;
@@ -244,11 +244,11 @@ export function calculateSipHistoricalProgress(
   totalEstimatedInvested: number;
   monthsElapsed: number;
 } {
-  if (!startMonthYear || !/^\d{4}-\d{2}$/.test(startMonthYear)) {
+  if (!startMonthYear || !/^\d{4}-\d{2}(-\d{2})?$/.test(startMonthYear)) {
     return { elapsedInstallments: 1, totalEstimatedInvested: monthlySipAmount, monthsElapsed: 1 };
   }
 
-  const [startYear, startMonth] = startMonthYear.split("-").map(Number);
+  const [startYear, startMonth] = startMonthYear.slice(0, 7).split("-").map(Number);
   const currentYear = referenceDate.getFullYear();
   const currentMonth = referenceDate.getMonth() + 1; // 1-indexed
   const currentDay = referenceDate.getDate();

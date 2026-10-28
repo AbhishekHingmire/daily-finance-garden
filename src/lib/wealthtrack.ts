@@ -70,6 +70,7 @@ export type AssetType =
 export interface InvestmentHolding {
   id: string;
   name: string;
+  symbol?: string;
   assetType: AssetType;
   investedAmount: number;
   currentAmount: number;

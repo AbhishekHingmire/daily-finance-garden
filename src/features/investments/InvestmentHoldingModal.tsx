@@ -176,6 +176,9 @@ export function InvestmentHoldingModal({
     currency: string;
     category: string;
   } | null>(null);
+  const [selectedSymbol, setSelectedSymbol] = useState(
+    existing?.symbol || existing?.notes?.match(/\[AMFI:(\d+)\]/)?.[1] || ""
+  );
   const [isServiceDown, setIsServiceDown] = useState(false);
   const [isFetchingQuote, setIsFetchingQuote] = useState(false);
   const [isCalculatingLumpSum, setIsCalculatingLumpSum] = useState(false);
@@ -237,6 +240,7 @@ export function InvestmentHoldingModal({
   const handleSelectInstrument = async (item: InstrumentSearchResult) => {
     setName(item.name);
     setAssetType(item.assetType);
+    setSelectedSymbol(item.symbol || "");
     if (item.exchange) {
       setInstitution(item.exchange);
     }
@@ -293,7 +297,7 @@ export function InvestmentHoldingModal({
         // Auto-compute units & purchase price if investedAmount is already entered
         const inv = Number(investedAmount) || 0;
         if (investmentStyle === "LumpSum" && inv > 0 && startMonthYear) {
-          executeAutonomousLumpSumValuation(inv, startMonthYear, item.name, finalPriceInUserCurrency);
+          executeAutonomousLumpSumValuation(inv, startMonthYear, item.symbol || item.name, finalPriceInUserCurrency);
         } else if (inv > 0 && (units === "" || Number(units) <= 0)) {
           const derivedUnits = Math.round((inv / finalPriceInUserCurrency) * 10000) / 10000;
           setUnits(derivedUnits);
@@ -324,8 +328,8 @@ export function InvestmentHoldingModal({
   // 1. Get that time NAV price and divide by lump sum invested to derive total units
   // 2. Multiply derived units by today's NAV price to compute current valuation & PnL
   const executeAutonomousLumpSumValuation = useCallback(
-    async (invAmt: number, startDt: string, holdingName: string, knownLivePrice?: number) => {
-      if (!invAmt || invAmt <= 0 || !startDt || !holdingName.trim()) {
+    async (invAmt: number, startDt: string, holdingName?: string, knownLivePrice?: number) => {
+      if (!invAmt || invAmt <= 0 || !startDt) {
         return;
       }
 
@@ -334,8 +338,14 @@ export function InvestmentHoldingModal({
 
       try {
         const liveP = knownLivePrice && knownLivePrice > 0 ? knownLivePrice : Number(currentPrice) || undefined;
-        // Step 1: That time NAV price
-        const buyNav = await marketApi.getHistoricalNavOrPrice(holdingName, startDt, liveP);
+        // Step 1: That time NAV price from public AMFI API using exact scheme code or symbol
+        const targetId = selectedSymbol || selectedQuote?.symbol || holdingName || name;
+        if (!targetId || !targetId.trim()) {
+          setIsCalculatingLumpSum(false);
+          return;
+        }
+
+        const buyNav = await marketApi.getHistoricalNavOrPrice(targetId, startDt, liveP);
 
         if (buyNav && buyNav > 0) {
           setPurchasePrice(buyNav);
@@ -360,7 +370,7 @@ export function InvestmentHoldingModal({
         setIsCalculatingLumpSum(false);
       }
     },
-    [currentPrice]
+    [currentPrice, selectedSymbol, selectedQuote?.symbol, name]
   );
 
   // Invested amount change handler (synchronizes units or buy price)
@@ -372,7 +382,8 @@ export function InvestmentHoldingModal({
     const inv = Number(val);
     setInvestedAmount(inv);
     if (investmentStyle === "LumpSum" && startMonthYear && inv > 0) {
-      executeAutonomousLumpSumValuation(inv, startMonthYear, name, Number(currentPrice) || undefined);
+      const targetId = selectedSymbol || selectedQuote?.symbol || name;
+      executeAutonomousLumpSumValuation(inv, startMonthYear, targetId, Number(currentPrice) || undefined);
     } else {
       const price = Number(currentPrice);
       if (units !== "" && Number(units) > 0) {
@@ -474,7 +485,8 @@ export function InvestmentHoldingModal({
       const progress = calculateSipHistoricalProgress(val, Number(sipAmount), sipDay);
       setInvestedAmount(progress.totalEstimatedInvested);
     } else if (investmentStyle === "LumpSum" && Number(investedAmount) > 0 && val) {
-      executeAutonomousLumpSumValuation(Number(investedAmount), val, name, Number(currentPrice) || undefined);
+      const targetId = selectedSymbol || selectedQuote?.symbol || name;
+      executeAutonomousLumpSumValuation(Number(investedAmount), val, targetId, Number(currentPrice) || undefined);
     }
   };
 
@@ -544,7 +556,7 @@ export function InvestmentHoldingModal({
 
     if (investmentStyle === "LumpSum") {
       if (!startMonthYear || !startMonthYear.trim()) {
-        errs.startMonthYear = "Start Date (Month & Year) is required for Lump Sum investment.";
+        errs.startMonthYear = "Purchase Date (DD/MM/YYYY) is required for Lump Sum investment.";
       }
     }
 
@@ -563,6 +575,7 @@ export function InvestmentHoldingModal({
     const holding: InvestmentHolding = {
       id: existing?.id ?? `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       name: name.trim(),
+      symbol: selectedSymbol || existing?.symbol || selectedQuote?.symbol || undefined,
       assetType,
       institution: institution.trim() || undefined,
       startMonthYear,
@@ -783,7 +796,7 @@ export function InvestmentHoldingModal({
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="wt-label">
-              Start Date (Month & Year){" "}
+              {investmentStyle === "LumpSum" ? "Purchase Date (DD/MM/YYYY) *" : "Start Date (Month & Year)"}{" "}
               {investmentStyle === "LumpSum" ? (
                 <span className="text-destructive font-bold">*</span>
               ) : (
@@ -791,7 +804,7 @@ export function InvestmentHoldingModal({
               )}
             </span>
             <input
-              type="month"
+              type={investmentStyle === "LumpSum" ? "date" : "month"}
               required={investmentStyle === "LumpSum"}
               className="wt-field font-semibold text-xs bg-background"
               value={startMonthYear}
@@ -835,8 +848,14 @@ export function InvestmentHoldingModal({
               onClick={() => {
                 setInvestmentStyle("LumpSum");
                 setIsRecurring(false);
-                if (investedNum > 0 && startMonthYear && name) {
-                  executeAutonomousLumpSumValuation(investedNum, startMonthYear, name, Number(currentPrice) || undefined);
+                let initialDate = startMonthYear;
+                if (initialDate && /^\d{4}-\d{2}$/.test(initialDate)) {
+                  initialDate = `${initialDate}-01`;
+                  setStartMonthYear(initialDate);
+                }
+                if (investedNum > 0 && initialDate) {
+                  const targetId = selectedSymbol || selectedQuote?.symbol || name;
+                  executeAutonomousLumpSumValuation(investedNum, initialDate, targetId, Number(currentPrice) || undefined);
                 }
               }}
             >

@@ -225,10 +225,27 @@ export const marketApi = {
           if (searchRes.ok) {
             const list: { schemeCode: number; schemeName: string }[] = await searchRes.json();
             if (Array.isArray(list) && list.length > 0) {
-              const directMatch = raw.toLowerCase().includes("direct")
-                ? list.find((s) => s.schemeName.toLowerCase().includes("direct"))
-                : null;
-              schemeCode = (directMatch || list[0]).schemeCode.toString();
+              const rawLower = raw.toLowerCase();
+              const wantsDirect = rawLower.includes("direct");
+              const wantsGrowth = rawLower.includes("growth");
+              const wantsIdcw = rawLower.includes("idcw") || rawLower.includes("dividend");
+
+              const bestMatch =
+                list.find((s) => {
+                  const sn = s.schemeName.toLowerCase();
+                  if (wantsDirect && !sn.includes("direct")) return false;
+                  if (!wantsDirect && sn.includes("direct")) return false;
+                  if (wantsGrowth && !sn.includes("growth")) return false;
+                  if (wantsIdcw && !sn.includes("idcw") && !sn.includes("dividend")) return false;
+                  return true;
+                }) ||
+                list.find((s) => {
+                  const sn = s.schemeName.toLowerCase();
+                  return (!wantsDirect || sn.includes("direct")) && (!wantsGrowth || sn.includes("growth"));
+                }) ||
+                list[0];
+
+              schemeCode = bestMatch.schemeCode.toString();
               MF_SCHEME_CACHE.set(raw.toLowerCase(), schemeCode);
             }
           }
@@ -340,19 +357,31 @@ export const marketApi = {
 
   /**
    * Fetches the real historical NAV from public AMFI or historical stock prices on the purchase start date.
+   * Supports full date (YYYY-MM-DD / DD/MM/YYYY) for exact historical price or month (YYYY-MM).
    * Enables 100% accurate autonomous valuation for Lump Sum investments from purchase date till today.
    */
   async getHistoricalNavOrPrice(
     symbolOrName: string,
-    startMonthYear: string,
+    startDtOrMonth: string,
     knownCurrentPrice?: number
   ): Promise<number | null> {
     const raw = symbolOrName.trim();
-    if (!raw || !startMonthYear || !/^\d{4}-\d{2}$/.test(startMonthYear)) return null;
+    if (!raw || !startDtOrMonth) return null;
 
-    const [year, month] = startMonthYear.split("-").map(Number);
+    const isFullDate = /^\d{4}-\d{2}-\d{2}$/.test(startDtOrMonth);
+    const isMonthOnly = /^\d{4}-\d{2}$/.test(startDtOrMonth);
+    if (!isFullDate && !isMonthOnly) return null;
+
+    const parts = startDtOrMonth.split("-").map(Number);
+    const year = parts[0];
+    const month = parts[1];
+    const day = isFullDate ? parts[2] : 1;
+
     const mStr = String(month).padStart(2, "0");
+    const dStr = String(day).padStart(2, "0");
+    const exactTargetStr = isFullDate ? `${dStr}-${mStr}-${year}` : null;
     const targetSubstr = `-${mStr}-${year}`;
+    const targetMs = new Date(year, month - 1, day).getTime();
 
     const isNumericScheme = /^\d+$/.test(raw);
     const isMf =
@@ -378,10 +407,27 @@ export const marketApi = {
           if (searchRes.ok) {
             const list: { schemeCode: number; schemeName: string }[] = await searchRes.json();
             if (Array.isArray(list) && list.length > 0) {
-              const directMatch = raw.toLowerCase().includes("direct")
-                ? list.find((s) => s.schemeName.toLowerCase().includes("direct"))
-                : null;
-              schemeCode = (directMatch || list[0]).schemeCode.toString();
+              const rawLower = raw.toLowerCase();
+              const wantsDirect = rawLower.includes("direct");
+              const wantsGrowth = rawLower.includes("growth");
+              const wantsIdcw = rawLower.includes("idcw") || rawLower.includes("dividend");
+
+              const bestMatch =
+                list.find((s) => {
+                  const sn = s.schemeName.toLowerCase();
+                  if (wantsDirect && !sn.includes("direct")) return false;
+                  if (!wantsDirect && sn.includes("direct")) return false;
+                  if (wantsGrowth && !sn.includes("growth")) return false;
+                  if (wantsIdcw && !sn.includes("idcw") && !sn.includes("dividend")) return false;
+                  return true;
+                }) ||
+                list.find((s) => {
+                  const sn = s.schemeName.toLowerCase();
+                  return (!wantsDirect || sn.includes("direct")) && (!wantsGrowth || sn.includes("growth"));
+                }) ||
+                list[0];
+
+              schemeCode = bestMatch.schemeCode.toString();
               MF_SCHEME_CACHE.set(raw.toLowerCase(), schemeCode);
             }
           }
@@ -390,9 +436,10 @@ export const marketApi = {
         if (schemeCode) {
           let dataArr = MF_HISTORICAL_CACHE.get(schemeCode);
           if (!dataArr) {
-            // Query via local Vite/SSR server proxy or backend API
+            // Query via local Vite/SSR server proxy, direct public mfapi, or backend API
             const endpoints = [
               `/api/mfproxy/mf/${schemeCode}`,
+              `https://api.mfapi.in/mf/${schemeCode}`,
               `${getApiBaseUrl()}/api/v1/investments/mutual-funds/${schemeCode}/history`,
             ];
 
@@ -419,34 +466,41 @@ export const marketApi = {
           }
 
           if (dataArr && dataArr.length > 0) {
-            // Find all records matching target month and year
-            const matchingRecords = dataArr.filter((d: { date: string; nav: string }) => d.date.endsWith(targetSubstr));
-            if (matchingRecords.length > 0) {
-              // AMFI lists dates descending (latest to oldest), so last element is the earliest purchase NAV of that month
-              const startOfMonthRec = matchingRecords[matchingRecords.length - 1];
-              const navVal = Number(startOfMonthRec.nav);
-              if (navVal > 0) {
-                return Math.round(navVal * 100) / 100;
+            // A. If full date was provided (DD/MM/YYYY), check exact date match first
+            if (exactTargetStr) {
+              const exactMatch = dataArr.find((d) => d.date === exactTargetStr);
+              if (exactMatch && Number(exactMatch.nav) > 0) {
+                return Math.round(Number(exactMatch.nav) * 100) / 100;
               }
             }
 
-            // Find closest historical date distance
-            const targetDate = new Date(year, month - 1, 1).getTime();
+            // B. Find closest trading day record on or near the target purchase date
             let closestNav: number | null = null;
             let minDiff = Infinity;
             for (const d of dataArr) {
-              const parts = d.date.split("-").map(Number);
-              if (parts.length === 3) {
-                const dTime = new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-                const diff = Math.abs(dTime - targetDate);
+              const p = d.date.split("-").map(Number);
+              if (p.length === 3) {
+                const itemMs = new Date(p[2], p[1] - 1, p[0]).getTime();
+                const diff = Math.abs(itemMs - targetMs);
                 if (diff < minDiff) {
                   minDiff = diff;
                   closestNav = Number(d.nav);
+                  if (diff === 0) break;
                 }
               }
             }
             if (closestNav && closestNav > 0) {
               return Math.round(closestNav * 100) / 100;
+            }
+
+            // C. Fallback for month-only target
+            const matchingRecords = dataArr.filter((d: { date: string; nav: string }) => d.date.endsWith(targetSubstr));
+            if (matchingRecords.length > 0) {
+              const startOfMonthRec = matchingRecords[matchingRecords.length - 1];
+              const navVal = Number(startOfMonthRec.nav);
+              if (navVal > 0) {
+                return Math.round(navVal * 100) / 100;
+              }
             }
           }
         }

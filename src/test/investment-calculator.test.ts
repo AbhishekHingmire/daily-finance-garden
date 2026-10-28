@@ -190,5 +190,42 @@ describe("Investment Calculator Engine", () => {
       expect(result.elapsedInstallments).toBe(26);
       expect(result.totalEstimatedInvested).toBe(260000);
     });
+
+    it("supports full date format YYYY-MM-DD without breaking installment progress", () => {
+      const refDate = new Date(2026, 9, 29);
+      const result = calculateSipHistoricalProgress("2025-07-15", 5000, 19, refDate);
+
+      expect(result.elapsedInstallments).toBe(17);
+      expect(result.totalEstimatedInvested).toBe(85000);
+    });
+  });
+
+  describe("Autonomous Lump Sum Valuation", () => {
+    it("accurately computes units and current valuation with real historical NAV from purchase date", () => {
+      // Real HDFC Flexi Cap Direct Plan Growth Option scenario:
+      // Invested: ₹80,000 on 2025-07-15 at purchase NAV ₹2,178.07
+      // Live NAV: ₹2,152.61
+      const invested = 80000;
+      const purchaseNav = 2178.07;
+      const liveNav = 2152.61;
+      const derivedUnits = Math.round((invested / purchaseNav) * 10000) / 10000; // ~36.7297 units
+
+      expect(derivedUnits).toBeCloseTo(36.7297, 3);
+
+      const val = calculateInvestmentValuation({
+        investedAmount: invested,
+        units: derivedUnits,
+        purchasePrice: purchaseNav,
+        currentPrice: liveNav,
+        assetType: "Mutual fund",
+        startMonthYear: "2025-07-15",
+      });
+
+      // Current Value = 36.7297 * 2152.61 = ~79,064.62
+      expect(val.currentAmount).toBeCloseTo(79064.62, 0);
+      expect(val.absolutePnL).toBeCloseTo(-935.38, 0);
+      expect(val.absolutePnLPct).toBeCloseTo(-1.17, 1);
+      expect(val.elapsedMonths).toBeGreaterThan(0);
+    });
   });
 });
