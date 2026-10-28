@@ -20,7 +20,12 @@ import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
 import { marketApi, type InstrumentSearchResult } from "@/services/api";
 import { getAccountBalance, type AssetType, type InvestmentHolding, type WealthState } from "@/lib/wealthtrack";
-import { calculateInvestmentValuation, getDefaultExpenseRatio } from "@/lib/investment-calculator";
+import {
+  calculateInvestmentValuation,
+  getDefaultExpenseRatio,
+  computeNextSipDate,
+  calculateSipHistoricalProgress,
+} from "@/lib/investment-calculator";
 import { currencyService } from "@/lib/currency-service";
 
 const ASSET_TYPES: AssetType[] = [
@@ -113,6 +118,10 @@ export function InvestmentHoldingModal({
   const [fdCompounding, setFdCompounding] = useState<"Quarterly" | "Monthly" | "Annual">("Quarterly");
 
   const [isRecurring, setIsRecurring] = useState<boolean>(existing?.isRecurring ?? false);
+  const [investmentStyle, setInvestmentStyle] = useState<"LumpSum" | "SIP">(() =>
+    existing?.investmentStyle ?? (existing?.isRecurring ? "SIP" : "LumpSum")
+  );
+  const [sipDay, setSipDay] = useState<number>(existing?.sipDay ?? 10);
   const [sipAmount, setSipAmount] = useState<number | "">(
     existing?.sipAmount !== undefined ? existing.sipAmount : ""
   );
@@ -120,6 +129,15 @@ export function InvestmentHoldingModal({
   const [sipAccountId, setSipAccountId] = useState<string>(
     existing?.sipAccountId ?? data.accounts[0]?.id ?? ""
   );
+
+  // Dynamic next SIP debit date calculation & historical progress
+  const nextSipSchedule = useMemo(() => {
+    return computeNextSipDate(sipDay);
+  }, [sipDay]);
+
+  const sipHistory = useMemo(() => {
+    return calculateSipHistoricalProgress(startMonthYear, Number(sipAmount) || 0, sipDay);
+  }, [startMonthYear, sipAmount, sipDay]);
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -395,6 +413,8 @@ export function InvestmentHoldingModal({
       sipAmount: isRecurring ? Number(sipAmount) : undefined,
       sipFrequency: isRecurring ? sipFrequency : undefined,
       sipAccountId: isRecurring ? sipAccountId : undefined,
+      sipDay: isRecurring ? sipDay : undefined,
+      investmentStyle,
       status: existing?.status ?? "Active",
       notes: notes.trim() || undefined,
       updatedAt: new Date().toISOString().slice(0, 10),
@@ -1016,95 +1036,164 @@ export function InvestmentHoldingModal({
         )}
 
         {/* Investment Mode: One-time (Lumpsum) vs Recurring (SIP) */}
-        <div className="rounded-xl border border-border/80 bg-muted/20 p-4 space-y-3">
+        <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 sm:p-4 space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-foreground">Contribution Schedule Mode</span>
-            <span className="text-[11px] text-muted-foreground">Auto-syncs with Recurring rules</span>
+            <span className="text-xs font-bold text-foreground">Investment Style & Schedule</span>
+            <span className="text-[11px] text-muted-foreground">Auto-syncs with Recurring scheduler</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2">
             <button
               type="button"
-              className={`rounded-lg border p-2.5 text-xs font-semibold text-center transition-all cursor-pointer ${
-                !isRecurring
+              className={`rounded-lg border p-2 text-xs font-semibold text-center transition-all cursor-pointer ${
+                investmentStyle === "LumpSum"
                   ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
                   : "border-border bg-card text-muted-foreground hover:bg-muted/50"
               }`}
-              onClick={() => setIsRecurring(false)}
+              onClick={() => {
+                setInvestmentStyle("LumpSum");
+                setIsRecurring(false);
+              }}
             >
               One-time (Lumpsum)
             </button>
             <button
               type="button"
-              className={`rounded-lg border p-2.5 text-xs font-semibold text-center transition-all cursor-pointer ${
-                isRecurring
+              className={`rounded-lg border p-2 text-xs font-semibold text-center transition-all cursor-pointer ${
+                investmentStyle === "SIP"
                   ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
                   : "border-border bg-card text-muted-foreground hover:bg-muted/50"
               }`}
               onClick={() => {
+                setInvestmentStyle("SIP");
                 setIsRecurring(true);
                 if (!sipAmount && investedNum > 0) setSipAmount(investedNum);
               }}
             >
-              Recurring (SIP Auto-debit)
+              Recurring (Monthly SIP)
             </button>
           </div>
 
-          {isRecurring && (
-            <div className="pt-2 border-t border-border/60 grid gap-3 sm:grid-cols-3">
-              <div>
-                <span className="wt-label">SIP Amount ({currencySymbol}) *</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  placeholder="e.g. 5000"
-                  className="wt-field font-semibold text-xs"
-                  value={sipAmount}
-                  onChange={(e) => setSipAmount(e.target.value === "" ? "" : Number(e.target.value))}
-                />
-                {errors.sipAmount && (
-                  <span className="mt-1 block text-[10px] text-destructive">{errors.sipAmount}</span>
-                )}
+          {investmentStyle === "SIP" ? (
+            <div className="pt-2 border-t border-border/60 space-y-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <span className="wt-label">Monthly SIP Amount ({currencySymbol}) *</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="e.g. 5000"
+                    className="wt-field font-semibold text-xs"
+                    value={sipAmount}
+                    onChange={(e) => setSipAmount(e.target.value === "" ? "" : Number(e.target.value))}
+                  />
+                  {errors.sipAmount && (
+                    <span className="mt-1 block text-[10px] text-destructive">{errors.sipAmount}</span>
+                  )}
+                </div>
+
+                <div>
+                  <span className="wt-label">Day of Month for Debit (1-31) *</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="31"
+                    placeholder="e.g. 10"
+                    className="wt-field font-semibold text-xs"
+                    value={sipDay}
+                    onChange={(e) => setSipDay(Math.max(1, Math.min(31, Number(e.target.value) || 1)))}
+                  />
+                  {/* Quick Select Day Chips */}
+                  <div className="flex flex-wrap gap-1 mt-1.5">
+                    {[1, 5, 10, 15, 20, 25].map((d) => (
+                      <button
+                        key={d}
+                        type="button"
+                        onClick={() => setSipDay(d)}
+                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors cursor-pointer ${
+                          sipDay === d
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {d}th
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <span className="wt-label">Debit Bank Account *</span>
+                  <select
+                    className="wt-field text-xs font-semibold cursor-pointer"
+                    value={sipAccountId}
+                    onChange={(e) => setSipAccountId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Bank Account --</option>
+                    {data.accounts
+                      .filter((a) => !a.archived)
+                      .map((a) => {
+                        const bal = getAccountBalance(a, data.transactions);
+                        return (
+                          <option key={a.id} value={a.id}>
+                            {a.name} ({a.institution || a.kind}) · {currencySymbol}{bal.toLocaleString("en-IN")}
+                          </option>
+                        );
+                      })}
+                  </select>
+                  {errors.sipAccountId && (
+                    <span className="mt-1 block text-[10px] text-destructive">{errors.sipAccountId}</span>
+                  )}
+                </div>
               </div>
 
-              <div>
-                <span className="wt-label">Cadence Frequency</span>
-                <select
-                  className="wt-field text-xs font-semibold"
-                  value={sipFrequency}
-                  onChange={(e) => setSipFrequency(e.target.value)}
-                >
-                  <option value="Monthly">Monthly</option>
-                  <option value="Weekly">Weekly</option>
-                  <option value="Quarterly">Quarterly</option>
-                </select>
+              {/* Exact Next SIP Deduction Schedule Alert */}
+              <div className="rounded-lg bg-primary/5 border border-primary/20 p-2.5 text-xs space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <span>📅 Next Automated Debit:</span>
+                    <strong className="text-primary font-bold">{nextSipSchedule.nextDate}</strong>
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary shrink-0">
+                    {nextSipSchedule.isSameMonth ? "Deducting This Month" : "Deducting Next Month"} ({nextSipSchedule.daysUntil}d away)
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {nextSipSchedule.isSameMonth
+                    ? `Target day (${sipDay}th) is upcoming in the current month. Deducting on ${nextSipSchedule.nextDate}.`
+                    : `Target day (${sipDay}th) has already passed this month. Deducting on ${nextSipSchedule.nextDate} next month.`}
+                </p>
               </div>
 
-              <div>
-                <span className="wt-label">Debit Bank Account *</span>
-                <select
-                  className="wt-field text-xs font-semibold cursor-pointer"
-                  value={sipAccountId}
-                  onChange={(e) => setSipAccountId(e.target.value)}
-                  required
-                >
-                  <option value="">-- Select Bank Account --</option>
-                  {data.accounts
-                    .filter((a) => !a.archived)
-                    .map((a) => {
-                      const bal = getAccountBalance(a, data.transactions);
-                      return (
-                        <option key={a.id} value={a.id}>
-                          {a.name} ({a.institution || a.kind}) · {currencySymbol}{bal.toLocaleString("en-IN")}
-                        </option>
-                      );
-                    })}
-                </select>
-                {errors.sipAccountId && (
-                  <span className="mt-1 block text-[10px] text-destructive">{errors.sipAccountId}</span>
-                )}
-              </div>
+              {/* Historical SIP Installments & Capital Calculator */}
+              {startMonthYear && (
+                <div className="rounded-lg bg-background border border-border p-2.5 text-xs flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">
+                      Historical SIP Accumulation (since {startMonthYear}):
+                    </span>
+                    <span className="font-bold text-foreground">
+                      {sipHistory.elapsedInstallments} installments elapsed ({sipHistory.monthsElapsed} months)
+                    </span>
+                  </div>
+                  {Number(sipAmount) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setInvestedAmount(sipHistory.totalEstimatedInvested)}
+                      className="rounded-md bg-muted hover:bg-muted/80 px-2 py-1 text-[11px] font-semibold text-primary cursor-pointer border border-border transition-colors"
+                      title="Set invested capital to computed SIP total"
+                    >
+                      Use Computed Capital: {currencySymbol}{sipHistory.totalEstimatedInvested.toLocaleString("en-IN")}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="pt-1.5 border-t border-border/60 text-xs text-muted-foreground">
+              <span>One-time lumpsum investment. No recurring automated bank debits will be scheduled.</span>
             </div>
           )}
         </div>

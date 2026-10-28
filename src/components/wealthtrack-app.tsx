@@ -100,6 +100,7 @@ import {
   type WealthPreferences,
   type WealthState,
 } from "@/lib/wealthtrack";
+import { computeNextSipDate } from "@/lib/investment-calculator";
 
 const legacyNavItems: { label: Section; path: string; icon: typeof LayoutDashboard }[] = [
   { label: "Overview", path: "/", icon: LayoutDashboard },
@@ -698,6 +699,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             c.name.toLowerCase().includes("wealth")
         )?.id ?? data.categories[0]?.id;
 
+      const sipDay = Number(holding.sipDay) || 10;
+      const { nextDate } = computeNextSipDate(sipDay);
+
       const sipItem: RecurringItem = {
         id: existingRec?.id || recurringSipId,
         name: `${holding.name} (SIP)`,
@@ -709,7 +713,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         intervalDays: 30,
         startDate: holding.startMonthYear ? `${holding.startMonthYear}-01` : new Date().toISOString().slice(0, 10),
         endDate: holding.endMonthYear ? `${holding.endMonthYear}-01` : "",
-        nextDate: "2026-11-10",
+        nextDate,
         need: "Need",
         enabled: holding.status !== "Paused",
         investmentId: holding.id,

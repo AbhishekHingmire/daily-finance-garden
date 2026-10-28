@@ -186,3 +186,88 @@ export function calculateInvestmentValuation(input: ValuationInput): ValuationRe
     sgbBonusInterest,
   };
 }
+
+/**
+ * Computes the exact next SIP auto-debit date based on selected day of month.
+ * If day in current month is today or in future => deducts in current month.
+ * If day in current month has already passed => advances to next month.
+ */
+export function computeNextSipDate(sipDay: number, referenceDate: Date = new Date()): {
+  nextDate: string;
+  isSameMonth: boolean;
+  daysUntil: number;
+} {
+  const currentYear = referenceDate.getFullYear();
+  const currentMonth = referenceDate.getMonth(); // 0-indexed
+  const currentDay = referenceDate.getDate();
+
+  const targetDay = Math.max(1, Math.min(31, Math.floor(sipDay) || 10));
+
+  if (targetDay >= currentDay) {
+    // Target day in current month is today or in future
+    const maxDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const day = Math.min(targetDay, maxDays);
+    const mStr = String(currentMonth + 1).padStart(2, "0");
+    const dStr = String(day).padStart(2, "0");
+    const nextDate = `${currentYear}-${mStr}-${dStr}`;
+    const nextDateObj = new Date(currentYear, currentMonth, day);
+    const diffTime = nextDateObj.getTime() - referenceDate.getTime();
+    const daysUntil = Math.max(0, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    return { nextDate, isSameMonth: true, daysUntil };
+  } else {
+    // Target day in current month has passed, advance to next month
+    const nextDateObj = new Date(currentYear, currentMonth + 1, 1);
+    const nextYear = nextDateObj.getFullYear();
+    const nextMonth = nextDateObj.getMonth();
+    const maxDays = new Date(nextYear, nextMonth + 1, 0).getDate();
+    const day = Math.min(targetDay, maxDays);
+    const mStr = String(nextMonth + 1).padStart(2, "0");
+    const dStr = String(day).padStart(2, "0");
+    const nextDate = `${nextYear}-${mStr}-${dStr}`;
+    const fullNextDateObj = new Date(nextYear, nextMonth, day);
+    const diffTime = fullNextDateObj.getTime() - referenceDate.getTime();
+    const daysUntil = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+    return { nextDate, isSameMonth: false, daysUntil };
+  }
+}
+
+/**
+ * Calculates historical SIP progress: elapsed installments, estimated capital invested, and average buy price.
+ */
+export function calculateSipHistoricalProgress(
+  startMonthYear: string,
+  monthlySipAmount: number,
+  sipDay: number = 10,
+  referenceDate: Date = new Date()
+): {
+  elapsedInstallments: number;
+  totalEstimatedInvested: number;
+  monthsElapsed: number;
+} {
+  if (!startMonthYear || !/^\d{4}-\d{2}$/.test(startMonthYear)) {
+    return { elapsedInstallments: 1, totalEstimatedInvested: monthlySipAmount, monthsElapsed: 1 };
+  }
+
+  const [startYear, startMonth] = startMonthYear.split("-").map(Number);
+  const currentYear = referenceDate.getFullYear();
+  const currentMonth = referenceDate.getMonth() + 1; // 1-indexed
+  const currentDay = referenceDate.getDate();
+
+  // Total months between start month and current month (inclusive)
+  const monthsDiff = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+  let installments = Math.max(0, monthsDiff);
+
+  // If this month's SIP day has arrived or passed, count current month installment as paid
+  if (currentDay >= sipDay) {
+    installments += 1;
+  }
+
+  const finalInstallments = Math.max(1, installments);
+  const totalEstimatedInvested = finalInstallments * (Number(monthlySipAmount) || 0);
+
+  return {
+    elapsedInstallments: finalInstallments,
+    totalEstimatedInvested,
+    monthsElapsed: Math.max(1, monthsDiff + 1),
+  };
+}

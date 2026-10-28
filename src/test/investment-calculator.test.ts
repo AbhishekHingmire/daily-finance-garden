@@ -2,6 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   calculateInvestmentValuation,
   getDefaultExpenseRatio,
+  computeNextSipDate,
+  calculateSipHistoricalProgress,
 } from "@/lib/investment-calculator";
 
 describe("Investment Calculator Engine", () => {
@@ -95,5 +97,91 @@ describe("Investment Calculator Engine", () => {
     expect(res.currentAmount).toBe(45000);
     expect(res.absolutePnL).toBe(5000);
     expect(res.absolutePnLPct).toBe(12.5);
+  });
+
+  describe("computeNextSipDate", () => {
+    it("schedules in the same month if target day is in the future", () => {
+      // Reference date: 2026-10-15
+      const refDate = new Date(2026, 9, 15); // Month 9 is October
+      const result = computeNextSipDate(25, refDate);
+
+      expect(result.isSameMonth).toBe(true);
+      expect(result.nextDate).toBe("2026-10-25");
+      expect(result.daysUntil).toBe(10);
+    });
+
+    it("schedules today if target day is today", () => {
+      const refDate = new Date(2026, 9, 15);
+      const result = computeNextSipDate(15, refDate);
+
+      expect(result.isSameMonth).toBe(true);
+      expect(result.nextDate).toBe("2026-10-15");
+      expect(result.daysUntil).toBe(0);
+    });
+
+    it("rolls over to next month if target day has already passed", () => {
+      // Reference date: 2026-10-29, target day: 10
+      const refDate = new Date(2026, 9, 29);
+      const result = computeNextSipDate(10, refDate);
+
+      expect(result.isSameMonth).toBe(false);
+      expect(result.nextDate).toBe("2026-11-10");
+      expect(result.daysUntil).toBeGreaterThan(0);
+    });
+
+    it("handles December rollover to next year January properly", () => {
+      // Reference date: 2026-12-20, target day: 5
+      const refDate = new Date(2026, 11, 20); // Month 11 is December
+      const result = computeNextSipDate(5, refDate);
+
+      expect(result.isSameMonth).toBe(false);
+      expect(result.nextDate).toBe("2027-01-05");
+    });
+
+    it("clamps target day to valid month days (e.g. 31st in a 30-day month)", () => {
+      // Reference date: 2026-10-15, target day: 31 (October has 31 days)
+      const refDate = new Date(2026, 9, 15);
+      const octResult = computeNextSipDate(31, refDate);
+      expect(octResult.nextDate).toBe("2026-10-31");
+
+      // Reference date: 2026-10-31, target day: 31 (next month is November, 30 days)
+      const refDatePassed = new Date(2026, 9, 31, 23, 59, 59);
+      // If we pass day 31 and it rolls to Nov:
+      const novRefDate = new Date(2026, 10, 15); // Nov 15, target 31
+      const novResult = computeNextSipDate(31, novRefDate);
+      expect(novResult.nextDate).toBe("2026-11-30"); // Nov has 30 days
+    });
+  });
+
+  describe("calculateSipHistoricalProgress", () => {
+    it("calculates accurate elapsed installments and invested capital when SIP day has passed", () => {
+      // Reference: 2026-10-29. Started 2026-07. SIP day: 10.
+      // July (10th), August (10th), September (10th), October (10th) = 4 installments
+      const refDate = new Date(2026, 9, 29);
+      const result = calculateSipHistoricalProgress("2026-07", 5000, 10, refDate);
+
+      expect(result.elapsedInstallments).toBe(4);
+      expect(result.totalEstimatedInvested).toBe(20000); // 4 * 5000
+    });
+
+    it("does not count current month installment if SIP day is in the future", () => {
+      // Reference: 2026-10-05. Started 2026-07. SIP day: 10.
+      // July (10th), August (10th), September (10th) = 3 installments (October hasn't occurred yet)
+      const refDate = new Date(2026, 9, 5);
+      const result = calculateSipHistoricalProgress("2026-07", 5000, 10, refDate);
+
+      expect(result.elapsedInstallments).toBe(3);
+      expect(result.totalEstimatedInvested).toBe(15000); // 3 * 5000
+    });
+
+    it("handles multi-year spans accurately", () => {
+      // Started 2024-01, Reference 2026-01-15, SIP day 10
+      // 2024: 12 months, 2025: 12 months, 2026 Jan: 1 month = 25 months
+      const refDate = new Date(2026, 0, 15);
+      const result = calculateSipHistoricalProgress("2024-01", 10000, 10, refDate);
+
+      expect(result.elapsedInstallments).toBe(25);
+      expect(result.totalEstimatedInvested).toBe(250000);
+    });
   });
 });

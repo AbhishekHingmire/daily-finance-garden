@@ -476,6 +476,8 @@ export class RestWealthRepository implements WealthRepository {
       sipAmount: holding.sipAmount ? Number(holding.sipAmount) : null,
       sipFrequency: holding.sipFrequency || null,
       sipAccountId: cleanGuid(holding.sipAccountId),
+      sipDay: holding.sipDay ? Number(holding.sipDay) : null,
+      investmentStyle: holding.investmentStyle || null,
       status: holding.status || "Active",
     };
     return this.request<InvestmentHolding>(this.config.endpoints.investments, {
@@ -498,6 +500,8 @@ export class RestWealthRepository implements WealthRepository {
       sipAmount: holding.sipAmount ? Number(holding.sipAmount) : null,
       sipFrequency: holding.sipFrequency || null,
       sipAccountId: cleanGuid(holding.sipAccountId),
+      sipDay: holding.sipDay ? Number(holding.sipDay) : null,
+      investmentStyle: holding.investmentStyle || null,
       status: holding.status || "Active",
     };
     return this.request<InvestmentHolding>(`${this.config.endpoints.investments}/${holding.id}`, {

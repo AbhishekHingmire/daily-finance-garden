@@ -83,6 +83,8 @@ export interface InvestmentHolding {
   sipAmount?: number;
   sipFrequency?: string;
   sipAccountId?: string;
+  sipDay?: number;
+  investmentStyle?: "LumpSum" | "SIP";
   status?: "Active" | "Paused";
   units?: number;
   purchasePrice?: number;
