@@ -822,9 +822,6 @@ export function InvestmentHoldingModal({
               <Calendar className="size-3.5 text-primary" />
               <span>Investment Style &amp; Schedule</span>
             </span>
-            {investmentStyle === "SIP" && (
-              <span className="text-[10px] text-muted-foreground font-medium">Pre-calculates Invested Capital</span>
-            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -1189,58 +1186,60 @@ export function InvestmentHoldingModal({
               ) : (
                 /* STOCKS, MUTUAL FUNDS, ETFS, GOLD & CRYPTO LIVE CONTROLS */
                 <div className="space-y-3">
-                  {/* Calculation Basis Tabs: Allows user who may not know units to compute directly from current value */}
-                  <div className="rounded-lg bg-background p-2.5 border border-border/70 space-y-1.5">
-                    <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
-                      <span className="font-semibold text-muted-foreground flex items-center gap-1">
-                        <Sparkles size={12} className="text-primary" />
-                        <span>Pre-calculate based on what you have:</span>
-                      </span>
-                      <div className="inline-flex rounded-lg bg-muted/80 p-0.5 border border-border/60">
-                        <button
-                          type="button"
-                          onClick={() => setAutoCalcDriver("current_value")}
-                          className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer ${
-                            autoCalcDriver === "current_value"
-                              ? "bg-primary text-primary-foreground shadow-2xs font-bold"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          💼 Current Value
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAutoCalcDriver("units")}
-                          className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer ${
-                            autoCalcDriver === "units"
-                              ? "bg-primary text-primary-foreground shadow-2xs font-bold"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          🔢 Total Units
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAutoCalcDriver("buy_price")}
-                          className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer ${
-                            autoCalcDriver === "buy_price"
-                              ? "bg-primary text-primary-foreground shadow-2xs font-bold"
-                              : "text-muted-foreground hover:text-foreground"
-                          }`}
-                        >
-                          🏷️ Buy NAV / Price
-                        </button>
+                  {/* Calculation Basis Tabs: Shown only in SIP/custom mode — completely removed for One-time (Lump Sum) */}
+                  {investmentStyle !== "LumpSum" && (
+                    <div className="rounded-lg bg-background p-2.5 border border-border/70 space-y-1.5">
+                      <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+                        <span className="font-semibold text-muted-foreground flex items-center gap-1">
+                          <Sparkles size={12} className="text-primary" />
+                          <span>Pre-calculate based on what you have:</span>
+                        </span>
+                        <div className="inline-flex rounded-lg bg-muted/80 p-0.5 border border-border/60">
+                          <button
+                            type="button"
+                            onClick={() => setAutoCalcDriver("current_value")}
+                            className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer ${
+                              autoCalcDriver === "current_value"
+                                ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            💼 Current Value
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAutoCalcDriver("units")}
+                            className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer ${
+                              autoCalcDriver === "units"
+                                ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            🔢 Total Units
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setAutoCalcDriver("buy_price")}
+                            className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer ${
+                              autoCalcDriver === "buy_price"
+                                ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                                : "text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            🏷️ Buy NAV / Price
+                          </button>
+                        </div>
                       </div>
-                    </div>
 
-                    <p className="text-[11px] text-muted-foreground">
-                      {autoCalcDriver === "current_value"
-                        ? "Enter your current portfolio value from your broker (e.g. Zerodha/Groww) · We auto-derive exact units and returns from live market price."
-                        : autoCalcDriver === "units"
-                        ? "Enter your units held · We compute current valuation and real-time gain/loss from the live quote."
-                        : "Enter your starting buy price / purchase NAV · We derive units and valuation."}
-                    </p>
-                  </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {autoCalcDriver === "current_value"
+                          ? "Enter your current portfolio value from your broker (e.g. Zerodha/Groww) · We auto-derive exact units and returns from live market price."
+                          : autoCalcDriver === "units"
+                          ? "Enter your units held · We compute current valuation and real-time gain/loss from the live quote."
+                          : "Enter your starting buy price / purchase NAV · We derive units and valuation."}
+                      </p>
+                    </div>
+                  )}
 
                   <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2">
                     {/* Ongoing Live Market Price */}

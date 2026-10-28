@@ -171,8 +171,8 @@ function processAutomatedState(
     const todayStr = today.toISOString().slice(0, 10);
     const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(state, todayStr);
 
-    // Autonomous Monthly Salary Processing
-    const salaryDay = updatedState.profile?.salaryCreditDay || updatedState.preferences?.salaryDay;
+    // Autonomous Monthly Salary Processing & Recurring Income Synchronization
+    const salaryDay = updatedState.profile?.salaryCreditDay || updatedState.preferences?.salaryDay || 1;
     const salaryAmount = updatedState.profile?.monthlyIncomeTarget || 0;
     const salaryAccId = updatedState.profile?.salaryAccountId || updatedState.accounts.find((a) => !a.archived && a.kind !== "Credit card")?.id;
 
@@ -181,26 +181,85 @@ function processAutomatedState(
       const currentMonth = today.getMonth() + 1;
       const currentDay = today.getDate();
 
-      if (currentDay >= salaryDay) {
+      const daysInCurrentMonth = new Date(currentYear, currentMonth, 0).getDate();
+      const safeDay = Math.min(salaryDay, daysInCurrentMonth);
+      const dStr = String(safeDay).padStart(2, "0");
+      const currentMonthSalaryDate = `${currentYear}-${String(currentMonth).padStart(2, "0")}-${dStr}`;
+
+      const nextSalaryDate = currentDay >= safeDay
+        ? (currentMonth === 12
+            ? `${currentYear + 1}-01-${dStr}`
+            : `${currentYear}-${String(currentMonth + 1).padStart(2, "0")}-${dStr}`)
+        : currentMonthSalaryDate;
+
+      const salaryCatId = updatedState.categories.find((c) => c.name.toLowerCase().includes("salary"))?.id || "cat-salary";
+
+      // 1. Maintain active recurring schedule in updatedState.recurring under Income
+      let existingSalaryRec = (updatedState.recurring || []).find(
+        (r) => r.id === "rec-salary" || (r.type === "Income" && r.name.toLowerCase().includes("salary"))
+      );
+
+      if (!existingSalaryRec) {
+        const newSalaryRec: RecurringItem = {
+          id: "rec-salary",
+          name: "Monthly Salary Credit",
+          type: "Income",
+          amount: salaryAmount,
+          categoryId: salaryCatId,
+          accountId: salaryAccId,
+          frequency: "Monthly",
+          intervalDays: 0,
+          startDate: currentMonthSalaryDate,
+          endDate: "",
+          nextDate: nextSalaryDate,
+          need: "Need",
+          enabled: true,
+        };
+        updatedState.recurring = [newSalaryRec, ...(updatedState.recurring || [])];
+      } else {
+        existingSalaryRec.amount = salaryAmount;
+        existingSalaryRec.accountId = salaryAccId;
+        existingSalaryRec.categoryId = salaryCatId;
+        existingSalaryRec.nextDate = nextSalaryDate;
+        existingSalaryRec.enabled = true;
+      }
+
+      // 2. Transact salary ONLY on or after the exact configured salary day (e.g. 1st)
+      if (currentDay >= safeDay) {
         const ymPrefix = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+        // Clean up any stale transactions with the wrong date from initial seed data
+        const staleTxIdx = (updatedState.transactions || []).findIndex(
+          (t) =>
+            t.accountId === salaryAccId &&
+            t.type === "Income" &&
+            (t.notes?.includes("salary credit") || t.tags?.includes("Salary") || t.description.toLowerCase().includes("salary")) &&
+            t.date.startsWith(ymPrefix) &&
+            t.date !== currentMonthSalaryDate
+        );
+        if (staleTxIdx >= 0) {
+          // Align transaction to exact selected salary day
+          updatedState.transactions[staleTxIdx] = {
+            ...updatedState.transactions[staleTxIdx],
+            date: currentMonthSalaryDate,
+          };
+        }
+
         const alreadyCredited = (updatedState.transactions || []).some(
           (t) =>
             t.accountId === salaryAccId &&
             t.type === "Income" &&
             (t.notes?.includes("salary credit") || t.tags?.includes("Salary") || t.description.toLowerCase().includes("salary")) &&
-            t.date.startsWith(ymPrefix)
+            t.date === currentMonthSalaryDate
         );
 
         if (!alreadyCredited) {
-          const dStr = String(Math.min(salaryDay, new Date(currentYear, currentMonth, 0).getDate())).padStart(2, "0");
-          const salaryTxDate = `${ymPrefix}-${dStr}`;
           const salaryTx: Transaction = {
             id: `tx-sal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
-            date: salaryTxDate,
+            date: currentMonthSalaryDate,
             description: "Monthly Salary Credit",
             type: "Income",
             amount: salaryAmount,
-            categoryId: updatedState.categories.find((c) => c.name.toLowerCase().includes("salary"))?.id || "cat-salary",
+            categoryId: salaryCatId,
             accountId: salaryAccId,
             destinationAccountId: "",
             paymentMethod: "Bank Transfer",
@@ -218,7 +277,7 @@ function processAutomatedState(
             repository.createTransaction(salaryTx).catch(() => {});
           }
           updatedState.transactions = [salaryTx, ...(updatedState.transactions || [])];
-          processedItems.push({ name: "Monthly Salary Credit", amount: salaryAmount, date: salaryTxDate });
+          processedItems.push({ name: "Monthly Salary Credit", amount: salaryAmount, date: currentMonthSalaryDate });
         }
       }
     }

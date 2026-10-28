@@ -47,6 +47,24 @@ function isH3SwallowedErrorBody(body: string): boolean {
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     try {
+      const url = new URL(request.url);
+      if (url.pathname.startsWith("/api/mfproxy/")) {
+        const targetPath = url.pathname.replace(/^\/api\/mfproxy/, "");
+        const targetUrl = `https://api.mfapi.in${targetPath}${url.search}`;
+        const upstream = await fetch(targetUrl, {
+          headers: { Accept: "application/json" },
+        });
+        const data = await upstream.text();
+        return new Response(data, {
+          status: upstream.status,
+          headers: {
+            "content-type": "application/json",
+            "access-control-allow-origin": "*",
+            "cache-control": "public, max-age=3600",
+          },
+        });
+      }
+
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);
       return await normalizeCatastrophicSsrResponse(response);

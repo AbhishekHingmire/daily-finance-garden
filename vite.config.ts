@@ -13,6 +13,15 @@ export default defineConfig({
     server: { entry: "server" },
   },
   vite: {
+    server: {
+      proxy: {
+        "/api/mfproxy": {
+          target: "https://api.mfapi.in",
+          changeOrigin: true,
+          rewrite: (path: string) => path.replace(/^\/api\/mfproxy/, ""),
+        },
+      },
+    },
     build: {
       chunkSizeWarningLimit: 1000,
       cssMinify: true,
