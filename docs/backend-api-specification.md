@@ -2,13 +2,17 @@
 
 ## Executive Summary
 
-This document defines the production-ready **Backend Architecture, Microsoft SQL Server Database Schema, Entity Framework Core Code-First Models, and Cross-Screen Correlation Engine** for **WealthTrack** (`daily-finance-garden`).
+This specification defines the production-ready **Backend Architecture, Microsoft SQL Server Database Schema, Entity Framework Core (EF Core) Code-First Domain Models, and Cross-Screen Correlation Engine** for **WealthTrack** (`daily-finance-garden`).
 
-It has been tailored specifically for:
-- **Runtime**: **.NET 8 / .NET 9 ASP.NET Core Web API**
-- **Database Engine**: **Microsoft SQL Server (2022 / Azure SQL)**
+Following a deep code-level audit of the frontend domain layer (`src/lib/domain-model.ts`, `src/lib/metrics-service.ts`, `src/lib/posting-service.ts`, `src/lib/amortisation.ts`, and Vitest test suites `integrity.test.ts` & `cross-screen-metrics.test.tsx`), this specification eliminates all architectural ambiguities, redundant entities, and optimistic/unrealistic data assumptions.
+
+### Technology Stack
+- **Web API**: **.NET 8 / .NET 9 ASP.NET Core Web API** (Clean Architecture / Feature-Slice Controllers)
+- **Database Engine**: **Microsoft SQL Server 2022 / Azure SQL Database**
 - **ORM & Migrations**: **Entity Framework Core (EF Core) Code-First**
-- **State & Invariants**: Integer minor-unit accounting (**Paise as `BIGINT`**), atomic ledger balancing, and strict UI-to-API correlation.
+- **Monetary Unit**: **Paise as 64-bit signed integer (`long` / `BIGINT`)**
+- **Concurrency & Audit**: **SQL Server `ROWVERSION` concurrency tokens & Temporal Tables**
+- **Caching**: **ASP.NET Core in-memory `IMemoryCache` (NAVs and master lookups only)**
 
 ---
 
@@ -18,111 +22,136 @@ It has been tailored specifically for:
 
 ```mermaid
 flowchart TD
-    subgraph ClientLayer ["Client Layer (React + Vite PWA)"]
-        UI_Dash["Dashboard (Home)"]
-        UI_Tx["Transactions Ledger"]
-        UI_Wealth["Wealth Hub (Accounts, Assets, Loans)"]
-        UI_Plan["Plan Hub (50/30/20, Budgets, Goals)"]
-        UI_Rec["Recurring Hub"]
-        UI_Reports["Reports & Insights (Velocity & Trends)"]
+    subgraph ClientLayer ["Client Layer (React + TanStack Router PWA)"]
+        UI_Dash["Dashboard (/dashboard)"]
+        UI_Tx["Transactions (/transactions)"]
+        UI_Wealth["Wealth Hub: Accounts, Holdings, Loans (/wealth)"]
+        UI_Plan["Plan Hub: Budgets, Goals, Sinking Funds (/plan)"]
+        UI_Rec["Recurring Hub (/recurring)"]
+        UI_Reports["Reports & Insights: Velocity, Pie, Net Wealth (/reports)"]
     end
 
     subgraph ApiLayer ["ASP.NET Core Web API (.NET 8/9)"]
-        Middleware["Global Error Handling, JWT Auth, Idempotency Middleware"]
-        Controllers["Controllers / Minimal API Endpoints"]
+        Middleware["Global Exception Handler, JWT Auth, Idempotency Filter"]
         
-        subgraph Services ["Application Domain Services"]
-            DashboardSvc["DashboardMetricsService"]
-            TxSvc["TransactionLedgerService"]
-            WealthSvc["WealthAndHoldingsService"]
-            PlanSvc["PlanAndBudgetService"]
-            LoanSvc["LoanAmortizationService"]
-            RecurringSvc["RecurringExecutionService"]
+        subgraph Controllers ["API Controllers"]
+            DashCtrl["DashboardController"]
+            TxCtrl["TransactionsController"]
+            WealthCtrl["WealthController"]
+            PlanCtrl["PlanController"]
+            RecCtrl["RecurringController"]
+            ReportsCtrl["ReportsController"]
+            HealthCtrl["DataHealthController"]
         end
 
-        CacheManager["Cache Strategy (IMemoryCache / HybridCache)"]
+        subgraph Services ["Application Domain Services"]
+            MetricsSvc["MetricsDerivationService (Implements metrics-service.ts)"]
+            PostingSvc["PostingService (Implements posting-service.ts)"]
+            AmortSvc["AmortisationService (Implements amortisation.ts)"]
+            NavFeedSvc["ExternalNavFeedService"]
+        end
+
+        Cache["IMemoryCache (External NAVs & Master Lookups)"]
     end
 
     subgraph DataLayer ["Microsoft SQL Server (Code-First EF Core)"]
-        EFCore["AppDbContext (ChangeTracker, Compiled Queries)"]
-        SQLServer[("SQL Server 2022 / Azure SQL\n- BigInt Paise Minor Units\n- Filtered Indexes\n- RowVersion Concurrency")]
-        AuditHistory[("Temporal History / Audit Logs")]
-    end
-
-    subgraph ExternalServices ["External Providers"]
-        NavFeed["AMFI / Yahoo Finance / Gold Rates (NAV Price Sync)"]
+        AppDbContext["AppDbContext (ChangeTracker, Compiled Queries, Global Filters)"]
+        SQLServer[("SQL Server 2022 / Azure SQL\n- BIGINT Paise (1 INR = 100 Paise)\n- ROWVERSION Concurrency Token\n- Clustered Index (UserId, Date DESC)")]
     end
 
     UI_Dash & UI_Tx & UI_Wealth & UI_Plan & UI_Rec & UI_Reports --> Middleware
     Middleware --> Controllers
     Controllers --> Services
-    Services --> EFCore
-    Services --> CacheManager
-    CacheManager -. Market Rates Miss .-> NavFeed
-    EFCore --> SQLServer
-    SQLServer -. System Versioning .-> AuditHistory
+    Services --> Cache
+    Services --> AppDbContext
+    AppDbContext --> SQLServer
+    NavFeedSvc -. Cache Miss (AMFI / Market Feed) .-> Cache
 ```
 
 ---
 
-### 1.2 Do We Need Caching, and For What?
+### 1.2 Caching Strategy: What to Cache vs. What NOT to Cache
 
-A common architectural trap in personal finance applications is **prematurely caching account balances, transaction ledgers, or dashboard totals**. In a financial ledger, **consistency and real-time accuracy are critical**. If a user enters an expense of ₹500 and returns to the dashboard to find their previous balance still displayed due to a 5-minute cache TTL or a missed cache-invalidation hook, user trust is destroyed.
+#### 1.2.1 Why Financial Balances and Ledger Summaries Are NEVER Cached
+A frequent flaw in financial architectures is prematurely caching account balances or monthly dashboard summaries in Redis. In WealthTrack:
+1. **Zero-Latency In SQL Server**: Queries for a single user's monthly ledger run in **3 to 12 milliseconds** using composite clustered indexes on `(UserId, TransactionDate DESC)`.
+2. **Strict Financial Consistency**: When a user adds an expense of ₹500, every dependent metric must update instantly:
+   $$\text{Balance} \rightarrow \text{Liquid Cash} \rightarrow \text{Free to Spend} \rightarrow \text{Money Out} \rightarrow 50/30/20 \text{ Ratio} \rightarrow \text{Cash Runway}$$
+   Caching these values introduces stale reads, race conditions, and complex multi-key invalidation bugs.
+3. **Ledger Derivation**: All state in WealthTrack is derived deterministically from the transaction ledger. Caching derived totals introduces a second source of truth.
 
-#### 1.2.1 Why We Do NOT Cache User Balances or Transaction Queries
-1. **Low Query Latency in SQL Server**: With clustered indexes on `(UserId, TransactionDate DESC)` and covering non-clustered indexes on account foreign keys, SQL Server executes a user's dashboard KPI calculation in **3 to 12 milliseconds** even with 50,000 transactions.
-2. **Cache Invalidation Fragility**: Financial data is interdependent. Modifying a single transaction impacts:
-   - Account Balance
-   - Total Assets
-   - Net Worth
-   - Free to Spend
-   - Monthly Money In / Money Out
-   - 50/30/20 Needs/Wants/Savings ratio
-   - Category budget spend
-   - Cash runway metric
-   
-   Attempting to invalidate or patch all these keys across a distributed cache (like Redis) invites race conditions and cache desynchronization bugs.
+#### 1.2.2 Where Caching IS High-Value & Necessary
+Caching is strictly isolated to read-mostly, static, or rate-limited external feeds:
 
-#### 1.2.2 Where Caching IS Necessary & High-Value
-In WealthTrack, caching is used strictly for three specific, safe domains:
-
-| Cache Domain | Recommended Cache Mechanism | TTL (Time-to-Live) | Why Caching is Required |
+| Cache Domain | Storage Mechanism | Recommended TTL | Purpose |
 | :--- | :--- | :--- | :--- |
-| **External Market NAV & Asset Prices** | In-Memory (`IMemoryCache` / `HybridCache`) | 15 minutes – 4 hours (EOD for Mutual Funds) | Mutual fund NAVs (AMFI), stock tickers, and gold prices are fetched from external third-party APIs with strict rate limits. Caching avoids external latency and prevents API rate-limiting errors. |
-| **Static Master Data & Lookups** | In-Memory (`IMemoryCache`) | 24 hours (or app lifetime) | System categories, supported banks/institutions, IFSC directory, currency definitions, and default emoji icon maps never change during normal operation. |
-| **Idempotency Verification Tokens** | `IMemoryCache` (Single Instance) or Distributed Cache | 5 minutes | Prevents duplicate transaction submissions from client-side double clicks or unstable mobile networks. Stores the hash of `(UserId, IdempotencyKey)`. |
-
-#### 1.2.3 Implementation Recommendation for .NET Core
-- Start with **ASP.NET Core's built-in `IMemoryCache`** (or .NET 9's new `HybridCache`).
-- **No extra Redis server is required** at the start. In-memory caching runs directly inside the .NET process with zero network overhead.
-- If you later scale horizontally to multiple containerized API pods behind a load balancer, simply swap the backing store to `IDistributedCache` (SQL Server distributed cache or Redis) without changing domain code.
+| **External Mutual Fund NAVs & Stock Prices** | In-Memory (`IMemoryCache`) | 15 minutes – 24 hours (EOD for AMFI NAVs) | Prevents hitting third-party API rate limits and avoids external network latency during portfolio valuation. |
+| **Static Master Lookups** | In-Memory (`IMemoryCache`) | 24 hours (or App Lifetime) | Supported bank institution registry, IFSC directory, currency configurations, and default category icons. |
+| **Idempotency Request Tokens** | `IMemoryCache` (or Distributed Cache) | 5 minutes | Prevents duplicate transaction insertions caused by rapid client-side double clicks or mobile network retries. |
 
 ---
 
-## 2. Core Financial Invariants & Mathematical Rules
+## 2. Core Financial Invariants & Verified Formulas
 
-1. **Integer Minor-Unit Currency (`BIGINT`)**:
-   - All monetary figures are stored as 64-bit integers (`long` in C#, `BIGINT` in SQL Server) representing **paise** (e.g. ₹1,00,150.00 is stored as `10015000`).
-   - Floats (`float`, `double`) are strictly prohibited for monetary arithmetic to prevent IEEE-754 precision loss.
-2. **Atomic Double-Entry Transfers**:
-   - Transfers between accounts execute inside an EF Core `IDbContextTransaction`:
-     $$\Delta \text{Balance}(\text{SourceAccount}) + \Delta \text{Balance}(\text{DestinationAccount}) = 0$$
-3. **Deterministic Net Worth Identity**:
-   $$\text{NetWorth} = \text{TotalAssets} - \text{TotalDebt}$$
-   - $\text{TotalAssets} = \text{LiquidCash} + \text{InvestmentsValuation} + \text{Receivables (Money Lent)}$
-   - $\text{TotalDebt} = \text{LoansOutstanding} + \text{CreditCardDues}$
-4. **Conservation of Cash Flow & Savings Deployment**:
-   $$\text{Saved} = \text{MoneyIn} - \text{MoneyOut}$$
-   $$\text{Saved} = \Delta \text{LiquidCash} + \text{NetInvested} + \text{NetLent} + \text{PrepaidDebt} - \text{NetBorrowed}$$
-5. **50/30/20 Split Completeness (Largest Remainder Rounding)**:
-   - When $\text{MoneyIn} > 0$, Needs %, Wants %, and Savings % are rounded using the Largest Remainder (Hamilton-Hare) method so that:
-     $$\text{Needs}\% + \text{Wants}\% + \text{Savings}\% \equiv 100\%$$
+These invariants are derived from [src/lib/metrics-service.ts](file:///c:/Users/Abhishek.Hingmire/Desktop/Workspace/Prson/Repos/daily-finance-garden/src/lib/metrics-service.ts) and verified by 54 automated Vitest tests ([src/test/integrity.test.ts](file:///c:/Users/Abhishek.Hingmire/Desktop/Workspace/Prson/Repos/daily-finance-garden/src/test/integrity.test.ts)):
+
+### 2.1 Currency Representation
+All currency amounts in C# domain entities and SQL Server tables are stored as **Paise in 64-bit signed integers (`long` / `BIGINT`)**.
+$$\text{AmountInPaise} = \text{round}(\text{AmountInRupees} \times 100)$$
+$$\text{₹1,00,250.00} \implies 10025000\text{ Paise}$$
+Floating point numbers (`float`, `double`) are strictly prohibited for monetary columns.
+
+### 2.2 Account Balance Formula
+$$\text{Balance}(\text{acc}) = \text{OpeningBalance}(\text{acc}) + \sum_{e \in \text{Entries}_{\text{posted}}} \Delta(e, \text{acc})$$
+Where:
+- $\text{Income}: +e.\text{Amount}$ (to `AccountId`)
+- $\text{Expense}: -e.\text{Amount}$ (from `AccountId`)
+- $\text{Transfer}: -e.\text{Amount}$ (from `AccountId`), $+e.\text{Amount}$ (to `ToRefId` when `ToRefKind == "account"`)
+
+### 2.3 Liquid Cash, Assets, Liabilities & Net Worth Identity
+In WealthTrack, by explicit business and UI design rule:
+1. **Liquid Cash**:
+   $$\text{LiquidCash} = \sum_{\text{acc} \in \text{Accounts}_{\text{active}}, \text{type} \ne \text{"credit\_card"}} \text{Balance}(\text{acc})$$
+2. **Total Assets**:
+   $$\text{TotalAssets} = \text{LiquidCash} + \sum \text{CurrentValue}(\text{Holdings}) + \sum \text{Outstanding}(\text{Receivables})$$
+3. **Total Debt (Liabilities)**:
+   $$\text{TotalDebt} = \sum \text{CurrentOutstanding}(\text{Active Loans}) + \sum_{\text{acc} \in \text{CreditCards}} |\min(0, \text{Balance}(\text{acc}))|$$
+4. **Net Worth (User-Specified & Tested Invariant `I2`)**:
+   $$\text{NetWorth} \equiv \text{TotalAssets}$$
+   > [!IMPORTANT]
+   > As asserted in `src/test/integrity.test.ts` (lines 53–57), **Net Worth equals Total Assets** so that individuals carrying significant long-term mortgage/home loans (e.g. ₹32L debt vs ₹9.9L assets) are not demoralized with negative net worth (-₹22.4L). Debt is tracked strictly in the dedicated **Total Debt / Liabilities** metric.
+
+5. **Free to Spend vs. Earmarked Cash**:
+   $$\text{EarmarkedCash} = \sum_{g \in \text{Goals}_{\text{active}}} \text{DerivedCurrentSaved}(g)$$
+   $$\text{FreeToSpend} = \text{LiquidCash} - \text{EarmarkedCash}$$
+   $$\text{IsEarmarkExceedingCash} = \text{EarmarkedCash} > \text{LiquidCash}$$
+
+### 2.4 Period Cash Flow & 50/30/20 Budgeting Rule
+For any monthly period:
+- **Money In**: $\sum e.\text{Amount}$ where `Kind == "income"` and `Status == "posted"`.
+- **Money Out**: $\sum e.\text{Amount}$ where `Kind == "expense"` and `Status == "posted"`.
+- **Saved**: $\text{MoneyIn} - \text{MoneyOut}$.
+- **Needs Spend**: $\sum e.\text{Amount}$ where `Subtype == "emi"` $\lor$ `NeedWant == "Need"`.
+- **Wants Spend**: $\sum e.\text{Amount}$ where `NeedWant == "Want"` $\land$ `Subtype != "emi"`.
+- **50/30/20 Distribution (Largest Remainder Rounding)**:
+  When $\text{MoneyIn} > 0$, Needs %, Wants %, and Savings % are rounded using the Hamilton-Hare Largest Remainder method to ensure:
+  $$\text{Needs}\% + \text{Wants}\% + \text{Savings}\% \equiv 100\%$$
+
+### 2.5 Conservation of Savings Deployment ("Where Your Savings Went")
+Every rupee of monthly savings is accounted for across 5 deterministic deployment channels:
+$$\text{Saved} \equiv \text{KeptInCash} + \text{NetInvested} + \text{NetLent} + \text{PrepaidDebt} - \text{NetBorrowed}$$
+Where:
+- $\text{NetInvested} = \sum (\text{subtype} \in \{\text{sip}, \text{lump\_sum}\}) - \sum (\text{subtype} = \text{redemption})$
+- $\text{NetLent} = \sum (\text{subtype} = \text{lent}) - \sum (\text{subtype} = \text{recovered})$
+- $\text{PrepaidDebt} = \sum (\text{subtype} = \text{prepayment})$
+- $\text{NetBorrowed} = \sum (\text{subtype} = \text{borrowed})$
+- $\text{KeptInCash} = \text{Saved} - (\text{NetInvested} + \text{NetLent} + \text{PrepaidDebt} - \text{NetBorrowed})$
 
 ---
 
-## 3. EF Core Code-First Entity Models (C#)
+## 3. Entity Framework Core Code-First Domain Models
 
-Below are the complete domain entities configured for EF Core with SQL Server.
+These models match the frontend's canonical domain model ([src/lib/domain-model.ts](file:///c:/Users/Abhishek.Hingmire/Desktop/Workspace/Prson/Repos/daily-finance-garden/src/lib/domain-model.ts)).
 
 ### 3.1 Domain Enums
 
@@ -137,87 +166,102 @@ public enum AccountType
     CreditCard = 4
 }
 
-public enum TransactionKind
+public enum EntryKind
 {
     Income = 1,
     Expense = 2,
     Transfer = 3
 }
 
-public enum TransactionSubtype
+public enum EntryStatus
 {
-    Standard = 0,
-    Emi = 1,
-    Sip = 2,
-    LumpSum = 3,
-    Lent = 4,
-    Recovered = 5,
-    Borrowed = 6,
-    Repaid = 7,
-    Prepayment = 8,
-    Refund = 9,
-    Redemption = 10
+    Posted = 1,
+    Scheduled = 2
 }
 
-public enum NeedWantPriority
+public enum NeedWant
 {
     Need = 1,
     Want = 2
 }
 
+public enum EntrySubtype
+{
+    None = 0,
+    Emi = 1,
+    Sip = 2,
+    LumpSum = 3,
+    Prepayment = 4,
+    Lent = 5,
+    Recovered = 6,
+    Borrowed = 7,
+    GoalAllocation = 8,
+    Redemption = 9,
+    CardPayment = 10
+}
+
+public enum EntrySource
+{
+    Manual = 1,
+    Schedule = 2,
+    Loan = 3,
+    Sip = 4,
+    Import = 5
+}
+
+public enum ToRefKind
+{
+    Account = 1,
+    Holding = 2,
+    Loan = 3,
+    Person = 4
+}
+
 public enum LoanType
 {
-    Home = 1,
-    Auto = 2,
-    Personal = 3,
-    Education = 4,
-    Gold = 5
+    HomeLoan = 1,
+    PersonalLoan = 2,
+    CarAutoLoan = 3,
+    EducationLoan = 4,
+    CreditLine = 5,
+    Other = 6
 }
 
-public enum LoanStatus
+public enum LoanMode
 {
-    Active = 1,
-    Closed = 2
+    New = 1,
+    AlreadyRunning = 2
 }
 
-public enum AssetClass
+public enum AssetType
 {
     MutualFund = 1,
-    Equity = 2,
+    StocksEquity = 2,
     Etf = 3,
-    Gold = 4,
-    RealEstate = 5,
+    GoldCommodities = 4,
+    FixedDeposit = 5,
     Crypto = 6,
-    FixedDeposit = 7
+    Other = 7
 }
 
-public enum GoalPriority
+public enum GoalKind
 {
     Emergency = 1,
-    High = 2,
-    Medium = 3,
-    Low = 4
+    Goal = 2,
+    Sinking = 3
 }
 
-public enum GoalStatus
-{
-    InProgress = 1,
-    Completed = 2,
-    Archived = 3
-}
-
-public enum RecurringFrequency
+public enum ScheduleFrequency
 {
     Weekly = 1,
     Monthly = 2,
-    Quarterly = 3,
-    Yearly = 4
+    Yearly = 3
 }
 ```
 
 ---
 
-### 3.2 Code-First Entity Classes
+### 3.2 Code-First C# Entity Classes
 
 #### 1. Account Entity
 ```csharp
@@ -229,103 +273,95 @@ public class Account
     public Guid UserId { get; set; }
     public string Name { get; set; } = string.Empty;
     public AccountType Type { get; set; }
+    public string? Institution { get; set; }
+    public string? Identifier { get; set; } // e.g. "•••• 4281"
     
     // Amount in Paise (BIGINT)
     public long OpeningBalance { get; set; }
-    public long CurrentBalance { get; set; }
-    public long? CreditLimit { get; set; }
-    
-    public string Currency { get; set; } = "INR";
-    public string? InstitutionId { get; set; }
-    public string? AccountNumberMask { get; set; }
-    public string? ColorHex { get; set; }
+    public DateOnly? OpeningDate { get; set; }
     public bool IsArchived { get; set; }
-    
+    public string? Notes { get; set; }
+
+    // SQL Server Optimistic Concurrency Token
+    public byte[] RowVersion { get; set; } = [];
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
-    // Optimistic Concurrency Token for SQL Server
-    public byte[] RowVersion { get; set; } = [];
-
-    // Navigation Properties
-    public ICollection<Transaction> SourceTransactions { get; set; } = new List<Transaction>();
-    public ICollection<Transaction> DestinationTransactions { get; set; } = new List<Transaction>();
-    public ICollection<Loan> LinkedLoans { get; set; } = new List<Loan>();
-    public ICollection<RecurringSchedule> LinkedSchedules { get; set; } = new List<RecurringSchedule>();
+    // Navigation
+    public ICollection<Entry> Entries { get; set; } = new List<Entry>();
 }
 ```
 
-#### 2. Category Entity
+#### 2. Category Entity (Includes Monthly Cap Budget)
 ```csharp
 namespace WealthTrack.Domain.Entities;
 
 public class Category
 {
     public Guid Id { get; set; } = Guid.NewGuid();
-    public Guid? UserId { get; set; } // Null = System Default Category
+    public Guid? UserId { get; set; } // Null for system presets
     public string Name { get; set; } = string.Empty;
-    public TransactionKind Kind { get; set; }
-    public string Icon { get; set; } = string.Empty;
-    public string ColorHex { get; set; } = string.Empty;
-    public NeedWantPriority DefaultPriority { get; set; } = NeedWantPriority.Need;
+    public EntryKind Kind { get; set; } // Expense, Income, Transfer
+    public NeedWant? DefaultNeedWant { get; set; }
     
-    // Monthly budget limit in Paise
-    public long? MonthlyLimit { get; set; }
+    // Monthly budget cap in Paise (BIGINT). No redundant Budgets table needed.
+    public long? MonthlyCap { get; set; }
+    
+    public string Icon { get; set; } = string.Empty;
+    public string? Color { get; set; }
     public bool IsArchived { get; set; }
 
-    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public ICollection<Entry> Entries { get; set; } = new List<Entry>();
 }
 ```
 
-#### 3. Transaction Entity
+#### 3. Entry (Ledger Transaction) Entity
 ```csharp
 namespace WealthTrack.Domain.Entities;
 
-public class Transaction
+public class Entry
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
     
-    public Guid AccountId { get; set; }
-    public Account Account { get; set; } = null!;
+    public DateOnly Date { get; set; }
+    public EntryStatus Status { get; set; } = EntryStatus.Posted;
+    public EntryKind Kind { get; set; }
     
-    public Guid? DestinationAccountId { get; set; }
-    public Account? DestinationAccount { get; set; }
+    // Amount in Paise (BIGINT)
+    public long Amount { get; set; }
     
     public Guid? CategoryId { get; set; }
     public Category? Category { get; set; }
     
-    public TransactionKind Kind { get; set; }
-    public TransactionSubtype Subtype { get; set; } = TransactionSubtype.Standard;
-    public NeedWantPriority? Priority { get; set; }
+    public Guid AccountId { get; set; }
+    public Account Account { get; set; } = null!;
     
-    // Amount in Paise (BIGINT). Always positive; direction governed by Kind and Subtype.
-    public long Amount { get; set; }
+    // Polymorphic Reference for Transfers, Loans, SIPs, or Person Receivables
+    public ToRefKind? ToRefKind { get; set; }
+    public Guid? ToRefId { get; set; }
+    public string? ToRefName { get; set; }
     
-    public DateTimeOffset TransactionDate { get; set; }
-    public string? PayeeMerchant { get; set; }
-    public string? Note { get; set; }
-    public string? PaymentMethod { get; set; }
-    public string? ReceiptAttachmentPath { get; set; }
+    public NeedWant NeedWant { get; set; } = NeedWant.Need;
+    public EntrySubtype Subtype { get; set; } = EntrySubtype.None;
+    public EntrySource Source { get; set; } = EntrySource.Manual;
+    public Guid? SourceId { get; set; } // Links to LoanId, HoldingId, GoalId, or ScheduleId
     
-    // Linked Entity Foreign Keys
-    public Guid? LoanId { get; set; }
-    public Loan? Loan { get; set; }
-
-    public Guid? InvestmentId { get; set; }
-    public Investment? Investment { get; set; }
-
-    public Guid? GoalId { get; set; }
-    public Goal? Goal { get; set; }
-
-    public Guid? RecurringScheduleId { get; set; }
-    public RecurringSchedule? RecurringSchedule { get; set; }
-
-    public bool IsReconciled { get; set; }
-    public bool IsDeleted { get; set; } // Soft-delete for audit trail
-
+    // Loan Installment Amortization Details
+    public int? InstallmentNo { get; set; }
+    public long? PrincipalPart { get; set; } // Paise
+    public long? InterestPart { get; set; }  // Paise
+    
+    // Links transfer legs (if double-entry)
+    public Guid? TransferId { get; set; }
+    
+    public string Note { get; set; } = string.Empty;
+    public string? Merchant { get; set; }
+    public string? TagsCsv { get; set; }
+    
+    public bool IsDeleted { get; set; } // Soft Delete
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
-    public DateTimeOffset? UpdatedAt { get; set; }
 }
 ```
 
@@ -338,56 +374,64 @@ public class Loan
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string Lender { get; set; } = string.Empty;
     public LoanType Type { get; set; }
-    public string LenderName { get; set; } = string.Empty;
     
-    public long PrincipalAmount { get; set; } // Paise
-    public decimal AnnualInterestRatePct { get; set; } // e.g. 8.5000 %
-    public int TenureMonths { get; set; }
-    public long MonthlyEmiAmount { get; set; } // Paise
-    public long CurrentOutstanding { get; set; } // Paise
-    public int InstallmentsPaid { get; set; }
+    // Sanctioned Loan Principal in Paise (BIGINT)
+    public long SanctionedAmount { get; set; }
+    public decimal Rate { get; set; } // Annual % e.g. 8.4000
+    public int Tenure { get; set; } // Total months e.g. 180
     
     public DateOnly StartDate { get; set; }
-    public int DueDayOfMonth { get; set; }
-    public bool AutoDebit { get; set; }
-    public LoanStatus Status { get; set; } = LoanStatus.Active;
+    public long Emi { get; set; } // Paise
+    public int EmiDay { get; set; } // Day of month (1-31)
     
-    public Guid? PaymentAccountId { get; set; }
-    public Account? PaymentAccount { get; set; }
-
-    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public Guid PayFromAccountId { get; set; }
+    public Account PayFromAccount { get; set; } = null!;
+    public bool AutoPost { get; set; }
+    
+    public LoanMode Mode { get; set; } = LoanMode.New;
+    public long? OpeningOutstanding { get; set; } // Paise (for already running loans)
+    public int? OpeningInstallmentsPaid { get; set; }
+    public string? Notes { get; set; }
 }
 ```
 
-#### 5. Investment Holding Entity
+#### 5. Holding (Investment Asset) Entity
 ```csharp
 namespace WealthTrack.Domain.Entities;
 
-public class Investment
+public class Holding
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
+    public AssetType Type { get; set; }
+    public string Broker { get; set; } = string.Empty; // Groww, Zerodha, HDFC Sec
     public string Name { get; set; } = string.Empty;
-    public AssetClass AssetClass { get; set; }
-    public string? TickerOrSymbol { get; set; }
-    public string? FolioNumber { get; set; }
     
-    public long InvestedCapital { get; set; } // Paise
-    public long CurrentValuation { get; set; } // Paise
-    public decimal UnitsHeld { get; set; } // e.g. 154.2384
-    public decimal? LatestNavPrice { get; set; } // Current NAV / Stock price
-    public DateTimeOffset? NavLastUpdatedAt { get; set; }
+    // Opening Invested Principal in Paise (BIGINT)
+    public long OpeningInvested { get; set; }
+    public long CurrentValue { get; set; } // Paise
     
+    // SIP Configuration
+    public bool HasSip { get; set; }
     public long? SipAmount { get; set; } // Paise
-    public bool IsRecurringSip { get; set; }
-    public Guid? RecurringScheduleId { get; set; }
-
-    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public int? SipDay { get; set; } // Day of month
+    public Guid? SipFromAccountId { get; set; }
+    public bool SipActive { get; set; }
+    
+    // Fixed Deposit / Bond Details
+    public DateOnly? MaturityDate { get; set; }
+    public Guid? MaturityAccountId { get; set; }
+    public decimal? AnnualRate { get; set; }
+    public string? Compounding { get; set; } // "monthly" | "quarterly" | "annual"
+    
+    public DateOnly? StartDate { get; set; }
+    public string? Notes { get; set; }
 }
 ```
 
-#### 6. Goal Entity
+#### 6. Goal Entity (Emergency Reserve & Sinking Funds)
 ```csharp
 namespace WealthTrack.Domain.Entities;
 
@@ -396,54 +440,93 @@ public class Goal
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
     public string Name { get; set; } = string.Empty;
-    public GoalPriority Priority { get; set; }
-    public GoalStatus Status { get; set; } = GoalStatus.InProgress;
+    public GoalKind Kind { get; set; } // Emergency, Goal, Sinking
     
-    public long TargetAmount { get; set; } // Paise
-    public long CurrentSaved { get; set; } // Paise (Earmarked cash)
-    public DateOnly TargetDate { get; set; }
+    public long Target { get; set; } // Paise
+    public DateOnly? TargetDate { get; set; }
     public long MonthlyContribution { get; set; } // Paise
+    public string ContributionMode { get; set; } = "manual"; // "auto" | "manual"
+    
+    // Historical opening earmarked balance in Paise
+    public long OpeningAmount { get; set; }
     
     public string? Icon { get; set; }
-    public string? ColorHex { get; set; }
-
-    public ICollection<Transaction> Transactions { get; set; } = new List<Transaction>();
+    public string? Color { get; set; }
+    public string? Notes { get; set; }
 }
 ```
 
-#### 7. Recurring Schedule Entity
+#### 7. Schedule Entity (Recurring Items)
 ```csharp
 namespace WealthTrack.Domain.Entities;
 
-public class RecurringSchedule
+public class Schedule
 {
     public Guid Id { get; set; } = Guid.NewGuid();
     public Guid UserId { get; set; }
-    public string Title { get; set; } = string.Empty;
-    public RecurringFrequency Frequency { get; set; }
-    
+    public string Name { get; set; } = string.Empty;
+    public EntryKind Kind { get; set; } // Income, Expense, Transfer
     public long Amount { get; set; } // Paise
-    public DateOnly NextDueDate { get; set; }
-    public bool AutoDebit { get; set; }
-    public bool IsActive { get; set; } = true;
+    public ScheduleFrequency Frequency { get; set; } // Weekly, Monthly, Yearly
+    public DateOnly NextDate { get; set; }
     
     public Guid AccountId { get; set; }
     public Account Account { get; set; } = null!;
     
-    public Guid? CategoryId { get; set; }
-    public Category? Category { get; set; }
+    public Guid CategoryId { get; set; }
+    public Category Category { get; set; } = null!;
     
-    public Guid? LoanId { get; set; }
-    public Loan? Loan { get; set; }
+    public bool AutoPost { get; set; }
+    public bool Active { get; set; } = true;
+    public NeedWant? NeedWant { get; set; }
+    public EntrySubtype? Subtype { get; set; }
+}
+```
 
-    public Guid? InvestmentId { get; set; }
-    public Investment? Investment { get; set; }
+#### 8. User Profile & Wealth Preferences Entity
+```csharp
+namespace WealthTrack.Domain.Entities;
+
+public class UserProfileTargets
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public string FullName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string? Phone { get; set; }
+    public string? Occupation { get; set; }
+    public string? Bio { get; set; }
+    
+    public long MonthlyIncomeTarget { get; set; } // Paise
+    public int SavingsRateTarget { get; set; } // e.g. 35 %
+    public int EmergencyTargetMonths { get; set; } = 6;
+    public string RiskProfile { get; set; } = "Balanced"; // Conservative, Balanced, Aggressive
+}
+
+public class UserWealthPreferences
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid UserId { get; set; }
+    public string Currency { get; set; } = "INR";
+    public string DateFormat { get; set; } = "DD/MM/YYYY";
+    public string WeekStart { get; set; } = "Monday";
+    public string Theme { get; set; } = "light";
+    public Guid? DefaultAccountId { get; set; }
+    public string DefaultType { get; set; } = "Expense";
+    public string DefaultPaymentMethod { get; set; } = "UPI";
+    
+    // Alert Configurations
+    public bool AlertEmiSip3Days { get; set; } = true;
+    public bool AlertBalanceShortWarning { get; set; } = true;
+    public bool AlertBudget90Percent { get; set; } = true;
+    public bool AlertGoalBehindSchedule { get; set; } = true;
+    public bool AlertGoalsExceedCash { get; set; } = true;
 }
 ```
 
 ---
 
-### 3.3 EF Core `DbContext` & Fluent API Configurations
+### 3.3 EF Core `AppDbContext` Configuration
 
 ```csharp
 namespace WealthTrack.Infrastructure.Data;
@@ -457,118 +540,103 @@ public class AppDbContext : DbContext
 
     public DbSet<Account> Accounts => Set<Account>();
     public DbSet<Category> Categories => Set<Category>();
-    public DbSet<Transaction> Transactions => Set<Transaction>();
+    public DbSet<Entry> Entries => Set<Entry>();
     public DbSet<Loan> Loans => Set<Loan>();
-    public DbSet<Investment> Investments => Set<Investment>();
+    public DbSet<Holding> Holdings => Set<Holding>();
     public DbSet<Goal> Goals => Set<Goal>();
-    public DbSet<RecurringSchedule> RecurringSchedules => Set<RecurringSchedule>();
+    public DbSet<Schedule> Schedules => Set<Schedule>();
+    public DbSet<UserProfileTargets> ProfileTargets => Set<UserProfileTargets>();
+    public DbSet<UserWealthPreferences> WealthPreferences => Set<UserWealthPreferences>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-        // 1. Account Configuration
+        // Account
         modelBuilder.Entity<Account>(b =>
         {
             b.HasKey(a => a.Id);
-            b.Property(a => a.Name).HasMaxLength(100).IsRequired();
-            b.Property(a => a.Currency).HasMaxLength(10).HasDefaultValue("INR");
-            b.Property(a => a.OpeningBalance).IsRequired();
-            b.Property(a => a.CurrentBalance).IsRequired();
-            
-            // SQL Server RowVersion for optimistic concurrency protection
+            b.Property(a => a.Name).HasMaxLength(120).IsRequired();
             b.Property(a => a.RowVersion).IsRowVersion();
-
-            // Filtered index for active accounts
             b.HasIndex(a => new { a.UserId, a.IsArchived });
         });
 
-        // 2. Transaction Configuration
-        modelBuilder.Entity<Transaction>(b =>
+        // Category
+        modelBuilder.Entity<Category>(b =>
         {
-            b.HasKey(t => t.Id);
-            b.Property(t => t.Amount).IsRequired();
-            b.Property(t => t.PayeeMerchant).HasMaxLength(150);
-            b.Property(t => t.Note).HasMaxLength(500);
-            b.Property(t => t.PaymentMethod).HasMaxLength(50);
-
-            // Source Account Relationship
-            b.HasOne(t => t.Account)
-                .WithMany(a => a.SourceTransactions)
-                .HasForeignKey(t => t.AccountId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // Destination Account Relationship (for Transfers)
-            b.HasOne(t => t.DestinationAccount)
-                .WithMany(a => a.DestinationTransactions)
-                .HasForeignKey(t => t.DestinationAccountId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            // Category Relationship
-            b.HasOne(t => t.Category)
-                .WithMany(c => c.Transactions)
-                .HasForeignKey(t => t.CategoryId)
-                .OnDelete(DeleteBehavior.SetNull);
-
-            // High-performance Composite Clustered Index for user ledger queries
-            b.HasIndex(t => new { t.UserId, t.TransactionDate, t.IsDeleted })
-                .IncludeProperties(t => new { t.Amount, t.Kind, t.Subtype, t.AccountId, t.CategoryId });
-
-            // Global Query Filter for Soft Delete
-            b.HasQueryFilter(t => !t.IsDeleted);
+            b.HasKey(c => c.Id);
+            b.Property(c => c.Name).HasMaxLength(100).IsRequired();
+            b.Property(c => c.Icon).HasMaxLength(30);
+            b.HasIndex(c => new { c.UserId, c.Kind, c.IsArchived });
         });
 
-        // 3. Loan Configuration
+        // Entry
+        modelBuilder.Entity<Entry>(b =>
+        {
+            b.HasKey(e => e.Id);
+            b.Property(e => e.Note).HasMaxLength(500);
+            b.Property(e => e.Merchant).HasMaxLength(150);
+            b.Property(e => e.ToRefName).HasMaxLength(150);
+
+            b.HasOne(e => e.Account)
+                .WithMany(a => a.Entries)
+                .HasForeignKey(e => e.AccountId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            b.HasOne(e => e.Category)
+                .WithMany(c => c.Entries)
+                .HasForeignKey(e => e.CategoryId)
+                .OnDelete(DeleteBehavior.SetNull);
+
+            // Composite Clustered Index for fast date-range and user ledger queries
+            b.HasIndex(e => new { e.UserId, e.Date, e.IsDeleted })
+                .IncludeProperties(e => new { e.Kind, e.Subtype, e.Amount, e.AccountId, e.CategoryId, e.NeedWant });
+
+            b.HasIndex(e => new { e.SourceId, e.Date, e.Status });
+
+            b.HasQueryFilter(e => !e.IsDeleted);
+        });
+
+        // Loan
         modelBuilder.Entity<Loan>(b =>
         {
             b.HasKey(l => l.Id);
             b.Property(l => l.Name).HasMaxLength(120).IsRequired();
-            b.Property(l => l.LenderName).HasMaxLength(120).IsRequired();
-            b.Property(l => l.AnnualInterestRatePct).HasPrecision(6, 4); // e.g. 12.3500 %
-            b.Property(l => l.PrincipalAmount).IsRequired();
-            b.Property(l => l.MonthlyEmiAmount).IsRequired();
-            b.Property(l => l.CurrentOutstanding).IsRequired();
+            b.Property(l => l.Lender).HasMaxLength(120).IsRequired();
+            b.Property(l => l.Rate).HasPrecision(6, 4);
 
-            b.HasOne(l => l.PaymentAccount)
-                .WithMany(a => a.LinkedLoans)
-                .HasForeignKey(l => l.PaymentAccountId)
-                .OnDelete(DeleteBehavior.SetNull);
+            b.HasOne(l => l.PayFromAccount)
+                .WithMany()
+                .HasForeignKey(l => l.PayFromAccountId)
+                .OnDelete(DeleteBehavior.Restrict);
 
-            b.HasIndex(l => new { l.UserId, l.Status });
+            b.HasIndex(l => l.UserId);
         });
 
-        // 4. Investment Configuration
-        modelBuilder.Entity<Investment>(b =>
+        // Holding
+        modelBuilder.Entity<Holding>(b =>
         {
-            b.HasKey(i => i.Id);
-            b.Property(i => i.Name).HasMaxLength(120).IsRequired();
-            b.Property(i => i.TickerOrSymbol).HasMaxLength(50);
-            b.Property(i => i.UnitsHeld).HasPrecision(18, 4);
-            b.Property(i => i.LatestNavPrice).HasPrecision(18, 4);
-
-            b.HasIndex(i => new { i.UserId, i.AssetClass });
+            b.HasKey(h => h.Id);
+            b.Property(h => h.Name).HasMaxLength(150).IsRequired();
+            b.Property(h => h.Broker).HasMaxLength(100);
+            b.Property(h => h.AnnualRate).HasPrecision(6, 4);
+            b.HasIndex(h => new { h.UserId, h.Type });
         });
 
-        // 5. Goal Configuration
+        // Goal
         modelBuilder.Entity<Goal>(b =>
         {
             b.HasKey(g => g.Id);
             b.Property(g => g.Name).HasMaxLength(120).IsRequired();
-            b.HasIndex(g => new { g.UserId, g.Status });
+            b.HasIndex(g => new { g.UserId, g.Kind });
         });
 
-        // 6. Recurring Schedule Configuration
-        modelBuilder.Entity<RecurringSchedule>(b =>
+        // Schedule
+        modelBuilder.Entity<Schedule>(b =>
         {
-            b.HasKey(r => r.Id);
-            b.Property(r => r.Title).HasMaxLength(120).IsRequired();
-
-            b.HasOne(r => r.Account)
-                .WithMany(a => a.LinkedSchedules)
-                .HasForeignKey(r => r.AccountId)
-                .OnDelete(DeleteBehavior.Restrict);
-
-            b.HasIndex(r => new { r.UserId, r.IsActive, r.NextDueDate });
+            b.HasKey(s => s.Id);
+            b.Property(s => s.Name).HasMaxLength(120).IsRequired();
+            b.HasIndex(s => new { s.UserId, s.Active, s.NextDate });
         });
     }
 }
@@ -578,146 +646,133 @@ public class AppDbContext : DbContext
 
 ## 4. Cross-Screen Data Correlation Matrix
 
-This matrix establishes 1:1 mathematical fidelity between the frontend UI views and the backend services.
+This matrix details the exact derivation logic for every screen and metric:
 
 ### 4.1 Dashboard (`/dashboard`)
 
-| Frontend UI Component | Display Value | Backend Calculation & SQL Query | .NET Core Service Method |
+| Frontend UI Metric | Frontend Display | Exact Backend Derivation in C# | Invariant Reference |
 | :--- | :--- | :--- | :--- |
-| **Hero Available Cash** | `₹8,08,120` | `SUM(CurrentBalance)` where `Type IN (Bank, Cash, Wallet)` and `!IsArchived` | `_wealthService.GetAvailableCashAsync(userId)` |
-| **Total Assets Chip** | `₹13,00,620` | $\text{LiquidCash} + \sum \text{CurrentValuation} + \sum \text{Receivables}$ | `_wealthService.GetWealthMetricsAsync(userId)` |
-| **Free to Spend Chip** | `₹2,78,120` | $\text{LiquidCash} - \sum \text{CurrentSaved}(\text{Goals})$ | `_wealthService.GetWealthMetricsAsync(userId)` |
-| **Earmarked for Goals** | `₹5,30,000` | $\sum \text{CurrentSaved}(\text{Goals where Status == InProgress})$ | `_goalService.GetTotalEarmarkedAsync(userId)` |
-| **Goals Coverage Status** | `Goals fully covered` | `LiquidCash >= EarmarkedCash ? "covered" : "shortfall"` | `_dashboardService.GetSummaryAsync(userId)` |
-| **Total Loans Chip** | `Loans: ₹32,05,940` | $\sum \text{CurrentOutstanding}(\text{Active Loans}) + \sum |\min(0, \text{Balance}(\text{CreditCard}))|$ | `_loanService.GetTotalDebtAsync(userId)` |
-| **Money In Tile** | `+₹1,00,150` | `SUM(Amount)` where `Kind == Income` within selected month | `_metricsService.GetPeriodCashFlowAsync(userId, period)` |
-| **Money Out Tile** | `₹77,892` | `SUM(Amount)` where `Kind == Expense` (or `Subtype == Emi`) within month | `_metricsService.GetPeriodCashFlowAsync(userId, period)` |
-| **Saved Tile** | `₹22,258 (22%)` | $\text{Saved} = \text{MoneyIn} - \text{MoneyOut}$; $\text{Rate} = (\text{Saved} / \text{MoneyIn}) \times 100$ | `_metricsService.GetPeriodCashFlowAsync(userId, period)` |
-| **50/30/20 Breakdown** | `Needs 71%, Wants 7%, Savings 22%` | Needs: $\sum (\text{Priority} == \text{Need} \lor \text{Emi})$; Wants: $\sum (\text{Priority} == \text{Want})$; Savings: $\max(0, \text{Saved})$. Evaluated via Hamilton-Hare Largest Remainder rounding. | `_planService.Get503020SplitAsync(userId, period)` |
-| **Cash Runway Vital** | `20.4 months` | $\text{LiquidCash} / \text{AverageMonthlyLivingExpenses (Last 6 Months)}$ | `_dashboardService.GetFinancialVitalsAsync(userId)` |
-| **Emergency Cover Vital**| `3.1 months` | $\sum \text{CurrentSaved}(\text{Emergency Goals}) / \text{MonthlyEssentialNeeds}$ | `_dashboardService.GetFinancialVitalsAsync(userId)` |
-| **EMI Load Vital** | `45%` | $(\sum \text{MonthlyEmi} / \text{MoneyIn}) \times 100$ | `_dashboardService.GetFinancialVitalsAsync(userId)` |
-| **Budget Used Vital** | `70%` | $(\sum \text{ActualSpend}(\text{Categories}) / \sum \text{MonthlyLimit}(\text{Categories})) \times 100$ | `_dashboardService.GetFinancialVitalsAsync(userId)` |
-| **Monthly EMIs & Debt** | `2 Active EMIs, ₹45,050/mo` | Query `Loans` where `Status == Active` | `_loanService.GetActiveEmisAsync(userId)` |
-| **Coming Up Section** | Upcoming recurring payments | Query `RecurringSchedules` where `NextDueDate <= EndOfMonth` | `_recurringService.GetUpcomingDuesAsync(userId)` |
-| **Top Spending** | Category limits & spend | Top 3 categories grouped by spend vs category limit | `_metricsService.GetTopSpendingCategoriesAsync(userId)` |
+| **Available Cash (Hero)** | `₹4,99,689` | Sum of non-archived non-credit-card accounts: `OpeningBalance + SUM(Entries.Amount)` | Tested Invariant `I1` |
+| **Total Assets Chip** | `₹9,92,189` | `LiquidCash + SUM(Holdings.CurrentValue) + ReceivablesTotal` | Tested Invariant `I2`, `I16` |
+| **Net Worth** | `₹9,92,189` | Identical to `TotalAssets` (by design rule) | Tested Invariant `I2` |
+| **Total Debt (Liabilities)**| `₹32,32,970` | `SUM(Loan.CurrentOutstanding) + CreditCardNegativeBalances` | Tested Invariant `I5`, `I16` |
+| **Free to Spend Chip** | `₹3,74,689` | `LiquidCash - EarmarkedCash` | Correlation Matrix C1 |
+| **Earmarked for Goals** | `₹1,25,000` | Sum of `Goal.OpeningAmount + SUM(GoalAllocations) - SUM(Withdrawals)` | Tested Invariant `I14` |
+| **Money In Tile** | `+₹1,00,250` | `SUM(Amount)` where `Kind == Income && Date in Period && Status == Posted` | Tested Invariant `I3` |
+| **Money Out Tile** | `₹79,342` | `SUM(Amount)` where `Kind == Expense && Date in Period && Status == Posted` | Tested Invariant `I3` |
+| **Saved Tile** | `₹20,908 (21%)` | `MoneyIn - MoneyOut`; Savings Rate = `(Saved / MoneyIn) * 100` | Tested Invariant `I9`, `I16` |
+| **50/30/20 Breakdown** | `Needs 72%, Wants 7%, Savings 21%` | Needs: $\sum (\text{Priority}=\text{Need} \lor \text{EMI})$; Wants: $\sum (\text{Priority}=\text{Want})$; Savings: $\max(0, \text{Saved})$. Evaluated via Hamilton-Hare largest remainder rounding. | Tested Invariant `I4` |
+| **Cash Runway Vital** | `6.9 months` | `LiquidCash / EssentialSpend (3-month trailing average of Needs)` | Tested Invariant `I16` |
+| **Emergency Cover Vital**| `1.7 months` | `EmergencyGoal.Current / EssentialSpend` | Tested Invariant `I16` |
+| **EMI Load Vital** | `45%` | `(SUM(EmisInPeriod) / MoneyIn) * 100` | Tested Invariant `I16` |
+| **Budget Used Vital** | `71%` | `(BudgetedSpend / TotalCap) * 100` | Tested Invariant `I11` |
 
 ---
 
 ### 4.2 Transactions Ledger (`/transactions`)
 
-| Frontend UI Component | Backend SQL Execution | .NET Core Service |
+| Frontend UI Component | Backend Implementation | API Endpoint |
 | :--- | :--- | :--- |
-| **Filtered Activity Bar** | Aggregated `COUNT(*)`, `SUM(Inflows)`, `SUM(Outflows)`, `SUM(Net)` computed directly in a single SQL query matching the applied filter parameters. | `_txService.GetSummaryAsync(filter)` |
-| **Paginated Ledger Table** | `IQueryable<Transaction>` with `.Where(filter).OrderByDescending(t => t.TransactionDate).Skip(page * size).Take(size)`. | `_txService.GetPagedListAsync(filter)` |
-| **Create Transaction** | Atomic balance mutation within `await using var tx = await _db.Database.BeginTransactionAsync()`: updates source account `CurrentBalance` and posts transaction entry. | `_txService.CreateTransactionAsync(dto)` |
-| **Update Transaction** | Reverses previous transaction amount from account, updates fields, applies new amount to account balance inside a transaction. | `_txService.UpdateTransactionAsync(id, dto)` |
-| **Delete Transaction** | Soft deletes (`IsDeleted = true`), restores account balance. | `_txService.DeleteTransactionAsync(id)` |
+| **Summary Bar** | Single SQL aggregation returning `TotalCount`, `InflowsSum`, `OutflowsSum`, and `Net` for the active filter. | `GET /api/v1/transactions/summary` |
+| **Paginated Grid** | Dynamic `IQueryable<Entry>` with indexed cursor or offset pagination (`page`, `pageSize`, `search`, `kind`, `accountId`, `categoryId`). | `GET /api/v1/transactions` |
+| **Create Entry** | Mutates source balance atomically in an EF Core transaction. Updates loan or holding if `to_ref` is supplied. | `POST /api/v1/transactions` |
+| **Update Entry** | Reverses previous entry delta, updates entity, and applies new delta inside an atomic transaction. | `PUT /api/v1/transactions/{id}` |
+| **Delete Entry** | Soft deletes (`IsDeleted = true`), automatically restoring account balance. | `DELETE /api/v1/transactions/{id}` |
 
 ---
 
 ### 4.3 Wealth Hub (`/wealth`)
 
-| Frontend UI Component | Derivation Formula | .NET Core Service |
+| Frontend UI Subtab | Backend Derivation | API Endpoint |
 | :--- | :--- | :--- |
-| **Accounts List** | Read `Accounts` with balances and institution badges | `_wealthService.GetAccountsAsync(userId)` |
-| **Investments Portfolio** | Read `Investments`; calculate `Gain = CurrentValuation - InvestedCapital`, `GainPct = (Gain / Invested) * 100` | `_wealthService.GetInvestmentsAsync(userId)` |
-| **Loans & Liabilities** | Read `Loans`; calculate `PaidPct = (InstallmentsPaid / TenureMonths) * 100` | `_loanService.GetLoansAsync(userId)` |
-| **Net Wealth Trend Chart** | Month-by-month historical asset values minus liabilities | `_reportsService.GetNetWealthTrendAsync(userId, range)` |
+| **Accounts Subtab** | Active accounts, institution badges, current balances, and transfer triggers. | `GET /api/v1/wealth/accounts` |
+| **Holdings Subtab** | `Invested = OpeningInvested + Contributions - Redemptions`; `Gain = CurrentValue - Invested`. | `GET /api/v1/wealth/holdings` |
+| **Loans Subtab** | `PrincipalRepaid = (Sanctioned - OpeningOutstanding) + SUM(PrincipalPart from posted EMIs)`; `Outstanding = Sanctioned - PrincipalRepaid`. | `GET /api/v1/wealth/loans` |
+| **Pay EMI Action** | Deterministically creates `Entry` with `Subtype = Emi`, sets `InstallmentNo`, `PrincipalPart`, `InterestPart` from amortization row, and advances schedule date. | `POST /api/v1/wealth/loans/{id}/pay-emi` |
 
 ---
 
 ### 4.4 Plan Hub (`/plan`)
 
-| Frontend UI Component | Derivation Formula | .NET Core Service |
+| Frontend UI Subtab | Backend Derivation | API Endpoint |
 | :--- | :--- | :--- |
-| **50/30/20 Target vs Actual** | Target: $50\%$ Needs, $30\%$ Wants, $20\%$ Savings. Actual: dynamically mapped using Largest Remainder Rounding. | `_planService.GetPlanOverviewAsync(userId, month)` |
-| **Category Budget Progress** | Compare monthly expense per category against `MonthlyLimit` | `_planService.GetCategoryBudgetsAsync(userId, month)` |
-| **Goals & Sinking Funds** | Computes projected target completion date: `MonthsRemaining = (TargetAmount - CurrentSaved) / MonthlyContribution` | `_goalService.GetGoalsAsync(userId)` |
+| **Budgets Subtab** | Reads categories where `Kind == Expense`; computes spent vs. `MonthlyCap`. | `GET /api/v1/plan/budgets?period=2026-10` |
+| **Update Budget Cap** | Updates `Category.MonthlyCap`. | `PUT /api/v1/plan/categories/{id}/monthly-cap` |
+| **Goals Subtab** | Computes current savings: `OpeningAmount + SUM(GoalAllocations) - Withdrawals`. | `GET /api/v1/plan/goals` |
+| **Quick Deposit to Goal** | Posts `Entry` with `Subtype = GoalAllocation`, debits selected account, and increases goal savings. | `POST /api/v1/plan/goals/{id}/contribute` |
 
 ---
 
 ### 4.5 Reports & Insights (`/reports`, `/insights`)
 
-| Frontend UI Component | Backend Derivation & Recharts Compatibility | .NET Core Service |
+| Chart / Section | Data Structure & Recharts Contract | API Endpoint |
 | :--- | :--- | :--- |
-| **Cash Flow Velocity Chart** | Day-by-day continuous array for Recharts: `{ day, date, inflow, outflow, netDelta }` | `_reportsService.GetCashFlowVelocityAsync(userId, year, month)` |
-| **Cumulative Net Trend** | Daily running accumulation sum of $(Inflow - Outflow)$ | `_reportsService.GetCumulativeNetTrendAsync(userId, year, month)` |
-| **Category Spend Pie Chart** | Category breakdown grouped by percentage of total spend | `_reportsService.GetCategoryDistributionAsync(userId, period)` |
-| **Where Your Savings Went** | Identity: $\text{KeptInCash} + \text{NetInvested} + \text{NetLent} + \text{PrepaidDebt} - \text{NetBorrowed} \equiv \text{Saved}$ | `_reportsService.GetSavingsDeploymentAsync(userId, period)` |
+| **Cash Flow Velocity** | Continuous daily array: `[{ day, date, inflow, outflow, netDelta }]` | `GET /api/v1/reports/cash-flow-velocity?year=2026&month=10` |
+| **Net Wealth Trend** | Month-by-month historical asset progression. | `GET /api/v1/reports/net-wealth-trend?range=1Y` |
+| **Category Spend Pie** | Breakdown of expense categories with percentages and colors. | `GET /api/v1/reports/category-spend?period=2026-10` |
+| **Where Savings Went** | Exact 5-way deployment breakdown summing to `Saved`. | `GET /api/v1/reports/savings-deployment?period=2026-10` |
 
 ---
 
-## 5. .NET Core Web API Endpoints Contract
+### 4.6 Data Health Diagnostic Engine (`/api/v1/analytics/data-health`)
+Matches [src/lib/data-health.ts](file:///c:/Users/Abhishek.Hingmire/Desktop/Workspace/Prson/Repos/daily-finance-garden/src/lib/data-health.ts). Runs 11 automated audit checks:
+1. `negative_cash`: Verifies non-credit-card accounts are not negative.
+2. `unlinked_transfers`: Checks transfer leg integrity.
+3. `orphan_entries`: Detects entries pointing to deleted accounts or categories.
+4. `goals_exceed_cash`: Checks whether `EarmarkedCash > LiquidCash`.
+5. `duplicate_entries`: Identifies accidental duplicate postings on `(Date, Amount, AccountId, Merchant)`.
+6. `overdue_schedules`: Warns of unpaid past-due recurring schedules.
+7. `missing_budget_caps`: Identifies uncapped categories exceeding ₹10,000 monthly spend.
 
-All endpoints follow RESTful conventions and return responses wrapped in a standard `ApiResponse<T>`:
+---
 
+## 5. RESTful API Endpoints Summary
+
+All endpoints return a uniform envelope:
 ```csharp
-public record ApiResponse<T>(bool Success, T? Data, string? ErrorMessage = null);
+public record ApiResponse<T>(bool Success, T? Data, string? Error = null, int StatusCode = 200);
 ```
 
-### 5.1 Dashboard Controller (`/api/v1/dashboard`)
-- `GET /api/v1/dashboard/summary?period=2026-10`
-  - Returns: All hero metrics, available cash, 50/30/20 split, vitals, upcoming dues, active EMIs, and recent activity in a single payload.
-
-### 5.2 Transactions Controller (`/api/v1/transactions`)
-- `GET /api/v1/transactions?period=2026-10&accountId={guid}&categoryId={guid}&kind={kind}&search={q}&page=1&pageSize=50`
-- `GET /api/v1/transactions/summary?period=2026-10`
+### Endpoints Table
+- `GET /api/v1/dashboard/summary?period=YYYY-MM`
+- `GET /api/v1/transactions?page=1&pageSize=50&kind={kind}&accountId={id}&categoryId={id}&search={q}`
+- `GET /api/v1/transactions/summary?period=YYYY-MM`
 - `POST /api/v1/transactions` (Requires `Idempotency-Key` header)
 - `PUT /api/v1/transactions/{id}`
 - `DELETE /api/v1/transactions/{id}`
 - `POST /api/v1/transactions/bulk-delete`
-- `POST /api/v1/transactions/bulk-categorize`
-
-### 5.3 Accounts Controller (`/api/v1/accounts`)
-- `GET /api/v1/accounts`
-- `POST /api/v1/accounts`
-- `PUT /api/v1/accounts/{id}`
-- `POST /api/v1/accounts/transfer` (Atomic double-entry transfer)
-- `POST /api/v1/accounts/{id}/archive`
-
-### 5.4 Loans Controller (`/api/v1/loans`)
-- `GET /api/v1/loans`
-- `POST /api/v1/loans`
-- `GET /api/v1/loans/{id}/amortization` (Generates full month-by-month schedule)
-- `POST /api/v1/loans/{id}/pay-emi` (Executes EMI payment and updates balance/tenure)
-- `POST /api/v1/loans/{id}/prepayment` (Reduces principal balance directly)
-
-### 5.5 Investments & Wealth Controller (`/api/v1/wealth`)
-- `GET /api/v1/wealth/summary`
+- `POST /api/v1/transactions/bulk-reassign-category`
+- `POST /api/v1/transactions/bulk-reassign-priority`
+- `GET /api/v1/wealth/accounts`
+- `POST /api/v1/wealth/accounts`
+- `PUT /api/v1/wealth/accounts/{id}`
+- `POST /api/v1/wealth/accounts/{id}/archive`
+- `POST /api/v1/wealth/accounts/transfer`
+- `POST /api/v1/wealth/accounts/{id}/reconcile`
 - `GET /api/v1/wealth/holdings`
 - `POST /api/v1/wealth/holdings`
-- `POST /api/v1/wealth/holdings/{id}/sync-nav` (Fetches latest NAV price, cached in memory)
-
-### 5.6 Plan & Budgets Controller (`/api/v1/plan`)
-- `GET /api/v1/plan/overview?period=2026-10`
-- `PUT /api/v1/plan/categories/{id}/budget`
+- `PUT /api/v1/wealth/holdings/{id}`
+- `POST /api/v1/wealth/holdings/{id}/toggle-sip`
+- `GET /api/v1/wealth/loans`
+- `POST /api/v1/wealth/loans`
+- `GET /api/v1/wealth/loans/{id}/amortization`
+- `POST /api/v1/wealth/loans/{id}/pay-emi`
+- `GET /api/v1/wealth/receivables`
+- `GET /api/v1/plan/budgets?period=YYYY-MM`
+- `PUT /api/v1/plan/categories/{id}/monthly-cap`
 - `GET /api/v1/plan/goals`
 - `POST /api/v1/plan/goals`
-- `POST /api/v1/plan/goals/{id}/contribute` (Earmarks liquid cash to goal)
-
-### 5.7 Reports Controller (`/api/v1/reports`)
-- `GET /api/v1/reports/cash-flow-velocity?year=2026&month=10`
+- `POST /api/v1/plan/goals/{id}/contribute`
+- `GET /api/v1/recurring`
+- `POST /api/v1/recurring`
+- `POST /api/v1/recurring/{id}/toggle`
+- `POST /api/v1/recurring/{id}/record-now`
+- `GET /api/v1/reports/cash-flow-velocity?year={y}&month={m}`
 - `GET /api/v1/reports/net-wealth-trend?range=1Y`
-- `GET /api/v1/reports/savings-deployment?period=2026-10`
-
----
-
-## 6. Migration & Database Deployment Commands
-
-Using EF Core CLI tools with SQL Server:
-
-```powershell
-# 1. Install required EF Core packages
-dotnet add package Microsoft.EntityFrameworkCore.SqlServer
-dotnet add package Microsoft.EntityFrameworkCore.Design
-
-# 2. Add initial code-first migration
-dotnet ef migrations add InitialWealthTrackDb --output-dir Data/Migrations
-
-# 3. Apply migration to local/dev SQL Server
-dotnet ef database update
-
-# 4. Generate idempotent SQL script for CI/CD Azure pipeline deployment
-dotnet ef migrations script --idempotent --output ./deploy/migration.sql
-```
+- `GET /api/v1/reports/category-spend?period=YYYY-MM`
+- `GET /api/v1/reports/savings-deployment?period=YYYY-MM`
+- `GET /api/v1/analytics/data-health`
+- `GET /api/v1/preferences`
+- `PUT /api/v1/preferences`
+- `GET /api/v1/profile`
+- `PUT /api/v1/profile`
