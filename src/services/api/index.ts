@@ -6,6 +6,7 @@ export * from "./config";
 export * from "./types";
 export * from "./auth-api";
 export * from "./institutions-api";
+export * from "./market-api";
 export * from "./local-storage-repository";
 export * from "./rest-repository";
 

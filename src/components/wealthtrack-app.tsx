@@ -482,14 +482,64 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             notify("Automated Recurring Flow", `Auto-recorded: ${names}`);
           }, 300);
         }
+      } else if (res?.statusCode === 401) {
+        // Attempt silent token refresh before giving up session
+        authApi.refreshToken().then((refreshRes) => {
+          if (refreshRes.success && refreshRes.data?.accessToken) {
+            repository.getState().then((retryRes) => {
+              if (retryRes.success && retryRes.data) {
+                const baseState = syncLoansWithRecurring(retryRes.data);
+                setData({ ...baseState, session: true, onboarded: true });
+              }
+            });
+          } else {
+            authStorage.clear();
+            setData(createEmptyWorkspaceState());
+          }
+        }).catch(() => {
+          authStorage.clear();
+          setData(createEmptyWorkspaceState());
+        });
       } else {
-        authStorage.clear();
-        setData(createEmptyWorkspaceState());
+        // Network or transient server startup error: DO NOT log out user; keep 72h session intact
+        const cachedUser = authStorage.getUser();
+        setData((prev) => ({
+          ...prev,
+          session: true,
+          onboarded: true,
+          profile: cachedUser ? {
+            fullName: cachedUser.fullName || prev.profile?.fullName || "User",
+            email: cachedUser.email || prev.profile?.email || "",
+            phone: cachedUser.mobileNumber || prev.profile?.phone || "",
+            occupation: prev.profile?.occupation || "Professional",
+            monthlyIncomeTarget: prev.profile?.monthlyIncomeTarget || 0,
+            emergencyFundTarget: prev.profile?.emergencyFundTarget || 0,
+            savingsRateTarget: prev.profile?.savingsRateTarget || 20,
+            riskProfile: prev.profile?.riskProfile || "Balanced",
+            bio: prev.profile?.bio,
+          } : prev.profile,
+        }));
       }
       setLoaded(true);
     }).catch(() => {
-      authStorage.clear();
-      setData(createEmptyWorkspaceState());
+      // Do not clear storage on transient connection error; preserve 72h session
+      const cachedUser = authStorage.getUser();
+      setData((prev) => ({
+        ...prev,
+        session: true,
+        onboarded: true,
+        profile: cachedUser ? {
+          fullName: cachedUser.fullName || prev.profile?.fullName || "User",
+          email: cachedUser.email || prev.profile?.email || "",
+          phone: cachedUser.mobileNumber || prev.profile?.phone || "",
+          occupation: prev.profile?.occupation || "Professional",
+          monthlyIncomeTarget: prev.profile?.monthlyIncomeTarget || 0,
+          emergencyFundTarget: prev.profile?.emergencyFundTarget || 0,
+          savingsRateTarget: prev.profile?.savingsRateTarget || 20,
+          riskProfile: prev.profile?.riskProfile || "Balanced",
+          bio: prev.profile?.bio,
+        } : prev.profile,
+      }));
       setLoaded(true);
     });
   }, [repository]);

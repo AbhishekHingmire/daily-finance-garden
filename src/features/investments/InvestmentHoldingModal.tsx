@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
-import { AlertCircle, AlertTriangle, TrendingDown, TrendingUp } from "lucide-react";
+import { useMemo, useState, useEffect, useRef } from "react";
+import { AlertCircle, AlertTriangle, TrendingDown, TrendingUp, Search, Sparkles, Loader2, Check, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
+import { marketApi, type InstrumentSearchResult } from "@/services/api";
 import { getAccountBalance, type AssetType, type InvestmentHolding, type WealthState } from "@/lib/wealthtrack";
 
 const ASSET_TYPES: AssetType[] = [
@@ -13,6 +14,28 @@ const ASSET_TYPES: AssetType[] = [
   "Fixed deposit",
   "Crypto",
   "Other",
+];
+
+const SEARCH_CATEGORIES = [
+  { id: "All", label: "All Instruments" },
+  { id: "National Stock", label: "National (NSE)" },
+  { id: "International Stock", label: "US / Global" },
+  { id: "Mutual Fund", label: "Mutual Funds (AMFI)" },
+  { id: "ETF", label: "ETFs" },
+  { id: "Gold & Commodities", label: "Gold" },
+];
+
+const POPULAR_INSTRUMENTS: InstrumentSearchResult[] = [
+  { symbol: "RELIANCE", name: "Reliance Industries Ltd", category: "National Stock", assetType: "Stocks & Equity", exchange: "NSE", currentPrice: 2890, currency: "INR" },
+  { symbol: "TCS", name: "Tata Consultancy Services Ltd", category: "National Stock", assetType: "Stocks & Equity", exchange: "NSE", currentPrice: 3840, currency: "INR" },
+  { symbol: "HDFCBANK", name: "HDFC Bank Ltd", category: "National Stock", assetType: "Stocks & Equity", exchange: "NSE", currentPrice: 1680, currency: "INR" },
+  { symbol: "AAPL", name: "Apple Inc.", category: "International Stock", assetType: "Stocks & Equity", exchange: "NASDAQ", currentPrice: 224, currency: "USD" },
+  { symbol: "MSFT", name: "Microsoft Corporation", category: "International Stock", assetType: "Stocks & Equity", exchange: "NASDAQ", currentPrice: 428, currency: "USD" },
+  { symbol: "GOOGL", name: "Alphabet Inc. (Google)", category: "International Stock", assetType: "Stocks & Equity", exchange: "NASDAQ", currentPrice: 178, currency: "USD" },
+  { symbol: "122639", name: "Parag Parikh Flexi Cap Fund - Direct Growth", category: "Mutual Fund", assetType: "Mutual fund", exchange: "AMFI", currentPrice: 89.28, currency: "INR" },
+  { symbol: "120503", name: "Mirae Asset Large Cap Fund - Direct Growth", category: "Mutual Fund", assetType: "Mutual fund", exchange: "AMFI", currentPrice: 124.50, currency: "INR" },
+  { symbol: "GOLDBEES", name: "Nippon India ETF Gold BeES", category: "Gold & Commodities", assetType: "Gold & Commodities", exchange: "NSE", currentPrice: 71.50, currency: "INR" },
+  { symbol: "NIFTYBEES", name: "Nippon India ETF Nifty BeES", category: "ETF", assetType: "ETF", exchange: "NSE", currentPrice: 268.10, currency: "INR" },
 ];
 
 export function InvestmentHoldingModal({
@@ -58,6 +81,91 @@ export function InvestmentHoldingModal({
   );
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Market Asset Search State
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<InstrumentSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showSearchDropdown, setShowSearchDropdown] = useState(false);
+  const [searchFilter, setSearchFilter] = useState("All");
+  const [selectedQuote, setSelectedQuote] = useState<{
+    symbol: string;
+    name: string;
+    price: number;
+    currency: string;
+    category: string;
+  } | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleOutsideClick = (event: MouseEvent) => {
+      if (searchContainerRef.current && !searchContainerRef.current.contains(event.target as Node)) {
+        setShowSearchDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleOutsideClick);
+    return () => document.removeEventListener("mousedown", handleOutsideClick);
+  }, []);
+
+  // Debounced live API search
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.trim().length < 2) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      try {
+        const cat = searchFilter === "All" ? undefined : searchFilter;
+        const results = await marketApi.searchInstruments(searchQuery.trim(), cat);
+        setSearchResults(results);
+      } catch (err) {
+        console.error("Failed to search instruments:", err);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 280);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery, searchFilter]);
+
+  const displayedList = useMemo(() => {
+    if (searchQuery.trim().length >= 2) {
+      return searchResults;
+    }
+    // If query is short or empty, show filtered popular items
+    if (searchFilter === "All") return POPULAR_INSTRUMENTS;
+    return POPULAR_INSTRUMENTS.filter(
+      (item) => item.category.toLowerCase().includes(searchFilter.toLowerCase()) ||
+                (searchFilter === "Gold & Commodities" && item.category === "Gold & Commodities")
+    );
+  }, [searchQuery, searchResults, searchFilter]);
+
+  const handleSelectInstrument = (item: InstrumentSearchResult) => {
+    setName(item.name);
+    setAssetType(item.assetType);
+    if (item.exchange) {
+      setInstitution(item.exchange);
+    }
+    if (item.currentPrice && item.currentPrice > 0) {
+      setSelectedQuote({
+        symbol: item.symbol,
+        name: item.name,
+        price: item.currentPrice,
+        currency: item.currency,
+        category: item.category,
+      });
+      // Prefill current valuation if blank
+      if (currentAmount === "") {
+        setCurrentAmount(item.currentPrice);
+      }
+    }
+    setShowSearchDropdown(false);
+    setSearchQuery("");
+  };
 
   const investedNum = Number(investedAmount) || 0;
   const currentNum = Number(currentAmount) || 0;
@@ -123,6 +231,156 @@ export function InvestmentHoldingModal({
       onClose={onClose}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {/* Instant Public Search & Choose Combobox */}
+        <div
+          ref={searchContainerRef}
+          className="relative space-y-2 rounded-xl border border-primary/25 bg-primary/5 p-3"
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <Sparkles className="size-3.5 text-primary" />
+              <span>Search & Pick Instrument (National, Global, AMFI, Gold)</span>
+            </span>
+            <span className="text-[10px] text-muted-foreground font-medium">Public API Lookup</span>
+          </div>
+
+          {/* Category Chips */}
+          <div className="flex flex-wrap gap-1">
+            {SEARCH_CATEGORIES.map((cat) => (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => {
+                  setSearchFilter(cat.id);
+                  setShowSearchDropdown(true);
+                }}
+                className={`rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors cursor-pointer ${
+                  searchFilter === cat.id
+                    ? "bg-primary text-primary-foreground font-semibold"
+                    : "bg-background text-muted-foreground hover:bg-muted hover:text-foreground border border-border/60"
+                }`}
+              >
+                {cat.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Input Box */}
+          <div className="relative">
+            <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              className="wt-field pl-8.5 pr-8 text-xs placeholder:text-muted-foreground/60"
+              placeholder="Search TCS, Apple (AAPL), Parag Parikh, Gold BeES..."
+              value={searchQuery}
+              onFocus={() => setShowSearchDropdown(true)}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setShowSearchDropdown(true);
+              }}
+            />
+            {isSearching && (
+              <Loader2 className="absolute right-3 top-2.5 size-3.5 animate-spin text-primary" />
+            )}
+          </div>
+
+          {/* Suggestions Dropdown */}
+          {showSearchDropdown && (
+            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-border bg-popover shadow-xl">
+              <div className="px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground border-b border-border/60 flex items-center justify-between">
+                <span>
+                  {searchQuery.trim().length >= 2
+                    ? `Live Results (${displayedList.length})`
+                    : `Popular Instruments (${searchFilter})`}
+                </span>
+                <span className="text-[9px] lowercase font-normal">Click to auto-fill</span>
+              </div>
+
+              {displayedList.length === 0 ? (
+                <div className="p-4 text-center text-xs text-muted-foreground">
+                  {isSearching ? "Searching market registry..." : "No instruments found. You can type the details manually below."}
+                </div>
+              ) : (
+                <div className="divide-y divide-border/40">
+                  {displayedList.map((item) => (
+                    <button
+                      key={`${item.symbol}-${item.exchange}-${item.name}`}
+                      type="button"
+                      onClick={() => handleSelectInstrument(item)}
+                      className="w-full px-3 py-2 text-left hover:bg-muted/60 transition-colors flex items-center justify-between gap-2 group cursor-pointer"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-bold text-xs text-foreground group-hover:text-primary">
+                            {item.symbol}
+                          </span>
+                          <span
+                            className={`rounded px-1.5 py-0.2 text-[9px] font-medium ${
+                              item.category === "National Stock"
+                                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
+                                : item.category === "International Stock"
+                                ? "bg-blue-500/15 text-blue-700 dark:text-blue-300"
+                                : item.category === "Mutual Fund"
+                                ? "bg-purple-500/15 text-purple-700 dark:text-purple-300"
+                                : item.category === "Gold & Commodities"
+                                ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                                : "bg-cyan-500/15 text-cyan-700 dark:text-cyan-300"
+                            }`}
+                          >
+                            {item.category}
+                          </span>
+                          {item.exchange && (
+                            <span className="text-[10px] text-muted-foreground font-mono">
+                              ({item.exchange})
+                            </span>
+                          )}
+                        </div>
+                        <p className="truncate text-[11px] text-muted-foreground mt-0.5">
+                          {item.name}
+                        </p>
+                      </div>
+
+                      {item.currentPrice !== undefined && item.currentPrice > 0 && (
+                        <div className="text-right shrink-0">
+                          <span className="text-xs font-semibold text-foreground">
+                            {item.currency === "INR" ? "₹" : item.currency === "USD" ? "$" : ""}
+                            {item.currentPrice.toLocaleString("en-IN", {
+                              maximumFractionDigits: 2,
+                            })}
+                          </span>
+                          <span className="block text-[9px] text-muted-foreground">
+                            {item.category === "Mutual Fund" ? "NAV" : "Last Price"}
+                          </span>
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Active linked instrument badge */}
+          {selectedQuote && (
+            <div className="flex items-center justify-between rounded-lg bg-background p-2 border border-border/80 text-xs">
+              <div className="flex items-center gap-1.5">
+                <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span className="font-semibold text-foreground">{selectedQuote.symbol}</span>
+                <span className="text-muted-foreground text-[11px]">
+                  ({selectedQuote.currency === "INR" ? "₹" : "$"}{selectedQuote.price.toLocaleString("en-IN")})
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setCurrentAmount(selectedQuote.price)}
+                className="text-[10px] text-primary hover:underline font-medium cursor-pointer"
+              >
+                Apply unit price to valuation
+              </button>
+            </div>
+          )}
+        </div>
+
         <InputField
           label="Holding / Asset Name"
           placeholder="e.g. Parag Parikh Flexi Cap, Nifty 50 ETF, Gold BeES"
@@ -130,7 +388,6 @@ export function InvestmentHoldingModal({
           onChange={setName}
           error={errors.name}
           required
-          autoFocus
         />
 
         <div className="grid gap-3 sm:grid-cols-2">

@@ -57,6 +57,7 @@ const STORAGE_KEYS = {
   ACCESS_TOKEN: "wt_access_token",
   REFRESH_TOKEN: "wt_refresh_token",
   AUTH_USER: "wt_auth_user",
+  EXPIRES_AT: "wt_auth_expires_at",
 };
 
 /**
@@ -96,10 +97,30 @@ export const authStorage = {
     }
   },
 
+  getExpiresAt(): string | null {
+    try {
+      return localStorage.getItem(STORAGE_KEYS.EXPIRES_AT);
+    } catch {
+      return null;
+    }
+  },
+
+  isSessionActive(): boolean {
+    const token = this.getAccessToken();
+    if (!token) return false;
+    const expiresAt = this.getExpiresAt();
+    if (!expiresAt) return true; // Token exists
+    const expTime = new Date(expiresAt).getTime();
+    return Number.isFinite(expTime) && expTime > Date.now();
+  },
+
   saveTokens(data: AuthResponseData): void {
     try {
       localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.accessToken);
       localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refreshToken);
+      // Ensure 72-hour session duration is recorded
+      const expiresAt = data.expiresAt || new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+      localStorage.setItem(STORAGE_KEYS.EXPIRES_AT, expiresAt);
       if (data.user) {
         localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(data.user));
       }
@@ -113,6 +134,7 @@ export const authStorage = {
       localStorage.removeItem(STORAGE_KEYS.ACCESS_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.REFRESH_TOKEN);
       localStorage.removeItem(STORAGE_KEYS.AUTH_USER);
+      localStorage.removeItem(STORAGE_KEYS.EXPIRES_AT);
     } catch {
       // Ignore
     }
