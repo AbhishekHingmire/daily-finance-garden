@@ -269,6 +269,88 @@ export class LocalStorageWealthRepository implements WealthRepository {
     return { success: true };
   }
 
+  // Loans
+  async addLoan(loan: any): Promise<ApiResponse<any>> {
+    const state = this.readRaw();
+    const loans = [...(state.loans || []), loan];
+    this.writeRaw({ ...state, loans });
+    return { success: true, data: loan };
+  }
+
+  async updateLoan(loan: any): Promise<ApiResponse<any>> {
+    const state = this.readRaw();
+    const loans = (state.loans || []).map((l: any) => (l.id === loan.id ? loan : l));
+    this.writeRaw({ ...state, loans });
+    return { success: true, data: loan };
+  }
+
+  async deleteLoan(id: string): Promise<ApiResponse<void>> {
+    const state = this.readRaw();
+    const loans = (state.loans || []).filter((l: any) => l.id !== id);
+    this.writeRaw({ ...state, loans });
+    return { success: true };
+  }
+
+  async recordLoanPayment(_id: string, _amount: number, _accountId: string, _type: any, _notes?: string): Promise<ApiResponse<void>> {
+    return { success: true };
+  }
+
+  // Investments
+  async addHolding(holding: any): Promise<ApiResponse<any>> {
+    const state = this.readRaw();
+    const investments = [...(state.investments || []), holding];
+    this.writeRaw({ ...state, investments });
+    return { success: true, data: holding };
+  }
+
+  async updateHolding(holding: any): Promise<ApiResponse<any>> {
+    const state = this.readRaw();
+    const investments = (state.investments || []).map((h: any) => (h.id === holding.id ? holding : h));
+    this.writeRaw({ ...state, investments });
+    return { success: true, data: holding };
+  }
+
+  async deleteHolding(id: string): Promise<ApiResponse<void>> {
+    const state = this.readRaw();
+    const investments = (state.investments || []).filter((h: any) => h.id !== id);
+    this.writeRaw({ ...state, investments });
+    return { success: true };
+  }
+
+  // Goals
+  async addGoal(goal: any): Promise<ApiResponse<any>> {
+    const state = this.readRaw();
+    const funds = [...(state.funds || []), goal];
+    this.writeRaw({ ...state, funds });
+    return { success: true, data: goal };
+  }
+
+  async updateGoal(goal: any): Promise<ApiResponse<any>> {
+    const state = this.readRaw();
+    const funds = (state.funds || []).map((g: any) => (g.id === goal.id ? goal : g));
+    this.writeRaw({ ...state, funds });
+    return { success: true, data: goal };
+  }
+
+  async deleteGoal(id: string): Promise<ApiResponse<void>> {
+    const state = this.readRaw();
+    const funds = (state.funds || []).filter((g: any) => g.id !== id);
+    this.writeRaw({ ...state, funds });
+    return { success: true };
+  }
+
+  async contributeToGoal(_id: string, _amount: number, _accountId?: string, _notes?: string): Promise<ApiResponse<void>> {
+    return { success: true };
+  }
+
+  // Profile
+  async updateProfile(patch: any): Promise<ApiResponse<any>> {
+    const state = this.readRaw();
+    const updatedProfile = { ...(state.profile || {}), ...patch };
+    this.writeRaw({ ...state, profile: updatedProfile });
+    return { success: true, data: updatedProfile };
+  }
+
   async resetToInitial(): Promise<ApiResponse<WealthState>> {
     const initial = createInitialState();
     this.writeRaw(initial);

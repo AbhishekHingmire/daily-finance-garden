@@ -570,22 +570,6 @@ export function AuthPage({
               </p>
             )}
           </div>
-
-          {/* Quick Demo Login Shortcut */}
-          <div className="mt-6 rounded-xl border border-border/80 bg-muted/40 p-3.5 text-xs text-muted-foreground flex items-center justify-between">
-            <div>
-              <span className="font-bold text-foreground block">Quick Preview Demo</span>
-              <span className="text-[11px]">Bypass OTP to test workspace</span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs font-semibold shrink-0"
-              onClick={() => onQuickLogin("Demo User")}
-            >
-              Instant Login
-            </Button>
-          </div>
         </div>
       </section>
     </div>

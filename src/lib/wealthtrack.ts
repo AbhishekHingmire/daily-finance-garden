@@ -290,7 +290,51 @@ export interface MoneySummary {
   lent?: number;
 }
 
-export const STORAGE_KEY = "wealthtrack-demo-v1";
+export const STORAGE_KEY = "wealthtrack-v1";
+
+export function createEmptyWorkspaceState(): WealthState {
+  return {
+    session: false,
+    onboarded: false,
+    preferences: {
+      displayName: "",
+      currency: "INR",
+      dateFormat: "DD/MM/YYYY",
+      language: "English",
+      weekStart: "Monday",
+      theme: "light",
+      salaryDay: 1,
+      defaultType: "Expense",
+      defaultAccount: "",
+      defaultPaymentMethod: "UPI",
+      confirmTransactions: false,
+      recurringReminders: true,
+      budgetReminders: true,
+      otherReminders: true,
+    },
+    profile: {
+      fullName: "",
+      email: "",
+      phone: "",
+      occupation: "Professional",
+      monthlyIncomeTarget: 100000,
+      emergencyFundTarget: 180000,
+      savingsRateTarget: 30,
+      riskProfile: "Balanced",
+    },
+    accounts: [],
+    categories: [],
+    transactions: [],
+    recurring: [],
+    investments: [],
+    loans: [],
+    funds: [],
+    plans: [],
+    tags: [],
+    customFields: [],
+    notifications: [],
+  };
+}
 
 export function createInitialState(): WealthState {
   const accounts: Account[] = [
@@ -787,7 +831,14 @@ export function formatMoney(amount: number, currency: WealthPreferences["currenc
 }
 
 export function createTransactionId(): string {
-  return `tx-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
 }
 
 export function makeNotification(title: string, description: string): WealthNotification {

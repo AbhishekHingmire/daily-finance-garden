@@ -2,8 +2,12 @@ import type {
   Account,
   Category,
   CustomField,
+  CustomFund,
+  InvestmentHolding,
+  LoanLiability,
   RecurringItem,
   Transaction,
+  UserProfile,
   WealthPreferences,
   WealthState,
 } from "@/lib/wealthtrack";
@@ -47,6 +51,23 @@ export interface WealthRepository {
   updateCategory(category: Category): Promise<ApiResponse<Category>>;
   archiveCategory(id: string): Promise<ApiResponse<void>>;
 
+  // Loans
+  addLoan(loan: LoanLiability): Promise<ApiResponse<LoanLiability>>;
+  updateLoan(loan: LoanLiability): Promise<ApiResponse<LoanLiability>>;
+  deleteLoan(id: string): Promise<ApiResponse<void>>;
+  recordLoanPayment(id: string, amount: number, accountId: string, type: "EMI" | "Prepayment", notes?: string): Promise<ApiResponse<void>>;
+
+  // Investments
+  addHolding(holding: InvestmentHolding): Promise<ApiResponse<InvestmentHolding>>;
+  updateHolding(holding: InvestmentHolding): Promise<ApiResponse<InvestmentHolding>>;
+  deleteHolding(id: string): Promise<ApiResponse<void>>;
+
+  // Goals / Funds
+  addGoal(goal: CustomFund): Promise<ApiResponse<CustomFund>>;
+  updateGoal(goal: CustomFund): Promise<ApiResponse<CustomFund>>;
+  deleteGoal(id: string): Promise<ApiResponse<void>>;
+  contributeToGoal(id: string, amount: number, accountId?: string, notes?: string): Promise<ApiResponse<void>>;
+
   // Recurring
   addRecurring(item: RecurringItem): Promise<ApiResponse<RecurringItem>>;
   updateRecurring(item: RecurringItem): Promise<ApiResponse<RecurringItem>>;
@@ -54,7 +75,8 @@ export interface WealthRepository {
   toggleRecurring(id: string): Promise<ApiResponse<RecurringItem>>;
   recordRecurringNow(id: string): Promise<ApiResponse<Transaction>>;
 
-  // Preferences & Meta
+  // Profile, Preferences & Meta
+  updateProfile(patch: Partial<UserProfile>): Promise<ApiResponse<UserProfile>>;
   updatePreferences(patch: Partial<WealthPreferences>): Promise<ApiResponse<WealthPreferences>>;
   addCustomField(field: CustomField): Promise<ApiResponse<CustomField>>;
   deleteCustomField(id: string): Promise<ApiResponse<void>>;

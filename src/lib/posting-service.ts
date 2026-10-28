@@ -111,7 +111,7 @@ export function createSipEntry(
   dueDate: string
 ): Entry {
   const amount = holding.sip?.amount || 0;
-  const fromAccount = holding.sip?.from_account || "acc-hdfc";
+  const fromAccount = holding.sip?.from_account || "";
 
   return {
     id: `entry-sip-${holding.id}-${dueDate.slice(0, 10)}-${Date.now()}`,

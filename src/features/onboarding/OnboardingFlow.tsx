@@ -328,10 +328,10 @@ export function OnboardingFlow({
   const handleFinish = () => {
     const updatedProfile = {
       ...(data.profile ?? {
-        fullName: "Abhishek Hingmire",
-        email: "demo@wealthtrack.app",
-        phone: "+91 98765 43210",
-        occupation: "Product Designer & Engineer",
+        fullName: "",
+        email: "",
+        phone: "",
+        occupation: "Professional",
         riskProfile: "Balanced" as const,
       }),
       monthlyIncomeTarget: Number(incomeTarget) || 100000,

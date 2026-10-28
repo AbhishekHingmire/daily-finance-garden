@@ -24,16 +24,16 @@ export function ProfilePage({
   money: (val: number) => string;
   onSaveProfile: (profile: UserProfile) => void;
 }) {
-  const currentProfile = data.profile ?? {
-    fullName: "Abhishek Hingmire",
-    email: "demo@wealthtrack.app",
-    phone: "+91 98765 43210",
-    occupation: "Senior Product Designer & Engineer",
-    monthlyIncomeTarget: 100000,
-    emergencyFundTarget: 150000,
-    savingsRateTarget: 35,
-    riskProfile: "Balanced",
-    bio: "Focused on mindful spending, disciplined compounding, and financial freedom.",
+  const currentProfile: UserProfile = {
+    fullName: data.profile?.fullName || "",
+    email: data.profile?.email || "",
+    phone: data.profile?.phone || "",
+    occupation: data.profile?.occupation || "Professional",
+    monthlyIncomeTarget: data.profile?.monthlyIncomeTarget || 100000,
+    emergencyFundTarget: data.profile?.emergencyFundTarget || 180000,
+    savingsRateTarget: data.profile?.savingsRateTarget || 30,
+    riskProfile: data.profile?.riskProfile || "Balanced",
+    bio: data.profile?.bio || "",
   };
 
   const [form, setForm] = useState<UserProfile>(currentProfile);

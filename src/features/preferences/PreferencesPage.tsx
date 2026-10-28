@@ -367,10 +367,10 @@ export function PreferencesPage({
               <Button
                 variant="outline"
                 size="sm"
-                className="justify-start gap-2 h-10 text-xs font-semibold text-destructive border-destructive/30 hover:bg-destructive/10"
+                className="justify-start gap-2 h-10 text-xs font-semibold"
                 onClick={onReset}
               >
-                <Trash2 size={15} /> Reset All Data to Original Demo Dataset
+                <RotateCcw size={15} /> Resync All Data from Server
               </Button>
               <Button
                 variant="ghost"

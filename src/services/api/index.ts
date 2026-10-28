@@ -8,8 +8,8 @@ export * from "./auth-api";
 export * from "./local-storage-repository";
 export * from "./rest-repository";
 
-// Default singleton instance using LocalStorage for seamless client-side execution
-let defaultRepository: WealthRepository = new LocalStorageWealthRepository();
+// Default singleton instance using RestWealthRepository for live .NET 10 API integration
+let defaultRepository: WealthRepository = new RestWealthRepository();
 
 /**
  * Retrieve the active WealthRepository instance.

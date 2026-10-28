@@ -30,7 +30,7 @@ import { AppLogo } from "@/components/shared/AppLogo";
 import { Modal } from "@/components/shared/Modal";
 import { matchesDateRange, type DateRangeValue } from "@/components/shared/DateRangeFilter";
 import { AuthPage, type AuthView } from "@/features/auth/AuthPage";
-import type { AuthResponseData } from "@/services/api";
+import { authApi, authStorage, type AuthResponseData, getWealthRepository } from "@/services/api";
 import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { Dashboard } from "@/features/dashboard/Dashboard";
 import { TransactionsPage } from "@/features/transactions/TransactionsPage";
@@ -64,10 +64,10 @@ import { useSharedPeriod } from "@/lib/period-state";
 import { NAV_ITEMS, SECONDARY_NAV_ITEMS, getBreadcrumbForSection } from "@/lib/nav-config";
 import { getFeatureFlag } from "@/lib/feature-flags";
 import { entryToLegacyTransaction, migrateLegacyState } from "@/lib/migration";
-import { getWealthRepository } from "@/services/api";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
 import {
   calculateNextSalaryInfo,
+  createEmptyWorkspaceState,
   createInitialState,
   createTransactionId,
   formatMoney,
@@ -158,7 +158,7 @@ function saveClearedNotificationIds(ids: string[]) {
 export function WealthTrackApp({ initialSection }: { initialSection?: Section } = {}) {
   const repository = useMemo(() => getWealthRepository(), []);
 
-  const [data, setData] = useState<WealthState>(() => createInitialState());
+  const [data, setData] = useState<WealthState>(() => createEmptyWorkspaceState());
   const [loaded, setLoaded] = useState(false);
   const [hubsV2, setHubsV2] = useState<boolean>(() => getFeatureFlag("hubs_v2"));
   const [wealthSubtab, setWealthSubtab] = useState<WealthSubtab>(() => {
@@ -261,29 +261,39 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     return checks.every((c) => c.passed);
   }, [unified, sharedPeriod]);
 
-  const handleSaveGlobalEntry = (entry: any, newSchedule?: any) => {
-    const legacyTx = entryToLegacyTransaction(entry);
+  const handleSaveGlobalEntry = async (entry: any, newSchedule?: any) => {
+    let legacyTx = entryToLegacyTransaction(entry);
+    const res = await repository.addTransaction(legacyTx);
+    if (!res.success) {
+      toast.error(res.error || "Failed to record transaction");
+      return;
+    }
+    if (res.data) legacyTx = { ...legacyTx, ...res.data };
+
+    let addedSchedule: RecurringItem | undefined;
+    if (newSchedule) {
+      addedSchedule = {
+        id: newSchedule.id,
+        name: newSchedule.name,
+        type: newSchedule.kind === "income" ? "Income" : "Expense",
+        amount: newSchedule.amount,
+        categoryId: newSchedule.category,
+        accountId: newSchedule.account,
+        frequency: newSchedule.frequency,
+        intervalDays: 0,
+        startDate: newSchedule.next_date,
+        endDate: "",
+        nextDate: newSchedule.next_date,
+        enabled: newSchedule.active,
+      };
+      await repository.addRecurring(addedSchedule);
+    }
+
     setData((current) => {
       const nextTx = [legacyTx, ...current.transactions];
       let nextRec = current.recurring;
-      if (newSchedule) {
-        nextRec = [
-          ...current.recurring,
-          {
-            id: newSchedule.id,
-            name: newSchedule.name,
-            type: newSchedule.kind === "income" ? "Income" : "Expense",
-            amount: newSchedule.amount,
-            categoryId: newSchedule.category,
-            accountId: newSchedule.account,
-            frequency: newSchedule.frequency,
-            intervalDays: 0,
-            startDate: newSchedule.next_date,
-            endDate: "",
-            nextDate: newSchedule.next_date,
-            enabled: newSchedule.active,
-          },
-        ];
+      if (addedSchedule) {
+        nextRec = [...current.recurring, addedSchedule];
       }
       return {
         ...current,
@@ -297,8 +307,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
   // Auth States
   const [authView, setAuthView] = useState<AuthView>("signin");
-  const [email, setEmail] = useState("demo@wealthtrack.app");
-  const [password, setPassword] = useState("Demo123!");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [remember, setRemember] = useState(true);
@@ -404,6 +414,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
   // Load state from repository on mount
   useEffect(() => {
+    const token = authStorage.getAccessToken();
+    if (!token) {
+      setData(createEmptyWorkspaceState());
+      setLoaded(true);
+      return;
+    }
+
     repository.getState().then((res) => {
       if (res.success && res.data) {
         // Upgrade legacy icons & ensure every category has proper emoji icon
@@ -455,7 +472,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(baseState);
         const clearedNoticeIds = getClearedNotificationIds();
         const syncedNotifications = syncSystemNotifications(updatedState, clearedNoticeIds);
-        setData({ ...updatedState, notifications: syncedNotifications });
+        setData({ ...updatedState, notifications: syncedNotifications, session: true });
         if (processedCount > 0) {
           const names = processedItems.map((p) => p.name).join(", ");
           setTimeout(() => {
@@ -465,7 +482,14 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             notify("Automated Recurring Flow", `Auto-recorded: ${names}`);
           }, 300);
         }
+      } else {
+        authStorage.clear();
+        setData(createEmptyWorkspaceState());
       }
+      setLoaded(true);
+    }).catch(() => {
+      authStorage.clear();
+      setData(createEmptyWorkspaceState());
       setLoaded(true);
     });
   }, [repository]);
@@ -545,6 +569,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   };
 
   const updatePreferences = (patch: Partial<WealthPreferences>) => {
+    repository.updatePreferences(patch);
     setData((current) => ({
       ...current,
       preferences: { ...current.preferences, ...patch },
@@ -561,9 +586,25 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setHoldingModalOpen(true);
   };
 
-  const handleSaveHolding = (incomingHolding: InvestmentHolding) => {
+  const handleSaveHolding = async (incomingHolding: InvestmentHolding) => {
+    let holding = { ...incomingHolding };
+    if (editingHolding) {
+      const res = await repository.updateHolding(holding);
+      if (!res.success) {
+        toast.error(res.error || "Failed to update holding");
+        return;
+      }
+      if (res.data) holding = { ...holding, ...res.data };
+    } else {
+      const res = await repository.addHolding(holding);
+      if (!res.success) {
+        toast.error(res.error || "Failed to add holding");
+        return;
+      }
+      if (res.data) holding = { ...holding, ...res.data };
+    }
+
     setData((current) => {
-      let holding = { ...incomingHolding };
       let nextHoldings = current.investments ?? [];
       let nextRecurring = [...current.recurring];
       const recurringSipId = holding.recurringId || `rec-inv-${holding.id}`;
@@ -659,7 +700,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     );
   };
 
-  const handleDeleteHolding = (holding: InvestmentHolding) => {
+  const handleDeleteHolding = async (holding: InvestmentHolding) => {
+    const res = await repository.deleteHolding(holding.id);
+    if (!res.success) {
+      toast.error(res.error || "Failed to remove holding");
+      return;
+    }
     setData((current) => ({
       ...current,
       investments: (current.investments ?? []).filter((h) => h.id !== holding.id),
@@ -682,7 +728,24 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setLoanModalOpen(true);
   };
 
-  const handleSaveLoan = (loan: LoanLiability) => {
+  const handleSaveLoan = async (loanInput: LoanLiability) => {
+    let loan = { ...loanInput };
+    if (editingLoan) {
+      const res = await repository.updateLoan(loan);
+      if (!res.success) {
+        toast.error(res.error || "Failed to update loan");
+        return;
+      }
+      if (res.data) loan = { ...loan, ...res.data };
+    } else {
+      const res = await repository.addLoan(loan);
+      if (!res.success) {
+        toast.error(res.error || "Failed to record loan");
+        return;
+      }
+      if (res.data) loan = { ...loan, ...res.data };
+    }
+
     setData((current) => {
       const loans = current.loans ?? [];
       const idx = loans.findIndex((l) => l.id === loan.id);
@@ -741,7 +804,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     });
   };
 
-  const handleDeleteLoan = (loan: LoanLiability) => {
+  const handleDeleteLoan = async (loan: LoanLiability) => {
+    const res = await repository.deleteLoan(loan.id);
+    if (!res.success) {
+      toast.error(res.error || "Failed to remove loan");
+      return;
+    }
     setData((current) => ({
       ...current,
       loans: (current.loans ?? []).filter((l) => l.id !== loan.id),
@@ -779,10 +847,16 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     if (loan) handleRecordLoanEmiPayment(loan);
   };
 
-  const handleSaveProfile = (profile: UserProfile) => {
+  const handleSaveProfile = async (profile: UserProfile) => {
+    const res = await repository.updateProfile(profile);
+    if (!res.success) {
+      toast.error(res.error || "Failed to update profile");
+      return;
+    }
     setData((current) => ({ ...current, profile }));
     setEmail(profile.email);
     setFullName(profile.fullName);
+    toast.success("Profile saved successfully");
   };
 
   const handleUpdateSalary = (payload: {
@@ -820,7 +894,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         type: "Income",
         amount,
         categoryId: targetCatId,
-        accountId: payload.accountId || current.accounts[0]?.id || "acc-hdfc",
+        accountId: payload.accountId || current.accounts[0]?.id || "",
         frequency: "Monthly",
         intervalDays: 0,
         startDate: payload.startDate || (salaryIdx >= 0 ? nextRecurring[salaryIdx].startDate : "2026-05-19"),
@@ -849,14 +923,33 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     });
   };
 
-  const handleSaveFund = (fund: CustomFund) => {
+  const handleSaveFund = async (fundInput: CustomFund) => {
+    let fund = { ...fundInput };
+    const existing = data.funds ?? [];
+    const index = existing.findIndex((f) => f.id === fund.id);
+    if (index >= 0) {
+      const res = await repository.updateGoal(fund);
+      if (!res.success) {
+        toast.error(res.error || "Failed to update fund");
+        return;
+      }
+      if (res.data) fund = { ...fund, ...res.data };
+    } else {
+      const res = await repository.addGoal(fund);
+      if (!res.success) {
+        toast.error(res.error || "Failed to save fund");
+        return;
+      }
+      if (res.data) fund = { ...fund, ...res.data };
+    }
+
     setData((current) => {
-      const existing = current.funds ?? [];
-      const index = existing.findIndex((f) => f.id === fund.id);
+      const curExisting = current.funds ?? [];
+      const curIndex = curExisting.findIndex((f) => f.id === fund.id);
       const updated =
-        index >= 0
-          ? existing.map((f, i) => (i === index ? fund : f))
-          : [...existing, fund];
+        curIndex >= 0
+          ? curExisting.map((f, i) => (i === curIndex ? fund : f))
+          : [...curExisting, fund];
       const withFunds = { ...current, funds: updated };
       const syncedNotices = syncSystemNotifications(withFunds, getClearedNotificationIds());
       return { ...withFunds, notifications: syncedNotices };
@@ -866,7 +959,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     });
   };
 
-  const handleDeleteFund = (fundId: string) => {
+  const handleDeleteFund = async (fundId: string) => {
+    const res = await repository.deleteGoal(fundId);
+    if (!res.success) {
+      toast.error(res.error || "Failed to delete fund");
+      return;
+    }
     setData((current) => ({
       ...current,
       funds: (current.funds ?? []).filter((f) => f.id !== fundId),
@@ -876,8 +974,14 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     });
   };
 
-  const handleQuickDepositFund = (fundId: string, amount: number, sourceAccountId?: string) => {
+  const handleQuickDepositFund = async (fundId: string, amount: number, sourceAccountId?: string) => {
     let goalFulfilledName: string | null = null;
+    const res = await repository.contributeToGoal(fundId, amount, sourceAccountId);
+    if (!res.success) {
+      toast.error(res.error || "Failed to record contribution");
+      return;
+    }
+
     setData((current) => {
       let newTransactions = current.transactions;
       const targetFund = (current.funds ?? []).find((f) => f.id === fundId);
@@ -885,14 +989,14 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         const acc = current.accounts.find((a) => a.id === sourceAccountId);
         if (acc) {
           const tx: Transaction = {
-            id: `tx-fund-${Date.now()}`,
+            id: createTransactionId(),
             date: new Date().toISOString().slice(0, 10),
             amount,
             type: "Transfer",
             description: `Savings Allocation to ${targetFund.name}`,
             accountId: sourceAccountId,
             destinationAccountId: targetFund.linkedAccountId || sourceAccountId,
-            categoryId: current.categories[0]?.id || "cat-savings",
+            categoryId: current.categories[0]?.id || "",
             paymentMethod: "NetBanking",
             need: "Need",
             merchant: targetFund.name,
@@ -1046,57 +1150,93 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     }, 450);
   };
 
-  const handleLoginSuccess = (mobile: string, authData?: AuthResponseData) => {
+  const handleLoginSuccess = async (mobile: string, authData?: AuthResponseData) => {
     setAuthLoading(true);
-    setTimeout(() => {
-      setData((prev) => ({
-        ...prev,
-        session: true,
-        profile: authData?.user
-          ? {
-              ...(prev.profile ?? {
-                occupation: "Engineer",
-                monthlyIncomeTarget: 100000,
-                emergencyFundTarget: 180000,
-                savingsRateTarget: 25,
-                riskProfile: "Balanced",
-              }),
-              fullName: authData.user.fullName || prev.profile?.fullName || "User",
-              email: authData.user.email || prev.profile?.email || "user@example.com",
-              phone: authData.user.mobileNumber || mobile,
-            }
-          : prev.profile,
-      }));
+    try {
+      const res = await repository.getState();
+      if (res.success && res.data) {
+        const baseState: WealthState = syncLoansWithRecurring(res.data);
+        const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(baseState);
+        const clearedNoticeIds = getClearedNotificationIds();
+        const syncedNotifications = syncSystemNotifications(updatedState, clearedNoticeIds);
+        setData({
+          ...updatedState,
+          session: true,
+          notifications: syncedNotifications,
+          profile: {
+            ...updatedState.profile,
+            fullName: authData?.user?.fullName || updatedState.profile?.fullName || "User",
+            email: authData?.user?.email || updatedState.profile?.email || "",
+            phone: authData?.user?.mobileNumber || mobile,
+            occupation: updatedState.profile?.occupation || "Professional",
+            monthlyIncomeTarget: updatedState.profile?.monthlyIncomeTarget || 100000,
+            emergencyFundTarget: updatedState.profile?.emergencyFundTarget || 180000,
+            savingsRateTarget: updatedState.profile?.savingsRateTarget || 30,
+            riskProfile: updatedState.profile?.riskProfile || "Balanced",
+          },
+        });
+        if (processedCount > 0) {
+          const names = processedItems.map((p) => p.name).join(", ");
+          setTimeout(() => {
+            toast.success(`⚡ Automatically recorded ${processedCount} recurring transaction${processedCount > 1 ? "s" : ""}`, {
+              description: names,
+            });
+          }, 300);
+        }
+      } else {
+        setData((prev) => ({
+          ...prev,
+          session: true,
+          profile: {
+            ...prev.profile,
+            fullName: authData?.user?.fullName || prev.profile?.fullName || "User",
+            email: authData?.user?.email || prev.profile?.email || "",
+            phone: authData?.user?.mobileNumber || mobile,
+            occupation: prev.profile?.occupation || "Professional",
+            monthlyIncomeTarget: prev.profile?.monthlyIncomeTarget || 100000,
+            emergencyFundTarget: prev.profile?.emergencyFundTarget || 180000,
+            savingsRateTarget: prev.profile?.savingsRateTarget || 30,
+            riskProfile: prev.profile?.riskProfile || "Balanced",
+          },
+        }));
+      }
       setAuthLoading(false);
       setAuthErrors({});
       toast.success(`Welcome back! Logged in with +91 ${mobile}`);
-    }, 300);
+    } catch {
+      setAuthLoading(false);
+      toast.error("Failed to load workspace data");
+    }
   };
 
-  const handleSignupSuccess = (info: { fullName: string; email?: string; mobile: string; authData?: AuthResponseData }) => {
+  const handleSignupSuccess = async (info: { fullName: string; email?: string; mobile: string; authData?: AuthResponseData }) => {
     setAuthLoading(true);
-    setTimeout(() => {
-      setData((prev) => ({
-        ...prev,
+    try {
+      const res = await repository.getState();
+      const stateData = res.success && res.data ? res.data : createEmptyWorkspaceState();
+      setData({
+        ...stateData,
         session: true,
         onboarded: false, // Land into stepper form as requested
         profile: {
-          ...(prev.profile ?? {
-            occupation: "Engineer",
-            monthlyIncomeTarget: 100000,
-            emergencyFundTarget: 180000,
-            savingsRateTarget: 25,
-            riskProfile: "Balanced",
-          }),
+          ...stateData.profile,
           fullName: info.authData?.user?.fullName || info.fullName,
-          email: info.authData?.user?.email || info.email || prev.profile?.email || "user@example.com",
+          email: info.authData?.user?.email || info.email || "",
           phone: info.authData?.user?.mobileNumber || info.mobile,
+          occupation: stateData.profile?.occupation || "Professional",
+          monthlyIncomeTarget: stateData.profile?.monthlyIncomeTarget || 100000,
+          emergencyFundTarget: stateData.profile?.emergencyFundTarget || 180000,
+          savingsRateTarget: stateData.profile?.savingsRateTarget || 30,
+          riskProfile: stateData.profile?.riskProfile || "Balanced",
         },
-      }));
+      });
       setAuthLoading(false);
       setAuthErrors({});
       toast.success(`Account verified! Welcome to onboarding, ${info.fullName}`);
-    }, 300);
+    } catch {
+      setAuthLoading(false);
+      toast.error("Failed to initialize workspace");
+    }
   };
 
   const submitAuth = () => {
@@ -1131,7 +1271,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setModal("transaction");
   };
 
-  const saveTransaction = (keepOpen = false) => {
+  const saveTransaction = async (keepOpen = false) => {
     if (savingLockRef.current) return;
     const type = transactionForm.type ?? "Expense";
     const errors: Record<string, string> = {};
@@ -1166,7 +1306,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       cat?.name ||
       (type === "Transfer" ? "Transfer" : type === "Investment" ? "Investment" : "Transaction");
 
-    const saved: Transaction = {
+    let saved: Transaction = {
       id: editTransaction?.id ?? createTransactionId(),
       date: transactionForm.date!,
       description,
@@ -1189,6 +1329,24 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       pricePerUnit: transactionForm.pricePerUnit,
       loanId: transactionForm.loanId,
     };
+
+    if (editTransaction) {
+      const res = await repository.updateTransaction(saved);
+      if (!res.success) {
+        toast.error(res.error || "Failed to update transaction");
+        savingLockRef.current = false;
+        return;
+      }
+      if (res.data) saved = { ...saved, ...res.data };
+    } else {
+      const res = await repository.addTransaction(saved);
+      if (!res.success) {
+        toast.error(res.error || "Failed to record transaction");
+        savingLockRef.current = false;
+        return;
+      }
+      if (res.data) saved = { ...saved, ...res.data };
+    }
 
     setData((current) => {
       let updatedLoans = current.loans;
@@ -1247,7 +1405,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setModal("transfer");
   };
 
-  const executeDirectTransfer = ({
+  const executeDirectTransfer = async ({
     fromAccountId,
     toAccountId,
     amount,
@@ -1264,7 +1422,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     const toAccount = accountById(toAccountId);
     const description = notes || `Transfer to ${toAccount?.name || "Account"}`;
 
-    const saved: Transaction = {
+    let saved: Transaction = {
       id: createTransactionId(),
       date,
       description,
@@ -1281,6 +1439,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       recurring: false,
       customValues: {},
     };
+
+    const res = await repository.addTransaction(saved);
+    if (!res.success) {
+      toast.error(res.error || "Failed to record transfer");
+      return;
+    }
+    if (res.data) saved = { ...saved, ...res.data };
 
     setData((current) => ({
       ...current,
@@ -1300,10 +1465,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setModal("confirm");
   };
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     if (!pendingDelete) return;
     const { kind, id } = pendingDelete;
-    if (kind === "transaction") {
+    if (kind === "transaction" && id) {
+      const res = await repository.deleteTransaction(id);
+      if (!res.success) {
+        toast.error(res.error || "Failed to delete transaction");
+        return;
+      }
       setData((current) => ({
         ...current,
         transactions: current.transactions.filter((item) => item.id !== id),
@@ -1311,21 +1481,36 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       setSelectedIds((current) => current.filter((item) => item !== id));
       toast.success("Transaction removed");
     }
-    if (kind === "account") {
+    if (kind === "account" && id) {
+      const res = await repository.archiveAccount(id);
+      if (!res.success) {
+        toast.error(res.error || "Failed to archive account");
+        return;
+      }
       setData((current) => ({
         ...current,
         accounts: current.accounts.map((item) => (item.id === id ? { ...item, archived: true } : item)),
       }));
       toast.success("Account archived");
     }
-    if (kind === "category") {
+    if (kind === "category" && id) {
+      const res = await repository.archiveCategory(id);
+      if (!res.success) {
+        toast.error(res.error || "Failed to archive category");
+        return;
+      }
       setData((current) => ({
         ...current,
         categories: current.categories.map((item) => (item.id === id ? { ...item, archived: true } : item)),
       }));
       toast.success("Category archived");
     }
-    if (kind === "recurring") {
+    if (kind === "recurring" && id) {
+      const res = await repository.deleteRecurring(id);
+      if (!res.success) {
+        toast.error(res.error || "Failed to delete recurring schedule");
+        return;
+      }
       setData((current) => {
         const target = current.recurring.find((item) => item.id === id);
         let nextLoans = current.loans ?? [];
@@ -1343,19 +1528,30 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       toast.success("Recurring schedule removed");
     }
     if (kind === "reset") {
-      const initial = createInitialState();
-      setData(initial);
+      const res = await repository.getState();
+      if (res.success && res.data) {
+        setData(res.data);
+        toast.success("Resynced workspace from server");
+      } else {
+        toast.error(res.error || "Failed to resync data from server");
+      }
       setActive("Overview");
-      toast.success("Demo data reset");
     }
     if (kind === "signout") {
-      updateData({ session: false });
+      await authApi.logout().catch(() => {});
+      authStorage.clear();
+      setData(createEmptyWorkspaceState());
       setAuthView("signin");
       setPassword("");
-      toast.success("Signed out");
+      toast.success("Signed out successfully");
     }
     if (kind === "bulk") {
       const targetIds = pendingDelete.ids && pendingDelete.ids.length > 0 ? pendingDelete.ids : selectedIds;
+      const res = await repository.bulkDeleteTransactions(targetIds);
+      if (!res.success) {
+        toast.error(res.error || "Failed to bulk delete transactions");
+        return;
+      }
       setData((current) => ({
         ...current,
         transactions: current.transactions.filter((item) => !targetIds.includes(item.id)),
@@ -1373,12 +1569,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setModal("account");
   };
 
-  const saveAccount = (form: Partial<Account>) => {
+  const saveAccount = async (form: Partial<Account>) => {
     if (!form.name?.trim()) {
       toast.error("Account name is required");
       return;
     }
-    const account: Account = {
+    let account: Account = {
       id: editingAccount?.id ?? createTransactionId(),
       name: form.name.trim(),
       kind: form.kind ?? "Bank account",
@@ -1387,6 +1583,23 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       openingBalance: Number(form.openingBalance) || 0,
       notes: form.notes ?? "",
     };
+
+    if (editingAccount) {
+      const res = await repository.updateAccount(account);
+      if (!res.success) {
+        toast.error(res.error || "Failed to update account");
+        return;
+      }
+      if (res.data) account = { ...account, ...res.data };
+    } else {
+      const res = await repository.addAccount(account);
+      if (!res.success) {
+        toast.error(res.error || "Failed to create account");
+        return;
+      }
+      if (res.data) account = { ...account, ...res.data };
+    }
+
     setData((current) => ({
       ...current,
       accounts: editingAccount
@@ -1396,8 +1609,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setModal(null);
     toast.success(editingAccount ? "Account updated" : "Account added");
   };
-
-  const handleReconcileAccount = (accountId: string, newBalance: number, notes = "Reconciled balance") => {
+  const handleReconcileAccount = async (accountId: string, newBalance: number, notes = "Reconciled balance") => {
     const acc = data.accounts.find((a) => a.id === accountId);
     if (!acc) return;
     const current = getAccountBalance(acc, data.transactions);
@@ -1406,7 +1618,14 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       toast.success("Account balance matches statement already");
       return;
     }
-    const adjustment: Transaction = {
+
+    const res = await repository.reconcileAccount(accountId, newBalance, notes);
+    if (!res.success) {
+      toast.error(res.error || "Failed to reconcile balance");
+      return;
+    }
+
+    const adjustment: Transaction = res.data ?? {
       id: createTransactionId(),
       date: new Date().toISOString().slice(0, 16),
       description: "Balance reconciliation",
@@ -1439,12 +1658,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setModal("category");
   };
 
-  const saveCategory = (form: Partial<Category>) => {
+  const saveCategory = async (form: Partial<Category>) => {
     if (!form.name?.trim()) {
       toast.error("Category name is required");
       return;
     }
-    const category: Category = {
+    let category: Category = {
       id: editingCategory?.id ?? createTransactionId(),
       name: form.name.trim(),
       kind: form.kind ?? categoryTab,
@@ -1453,6 +1672,23 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       monthlyLimit: Number(form.monthlyLimit) || 0,
       defaultNeed: form.defaultNeed ?? "Need",
     };
+
+    if (editingCategory) {
+      const res = await repository.updateCategory(category);
+      if (!res.success) {
+        toast.error(res.error || "Failed to update category");
+        return;
+      }
+      if (res.data) category = { ...category, ...res.data };
+    } else {
+      const res = await repository.addCategory(category);
+      if (!res.success) {
+        toast.error(res.error || "Failed to create category");
+        return;
+      }
+      if (res.data) category = { ...category, ...res.data };
+    }
+
     setData((current) => ({
       ...current,
       categories: editingCategory
@@ -1464,17 +1700,17 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   };
 
   // Recurring Actions
-  const addRecurring = (form: Partial<RecurringItem>) => {
+  const addRecurring = async (form: Partial<RecurringItem>) => {
     if (!form.name?.trim() || !form.amount || !form.accountId) {
       toast.error("Add a name, amount, and account");
       return;
     }
-    const item: RecurringItem = {
+    let item: RecurringItem = {
       id: editingRecurring?.id ?? createTransactionId(),
       name: form.name.trim(),
       type: form.type ?? "Expense",
       amount: Number(form.amount),
-      categoryId: form.categoryId ?? "cat-bills",
+      categoryId: form.categoryId ?? (data.categories[0]?.id || ""),
       accountId: form.accountId,
       frequency: form.frequency ?? "Monthly",
       intervalDays: Number(form.intervalDays) || 30,
@@ -1489,6 +1725,23 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       totalInstallments: form.totalInstallments ?? editingRecurring?.totalInstallments,
       paidInstallments: form.paidInstallments ?? editingRecurring?.paidInstallments,
     };
+
+    if (editingRecurring) {
+      const res = await repository.updateRecurring(item);
+      if (!res.success) {
+        toast.error(res.error || "Failed to update recurring schedule");
+        return;
+      }
+      if (res.data) item = { ...item, ...res.data };
+    } else {
+      const res = await repository.addRecurring(item);
+      if (!res.success) {
+        toast.error(res.error || "Failed to add recurring schedule");
+        return;
+      }
+      if (res.data) item = { ...item, ...res.data };
+    }
+
     setData((current) => {
       let nextInvestments = [...(current.investments ?? [])];
       let nextLoans = current.loans ?? [];
@@ -1527,7 +1780,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           item.investmentId = nextInvestments[invIdx].id;
         } else {
           const newHolding: InvestmentHolding = {
-            id: `inv-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+            id: createTransactionId(),
             name: item.name.replace(/\s*\(SIP\)\s*/i, ""),
             assetType: (item.instrumentType as AssetType) || "Mutual fund",
             investedAmount: 0,
@@ -1577,7 +1830,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     toast.success(editingRecurring ? "Schedule updated" : "Recurring schedule added");
   };
 
-  const handleToggleRecurring = (item: RecurringItem) => {
+  const handleToggleRecurring = async (item: RecurringItem) => {
+    const res = await repository.toggleRecurring(item.id);
+    if (!res.success) {
+      toast.error(res.error || "Failed to toggle recurring schedule");
+      return;
+    }
     setData((current) => {
       const nextEnabled = !item.enabled;
       const nextRecurring = current.recurring.map((row) =>
@@ -1608,7 +1866,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     });
   };
 
-  const recordRecurringNow = (item: RecurringItem) => {
+  const recordRecurringNow = async (item: RecurringItem) => {
     if (savingLockRef.current) return;
     savingLockRef.current = true;
 
@@ -1637,7 +1895,14 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       });
     }
 
-    const transaction: Transaction = {
+    const res = await repository.recordRecurringNow(item.id);
+    if (!res.success) {
+      toast.error(res.error || "Failed to record recurring transaction");
+      savingLockRef.current = false;
+      return;
+    }
+
+    const transaction: Transaction = res.data ?? {
       id: createTransactionId(),
       date: new Date().toISOString().slice(0, 16),
       description: item.name,
@@ -1720,7 +1985,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         : [...new Set([...ids, ...filteredTransactions.map((item) => item.id)])]
     );
 
-  const bulkReassign = (categoryId: string) => {
+  const bulkReassign = async (categoryId: string) => {
+    const res = await repository.bulkReassignCategory(selectedIds, categoryId);
+    if (!res.success) {
+      toast.error(res.error || "Failed to reassign category");
+      return;
+    }
     setData((current) => ({
       ...current,
       transactions: current.transactions.map((item) =>
@@ -1731,7 +2001,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     toast.success("Categories updated");
   };
 
-  const bulkReassignPriority = (priority: "Need" | "Want") => {
+  const bulkReassignPriority = async (priority: "Need" | "Want") => {
+    const res = await repository.bulkReassignPriority(selectedIds, priority);
+    if (!res.success) {
+      toast.error(res.error || "Failed to update priority");
+      return;
+    }
     setData((current) => ({
       ...current,
       transactions: current.transactions.map((item) =>
