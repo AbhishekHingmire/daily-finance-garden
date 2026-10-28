@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { authApi, authStorage } from "@/services/api/auth-api";
+import { authApi, authStorage, getApiBaseUrl } from "@/services/api/auth-api";
 
 describe("authStorage", () => {
   beforeEach(() => {
@@ -79,7 +79,7 @@ describe("authApi", () => {
     expect(res.data.testOtp).toBe("749201");
     expect(res.data.expiresInSeconds).toBe(300);
     expect(fetch).toHaveBeenCalledWith(
-      "http://localhost:5252/api/v1/auth/send-otp",
+      `${getApiBaseUrl()}/api/v1/auth/send-otp`,
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({ mobileNumber: "9876543210", purpose: "login" }),

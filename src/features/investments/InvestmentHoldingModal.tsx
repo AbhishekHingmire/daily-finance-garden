@@ -14,6 +14,7 @@ import {
   Layers,
   Coins,
   Landmark,
+  Calendar,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
@@ -46,6 +47,26 @@ const SEARCH_CATEGORIES = [
   { id: "ETF", label: "ETFs" },
   { id: "Gold & Commodities", label: "Gold" },
 ];
+
+const SIP_DAY_OPTIONS = Array.from({ length: 31 }, (_, i) => {
+  const day = i + 1;
+  const suffix =
+    day === 1 || day === 21 || day === 31
+      ? "st"
+      : day === 2 || day === 22
+      ? "nd"
+      : day === 3 || day === 23
+      ? "rd"
+      : "th";
+  let tag = "";
+  if (day === 10) tag = " (Standard SIP Date)";
+  else if ([1, 5, 15, 20, 25].includes(day)) tag = " (Popular)";
+  else if (day === 31) tag = " (Month-End)";
+  return {
+    day,
+    label: `${day}${suffix} of every month${tag}`,
+  };
+});
 
 const POPULAR_INSTRUMENTS: InstrumentSearchResult[] = [
   { symbol: "RELIANCE", name: "Reliance Industries Ltd", category: "National Stock", assetType: "Stocks & Equity", exchange: "NSE", currentPrice: 2890, currency: "INR" },
@@ -98,6 +119,7 @@ export function InvestmentHoldingModal({
   const [valuationMode, setValuationMode] = useState<"auto" | "manual">(
     existing?.calculationMode === "manual" ? "manual" : "auto"
   );
+  const [autoCalcDriver, setAutoCalcDriver] = useState<"current_value" | "units" | "buy_price">("current_value");
   const [units, setUnits] = useState<number | "">(
     existing?.units !== undefined ? existing.units : ""
   );
@@ -294,22 +316,48 @@ export function InvestmentHoldingModal({
     setExpenseRatio(newTer);
   };
 
-  // Units input change handler (synchronizes buy price)
+  // Invested amount change handler (synchronizes units or buy price)
+  const handleInvestedAmountChange = (val: string) => {
+    if (val === "") {
+      setInvestedAmount("");
+      return;
+    }
+    const inv = Number(val);
+    setInvestedAmount(inv);
+    const price = Number(currentPrice);
+    if (units !== "" && Number(units) > 0) {
+      setPurchasePrice(Math.round((inv / Number(units)) * 100) / 100);
+    } else if (purchasePrice !== "" && Number(purchasePrice) > 0) {
+      const derivedUnits = Math.round((inv / Number(purchasePrice)) * 10000) / 10000;
+      setUnits(derivedUnits);
+      if (price > 0) {
+        setCurrentAmount(Math.round(derivedUnits * price * 100) / 100);
+      }
+    }
+  };
+
+  // Units input change handler (synchronizes buy price & valuation)
   const handleUnitsChange = (val: string) => {
+    setAutoCalcDriver("units");
     if (val === "") {
       setUnits("");
       return;
     }
     const num = Number(val);
     setUnits(num);
+    const price = Number(currentPrice);
+    if (price > 0 && num > 0) {
+      setCurrentAmount(Math.round(num * price * 100) / 100);
+    }
     const inv = Number(investedAmount) || 0;
     if (inv > 0 && num > 0) {
       setPurchasePrice(Math.round((inv / num) * 10000) / 10000);
     }
   };
 
-  // Purchase Price change handler (synchronizes units)
+  // Purchase Price change handler (synchronizes units & valuation)
   const handlePurchasePriceChange = (val: string) => {
+    setAutoCalcDriver("buy_price");
     if (val === "") {
       setPurchasePrice("");
       return;
@@ -318,7 +366,62 @@ export function InvestmentHoldingModal({
     setPurchasePrice(num);
     const inv = Number(investedAmount) || 0;
     if (inv > 0 && num > 0) {
-      setUnits(Math.round((inv / num) * 10000) / 10000);
+      const derivedUnits = Math.round((inv / num) * 10000) / 10000;
+      setUnits(derivedUnits);
+      const price = Number(currentPrice);
+      if (price > 0) {
+        setCurrentAmount(Math.round(derivedUnits * price * 100) / 100);
+      }
+    }
+  };
+
+  // Current valuation input handler (derives units & buy price if user doesn't know units)
+  const handleCurrentValuationChange = (val: string) => {
+    setAutoCalcDriver("current_value");
+    if (val === "") {
+      setCurrentAmount("");
+      return;
+    }
+    const curNum = Number(val);
+    setCurrentAmount(curNum);
+    const price = Number(currentPrice);
+    if (price > 0 && curNum > 0) {
+      const derivedUnits = Math.round((curNum / price) * 10000) / 10000;
+      setUnits(derivedUnits);
+      const inv = Number(investedAmount) || 0;
+      if (inv > 0) {
+        setPurchasePrice(Math.round((inv / derivedUnits) * 100) / 100);
+      }
+    }
+  };
+
+  // SIP Amount change handler (immediately updates estimated historical invested amount)
+  const handleSipAmountChange = (val: string) => {
+    if (val === "") {
+      setSipAmount("");
+      return;
+    }
+    const sNum = Number(val);
+    setSipAmount(sNum);
+    const progress = calculateSipHistoricalProgress(startMonthYear, sNum, sipDay);
+    setInvestedAmount(progress.totalEstimatedInvested);
+  };
+
+  // SIP Day change handler
+  const handleSipDayChange = (newDay: number) => {
+    setSipDay(newDay);
+    if (investmentStyle === "SIP" && Number(sipAmount) > 0 && startMonthYear) {
+      const progress = calculateSipHistoricalProgress(startMonthYear, Number(sipAmount), newDay);
+      setInvestedAmount(progress.totalEstimatedInvested);
+    }
+  };
+
+  // Start Date change handler
+  const handleStartMonthYearChange = (val: string) => {
+    setStartMonthYear(val);
+    if (investmentStyle === "SIP" && Number(sipAmount) > 0) {
+      const progress = calculateSipHistoricalProgress(val, Number(sipAmount), sipDay);
+      setInvestedAmount(progress.totalEstimatedInvested);
     }
   };
 
@@ -452,44 +555,43 @@ export function InvestmentHoldingModal({
             <span className="text-[10px] text-muted-foreground font-medium">Public API Autocomplete</span>
           </div>
 
-          {/* Category Chips */}
-          <div className="flex flex-wrap gap-1">
-            {SEARCH_CATEGORIES.map((cat) => (
-              <button
-                key={cat.id}
-                type="button"
-                onClick={() => {
-                  setSearchFilter(cat.id);
+          {/* Category Chooser Dropdown & Search Input */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <div className="sm:w-48 shrink-0">
+              <select
+                aria-label="Filter asset category"
+                value={searchFilter}
+                onChange={(e) => {
+                  setSearchFilter(e.target.value);
                   setShowSearchDropdown(true);
                 }}
-                className={`rounded-md px-2 py-0.5 text-[10px] font-medium transition-colors cursor-pointer ${
-                  searchFilter === cat.id
-                    ? "bg-primary text-primary-foreground font-semibold"
-                    : "bg-background text-muted-foreground hover:bg-muted hover:text-foreground border border-border/60"
-                }`}
+                className="wt-field py-2 text-xs bg-background font-semibold cursor-pointer"
               >
-                {cat.label}
-              </button>
-            ))}
-          </div>
+                {SEARCH_CATEGORIES.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.label}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-          {/* Search Input Box */}
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
-            <input
-              type="text"
-              className="wt-field pl-8.5 pr-8 text-xs placeholder:text-muted-foreground/60"
-              placeholder="Search TCS, Apple (AAPL), Parag Parikh, Gold BeES, Nifty 50..."
-              value={searchQuery}
-              onFocus={() => setShowSearchDropdown(true)}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setShowSearchDropdown(true);
-              }}
-            />
-            {isSearching && (
-              <Loader2 className="absolute right-3 top-2.5 size-3.5 animate-spin text-primary" />
-            )}
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-2.5 size-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                className="wt-field pl-8.5 pr-8 text-xs placeholder:text-muted-foreground/60"
+                placeholder="Search TCS, Apple (AAPL), Parag Parikh, Gold BeES, Nifty 50..."
+                value={searchQuery}
+                onFocus={() => setShowSearchDropdown(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setShowSearchDropdown(true);
+                }}
+              />
+              {isSearching && (
+                <Loader2 className="absolute right-3 top-2.5 size-3.5 animate-spin text-primary" />
+              )}
+            </div>
           </div>
 
           {/* Suggestions Dropdown */}
@@ -629,7 +731,7 @@ export function InvestmentHoldingModal({
               type="month"
               className="wt-field font-semibold text-xs"
               value={startMonthYear}
-              onChange={(e) => setStartMonthYear(e.target.value)}
+              onChange={(e) => handleStartMonthYearChange(e.target.value)}
               required
             />
             {errors.startMonthYear && (
@@ -650,7 +752,164 @@ export function InvestmentHoldingModal({
           </label>
         </div>
 
-        {/* VALUATION ENGINE COCKPIT */}
+        {/* 1. INVESTMENT STYLE & SCHEDULE (One-Time Lump Sum vs Recurring Monthly SIP) */}
+        <div className="rounded-xl border border-primary/25 bg-primary/5 p-3.5 sm:p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+              <Calendar className="size-3.5 text-primary" />
+              <span>Investment Style &amp; Schedule</span>
+            </span>
+            <span className="text-[10px] text-muted-foreground font-medium">Pre-calculates Invested Capital</span>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              className={`rounded-lg border p-2 text-xs font-semibold text-center transition-all cursor-pointer ${
+                investmentStyle === "LumpSum"
+                  ? "border-primary bg-primary text-primary-foreground font-bold shadow-2xs"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted/60"
+              }`}
+              onClick={() => {
+                setInvestmentStyle("LumpSum");
+                setIsRecurring(false);
+              }}
+            >
+              One-time (Lump Sum)
+            </button>
+            <button
+              type="button"
+              className={`rounded-lg border p-2 text-xs font-semibold text-center transition-all cursor-pointer ${
+                investmentStyle === "SIP"
+                  ? "border-primary bg-primary text-primary-foreground font-bold shadow-2xs"
+                  : "border-border bg-background text-muted-foreground hover:bg-muted/60"
+              }`}
+              onClick={() => {
+                setInvestmentStyle("SIP");
+                setIsRecurring(true);
+                if (!sipAmount && investedNum > 0) {
+                  setSipAmount(investedNum);
+                } else if (sipAmount) {
+                  const progress = calculateSipHistoricalProgress(startMonthYear, Number(sipAmount), sipDay);
+                  setInvestedAmount(progress.totalEstimatedInvested);
+                }
+              }}
+            >
+              Recurring (Monthly SIP)
+            </button>
+          </div>
+
+          {investmentStyle === "SIP" ? (
+            <div className="pt-2 border-t border-border/60 space-y-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <div>
+                  <span className="wt-label">Monthly SIP Amount ({currencySymbol}) *</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="e.g. 5000"
+                    className="wt-field font-semibold text-xs bg-background"
+                    value={sipAmount}
+                    onChange={(e) => handleSipAmountChange(e.target.value)}
+                  />
+                  {errors.sipAmount && (
+                    <span className="mt-1 block text-[10px] text-destructive">{errors.sipAmount}</span>
+                  )}
+                </div>
+
+                <div>
+                  <span className="wt-label">SIP Debit Day of Month *</span>
+                  <select
+                    aria-label="SIP debit day of month"
+                    className="wt-field text-xs font-semibold cursor-pointer bg-background"
+                    value={sipDay}
+                    onChange={(e) => handleSipDayChange(Number(e.target.value))}
+                  >
+                    {SIP_DAY_OPTIONS.map((opt) => (
+                      <option key={opt.day} value={opt.day}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <span className="wt-label">Debit Bank Account *</span>
+                  <select
+                    className="wt-field text-xs font-semibold cursor-pointer bg-background"
+                    value={sipAccountId}
+                    onChange={(e) => setSipAccountId(e.target.value)}
+                    required
+                  >
+                    <option value="">-- Select Bank Account --</option>
+                    {data.accounts
+                      .filter((a) => !a.archived)
+                      .map((a) => {
+                        const bal = getAccountBalance(a, data.transactions);
+                        return (
+                          <option key={a.id} value={a.id}>
+                            {a.name} ({a.institution || a.kind}) · {currencySymbol}{bal.toLocaleString("en-IN")}
+                          </option>
+                        );
+                      })}
+                  </select>
+                  {errors.sipAccountId && (
+                    <span className="mt-1 block text-[10px] text-destructive">{errors.sipAccountId}</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Exact Next SIP Deduction Schedule Alert */}
+              <div className="rounded-lg bg-background border border-primary/25 p-2.5 text-xs space-y-1">
+                <div className="flex flex-wrap items-center justify-between gap-1">
+                  <span className="font-semibold text-foreground flex items-center gap-1.5">
+                    <span>📅 Next Automated Debit:</span>
+                    <strong className="text-primary font-bold">{nextSipSchedule.nextDate}</strong>
+                  </span>
+                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary shrink-0">
+                    {nextSipSchedule.isSameMonth ? "Deducting This Month" : "Deducting Next Month"} ({nextSipSchedule.daysUntil}d away)
+                  </span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {nextSipSchedule.isSameMonth
+                    ? `Target day (${sipDay}th) is upcoming in the current month. Deducting on ${nextSipSchedule.nextDate}.`
+                    : `Target day (${sipDay}th) has already passed this month. Deducting on ${nextSipSchedule.nextDate} next month.`}
+                </p>
+              </div>
+
+              {/* Historical SIP Installments & Capital Calculator */}
+              {startMonthYear && (
+                <div className="rounded-lg bg-background border border-border p-2.5 text-xs flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <span className="text-muted-foreground block text-[11px]">
+                      Historical SIP Accumulation (since {startMonthYear}):
+                    </span>
+                    <span className="font-bold text-foreground">
+                      {sipHistory.elapsedInstallments} installments elapsed ({sipHistory.monthsElapsed} months)
+                    </span>
+                  </div>
+                  {Number(sipAmount) > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setInvestedAmount(sipHistory.totalEstimatedInvested)}
+                      className="rounded-md bg-primary/10 hover:bg-primary/20 text-primary px-2.5 py-1 text-[11px] font-bold cursor-pointer border border-primary/30 transition-colors"
+                      title="Set invested capital to computed SIP total"
+                    >
+                      Use Computed Total: {currencySymbol}{sipHistory.totalEstimatedInvested.toLocaleString("en-IN")}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="pt-1.5 border-t border-border/60 text-xs text-muted-foreground">
+              <span>One-time lumpsum investment. No recurring automated bank debits will be scheduled.</span>
+            </div>
+          )}
+        </div>
+
+        {/* 2. VALUATION ENGINE COCKPIT */}
         <div className="rounded-xl border border-primary/20 bg-muted/20 p-3 sm:p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
@@ -697,21 +956,28 @@ export function InvestmentHoldingModal({
           {/* Invested Amount (Always required) */}
           <div>
             <label className="block">
-              <span className="wt-label">
-                Invested Amount / Capital ({currencySymbol}) <span className="text-destructive">*</span>
+              <span className="wt-label flex items-center justify-between">
+                <span>
+                  Invested Amount / Capital ({currencySymbol}) <span className="text-destructive">*</span>
+                </span>
+                {investmentStyle === "SIP" && Number(sipAmount) > 0 && (
+                  <span className="text-[10px] text-primary font-semibold">
+                    Derived from {sipHistory.elapsedInstallments} SIP installments
+                  </span>
+                )}
               </span>
               <div className="relative">
                 <span className="absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">
                   {currencySymbol}
                 </span>
                 <input
-                  className="wt-field pl-8 font-semibold"
+                  className="wt-field pl-8 font-semibold bg-background"
                   type="number"
                   min="0"
                   step="any"
                   placeholder="e.g. 50000"
                   value={investedAmount}
-                  onChange={(e) => setInvestedAmount(e.target.value === "" ? "" : Number(e.target.value))}
+                  onChange={(e) => handleInvestedAmountChange(e.target.value)}
                 />
               </div>
               {errors.investedAmount && (
@@ -776,12 +1042,64 @@ export function InvestmentHoldingModal({
                 </div>
               ) : (
                 /* STOCKS, MUTUAL FUNDS, ETFS, GOLD & CRYPTO LIVE CONTROLS */
-                <div className="space-y-2.5">
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="wt-label mb-0">Ongoing Market Price / NAV ({currencySymbol})</span>
+                <div className="space-y-3">
+                  {/* Calculation Basis Tabs: Allows user who may not know units to compute directly from current value */}
+                  <div className="rounded-lg bg-background p-2.5 border border-border/70 space-y-1.5">
+                    <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
+                      <span className="font-semibold text-muted-foreground flex items-center gap-1">
+                        <Sparkles size={12} className="text-primary" />
+                        <span>Pre-calculate based on what you have:</span>
+                      </span>
+                      <div className="inline-flex rounded-lg bg-muted/80 p-0.5 border border-border/60">
+                        <button
+                          type="button"
+                          onClick={() => setAutoCalcDriver("current_value")}
+                          className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer ${
+                            autoCalcDriver === "current_value"
+                              ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          💼 Current Value
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAutoCalcDriver("units")}
+                          className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer ${
+                            autoCalcDriver === "units"
+                              ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          🔢 Total Units
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAutoCalcDriver("buy_price")}
+                          className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-colors cursor-pointer ${
+                            autoCalcDriver === "buy_price"
+                              ? "bg-primary text-primary-foreground shadow-2xs font-bold"
+                              : "text-muted-foreground hover:text-foreground"
+                          }`}
+                        >
+                          🏷️ Buy NAV / Price
+                        </button>
                       </div>
+                    </div>
+
+                    <p className="text-[11px] text-muted-foreground">
+                      {autoCalcDriver === "current_value"
+                        ? "Enter your current portfolio value from your broker (e.g. Zerodha/Groww) · We auto-derive exact units and returns from live market price."
+                        : autoCalcDriver === "units"
+                        ? "Enter your units held · We compute current valuation and real-time gain/loss from the live quote."
+                        : "Enter your starting buy price / purchase NAV · We derive units and valuation."}
+                    </p>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                    {/* Ongoing Live Market Price */}
+                    <div>
+                      <span className="wt-label">Live Price / NAV ({currencySymbol})</span>
                       <input
                         type="number"
                         min="0"
@@ -793,43 +1111,77 @@ export function InvestmentHoldingModal({
                       />
                     </div>
 
-                    <div>
-                      <span className="wt-label">Units / Quantity Held</span>
+                    {/* Current Portfolio Valuation */}
+                    <div className={autoCalcDriver === "current_value" ? "rounded-lg p-1.5 bg-primary/10 border border-primary/40 shadow-2xs" : ""}>
+                      <span className="wt-label flex items-center justify-between">
+                        <span>Current Value ({currencySymbol})</span>
+                        {autoCalcDriver === "current_value" && (
+                          <span className="text-[9px] text-primary font-bold uppercase">Driver</span>
+                        )}
+                      </span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="e.g. 65000"
+                        className="wt-field font-semibold text-xs bg-background"
+                        value={currentAmount}
+                        onChange={(e) => handleCurrentValuationChange(e.target.value)}
+                      />
+                    </div>
+
+                    {/* Units Held */}
+                    <div className={autoCalcDriver === "units" ? "rounded-lg p-1.5 bg-primary/10 border border-primary/40 shadow-2xs" : ""}>
+                      <span className="wt-label flex items-center justify-between">
+                        <span>Units / Qty Held</span>
+                        {autoCalcDriver === "units" && (
+                          <span className="text-[9px] text-primary font-bold uppercase">Driver</span>
+                        )}
+                      </span>
                       <input
                         type="number"
                         min="0"
                         step="any"
                         placeholder="e.g. 560"
-                        className="wt-field font-semibold text-xs"
+                        className="wt-field font-semibold text-xs bg-background"
                         value={units}
                         onChange={(e) => handleUnitsChange(e.target.value)}
                       />
                     </div>
 
-                    <div>
-                      <span className="wt-label">Buy Price / Average NAV ({currencySymbol})</span>
+                    {/* Buy Price / Average NAV */}
+                    <div className={autoCalcDriver === "buy_price" ? "rounded-lg p-1.5 bg-primary/10 border border-primary/40 shadow-2xs" : ""}>
+                      <span className="wt-label flex items-center justify-between">
+                        <span>Buy Price / NAV ({currencySymbol})</span>
+                        {autoCalcDriver === "buy_price" && (
+                          <span className="text-[9px] text-primary font-bold uppercase">Driver</span>
+                        )}
+                      </span>
                       <input
                         type="number"
                         min="0"
                         step="any"
                         placeholder="e.g. 70.00"
-                        className="wt-field font-semibold text-xs"
+                        className="wt-field font-semibold text-xs bg-background"
                         value={purchasePrice}
                         onChange={(e) => handlePurchasePriceChange(e.target.value)}
                       />
                     </div>
                   </div>
 
-                  {/* One-click derive button if only invested amount is known */}
-                  {investedNum > 0 && Number(currentPrice) > 0 && units === "" && (
-                    <button
-                      type="button"
-                      onClick={handleAutoDeriveUnitsFromPrice}
-                      className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline font-semibold cursor-pointer"
-                    >
-                      <Coins size={12} />
-                      Derive units at current price ({investedNum} ÷ {currentPrice} = {Math.round((investedNum / Number(currentPrice)) * 100) / 100} units)
-                    </button>
+                  {/* Quick one-click derive helper */}
+                  {investedNum > 0 && Number(currentPrice) > 0 && (
+                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+                      <span className="text-muted-foreground">Quick Helpers:</span>
+                      <button
+                        type="button"
+                        onClick={handleAutoDeriveUnitsFromPrice}
+                        className="inline-flex items-center gap-1 rounded bg-muted hover:bg-muted/80 px-2 py-0.5 font-semibold text-primary cursor-pointer border border-border"
+                      >
+                        <Coins size={12} />
+                        Derive units at current price ({investedNum} ÷ {currentPrice} = {Math.round((investedNum / Number(currentPrice)) * 100) / 100} units)
+                      </button>
+                    </div>
                   )}
                 </div>
               )}
@@ -897,6 +1249,39 @@ export function InvestmentHoldingModal({
 
             <div className="grid gap-3 sm:grid-cols-2 items-center">
               <div>
+                <span className="wt-label">Expense Ratio Preset</span>
+                <select
+                  aria-label="Expense Ratio Preset Category"
+                  className="wt-field text-xs bg-background font-semibold cursor-pointer"
+                  value={
+                    expenseRatio === 0.65
+                      ? "0.65"
+                      : expenseRatio === 1.75
+                      ? "1.75"
+                      : expenseRatio === 0.20
+                      ? "0.20"
+                      : expenseRatio === 0.15
+                      ? "0.15"
+                      : expenseRatio === 0
+                      ? "0"
+                      : "custom"
+                  }
+                  onChange={(e) => {
+                    if (e.target.value !== "custom") {
+                      setExpenseRatio(Number(e.target.value));
+                    }
+                  }}
+                >
+                  <option value="custom">Custom Percentage</option>
+                  <option value="0.65">Direct Mutual Fund (~0.65% p.a.)</option>
+                  <option value="1.75">Regular Mutual Fund (~1.75% p.a.)</option>
+                  <option value="0.20">Index Fund (~0.20% p.a.)</option>
+                  <option value="0.15">ETF (~0.15% p.a.)</option>
+                  <option value="0">Zero TER (0% - Stocks, FD, SGB)</option>
+                </select>
+              </div>
+
+              <div>
                 <span className="wt-label">Expense Ratio (% p.a.)</span>
                 <input
                   type="number"
@@ -904,42 +1289,10 @@ export function InvestmentHoldingModal({
                   max="10"
                   step="0.01"
                   placeholder="e.g. 0.65"
-                  className="wt-field font-semibold text-xs"
+                  className="wt-field font-semibold text-xs bg-background"
                   value={expenseRatio}
                   onChange={(e) => setExpenseRatio(e.target.value === "" ? "" : Number(e.target.value))}
                 />
-              </div>
-
-              {/* Quick preset chips */}
-              <div className="flex flex-wrap gap-1 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setExpenseRatio(0.65)}
-                  className="rounded px-2 py-0.5 text-[10px] bg-background border border-border hover:bg-muted font-medium cursor-pointer"
-                >
-                  Direct Plan (0.65%)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExpenseRatio(1.75)}
-                  className="rounded px-2 py-0.5 text-[10px] bg-background border border-border hover:bg-muted font-medium cursor-pointer"
-                >
-                  Regular Plan (1.75%)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExpenseRatio(0.15)}
-                  className="rounded px-2 py-0.5 text-[10px] bg-background border border-border hover:bg-muted font-medium cursor-pointer"
-                >
-                  Index/ETF (0.15%)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setExpenseRatio(0)}
-                  className="rounded px-2 py-0.5 text-[10px] bg-background border border-border hover:bg-muted font-medium cursor-pointer"
-                >
-                  Zero TER (0%)
-                </button>
               </div>
             </div>
 
@@ -1034,169 +1387,6 @@ export function InvestmentHoldingModal({
             )}
           </div>
         )}
-
-        {/* Investment Mode: One-time (Lumpsum) vs Recurring (SIP) */}
-        <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 sm:p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-bold text-foreground">Investment Style & Schedule</span>
-            <span className="text-[11px] text-muted-foreground">Auto-syncs with Recurring scheduler</span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              type="button"
-              className={`rounded-lg border p-2 text-xs font-semibold text-center transition-all cursor-pointer ${
-                investmentStyle === "LumpSum"
-                  ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
-                  : "border-border bg-card text-muted-foreground hover:bg-muted/50"
-              }`}
-              onClick={() => {
-                setInvestmentStyle("LumpSum");
-                setIsRecurring(false);
-              }}
-            >
-              One-time (Lumpsum)
-            </button>
-            <button
-              type="button"
-              className={`rounded-lg border p-2 text-xs font-semibold text-center transition-all cursor-pointer ${
-                investmentStyle === "SIP"
-                  ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
-                  : "border-border bg-card text-muted-foreground hover:bg-muted/50"
-              }`}
-              onClick={() => {
-                setInvestmentStyle("SIP");
-                setIsRecurring(true);
-                if (!sipAmount && investedNum > 0) setSipAmount(investedNum);
-              }}
-            >
-              Recurring (Monthly SIP)
-            </button>
-          </div>
-
-          {investmentStyle === "SIP" ? (
-            <div className="pt-2 border-t border-border/60 space-y-3">
-              <div className="grid gap-3 sm:grid-cols-3">
-                <div>
-                  <span className="wt-label">Monthly SIP Amount ({currencySymbol}) *</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    placeholder="e.g. 5000"
-                    className="wt-field font-semibold text-xs"
-                    value={sipAmount}
-                    onChange={(e) => setSipAmount(e.target.value === "" ? "" : Number(e.target.value))}
-                  />
-                  {errors.sipAmount && (
-                    <span className="mt-1 block text-[10px] text-destructive">{errors.sipAmount}</span>
-                  )}
-                </div>
-
-                <div>
-                  <span className="wt-label">Day of Month for Debit (1-31) *</span>
-                  <input
-                    type="number"
-                    min="1"
-                    max="31"
-                    placeholder="e.g. 10"
-                    className="wt-field font-semibold text-xs"
-                    value={sipDay}
-                    onChange={(e) => setSipDay(Math.max(1, Math.min(31, Number(e.target.value) || 1)))}
-                  />
-                  {/* Quick Select Day Chips */}
-                  <div className="flex flex-wrap gap-1 mt-1.5">
-                    {[1, 5, 10, 15, 20, 25].map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => setSipDay(d)}
-                        className={`rounded px-1.5 py-0.5 text-[10px] font-semibold transition-colors cursor-pointer ${
-                          sipDay === d
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {d}th
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <span className="wt-label">Debit Bank Account *</span>
-                  <select
-                    className="wt-field text-xs font-semibold cursor-pointer"
-                    value={sipAccountId}
-                    onChange={(e) => setSipAccountId(e.target.value)}
-                    required
-                  >
-                    <option value="">-- Select Bank Account --</option>
-                    {data.accounts
-                      .filter((a) => !a.archived)
-                      .map((a) => {
-                        const bal = getAccountBalance(a, data.transactions);
-                        return (
-                          <option key={a.id} value={a.id}>
-                            {a.name} ({a.institution || a.kind}) · {currencySymbol}{bal.toLocaleString("en-IN")}
-                          </option>
-                        );
-                      })}
-                  </select>
-                  {errors.sipAccountId && (
-                    <span className="mt-1 block text-[10px] text-destructive">{errors.sipAccountId}</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Exact Next SIP Deduction Schedule Alert */}
-              <div className="rounded-lg bg-primary/5 border border-primary/20 p-2.5 text-xs space-y-1">
-                <div className="flex flex-wrap items-center justify-between gap-1">
-                  <span className="font-semibold text-foreground flex items-center gap-1.5">
-                    <span>📅 Next Automated Debit:</span>
-                    <strong className="text-primary font-bold">{nextSipSchedule.nextDate}</strong>
-                  </span>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-primary/10 text-primary shrink-0">
-                    {nextSipSchedule.isSameMonth ? "Deducting This Month" : "Deducting Next Month"} ({nextSipSchedule.daysUntil}d away)
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  {nextSipSchedule.isSameMonth
-                    ? `Target day (${sipDay}th) is upcoming in the current month. Deducting on ${nextSipSchedule.nextDate}.`
-                    : `Target day (${sipDay}th) has already passed this month. Deducting on ${nextSipSchedule.nextDate} next month.`}
-                </p>
-              </div>
-
-              {/* Historical SIP Installments & Capital Calculator */}
-              {startMonthYear && (
-                <div className="rounded-lg bg-background border border-border p-2.5 text-xs flex flex-wrap items-center justify-between gap-2">
-                  <div>
-                    <span className="text-muted-foreground block text-[11px]">
-                      Historical SIP Accumulation (since {startMonthYear}):
-                    </span>
-                    <span className="font-bold text-foreground">
-                      {sipHistory.elapsedInstallments} installments elapsed ({sipHistory.monthsElapsed} months)
-                    </span>
-                  </div>
-                  {Number(sipAmount) > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setInvestedAmount(sipHistory.totalEstimatedInvested)}
-                      className="rounded-md bg-muted hover:bg-muted/80 px-2 py-1 text-[11px] font-semibold text-primary cursor-pointer border border-border transition-colors"
-                      title="Set invested capital to computed SIP total"
-                    >
-                      Use Computed Capital: {currencySymbol}{sipHistory.totalEstimatedInvested.toLocaleString("en-IN")}
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="pt-1.5 border-t border-border/60 text-xs text-muted-foreground">
-              <span>One-time lumpsum investment. No recurring automated bank debits will be scheduled.</span>
-            </div>
-          )}
-        </div>
 
         <label className="block">
           <span className="wt-label">Notes or Strategy (optional)</span>

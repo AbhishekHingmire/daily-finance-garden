@@ -62,13 +62,14 @@ const STORAGE_KEYS = {
 
 /**
  * Resolves the backend API base URL.
- * Defaults to http://localhost:5252 (the .NET Web API development port).
+ * Defaults to http://onefinancetracker.runasp.net (the live MonsterASP .NET Web API).
+ * Can be overridden via VITE_API_BASE_URL in environment files.
  */
 export function getApiBaseUrl(): string {
   if (typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL;
+    return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, "");
   }
-  return "http://localhost:5252";
+  return "http://onefinancetracker.runasp.net";
 }
 
 export const authStorage = {

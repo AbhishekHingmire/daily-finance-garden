@@ -18,7 +18,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { AppLogo } from "@/components/shared/AppLogo";
 import { toast } from "sonner";
-import { authApi, type AuthResponseData, type SendOtpResponse } from "@/services/api";
+import { authApi, getApiBaseUrl, type AuthResponseData, type SendOtpResponse } from "@/services/api";
 
 export type AuthView = "signin" | "signup";
 
@@ -157,7 +157,14 @@ export function AuthPage({
         duration: 8000,
       });
     } catch (err: any) {
-      const msg = err?.message || "Failed to connect to backend server. Make sure API is running on localhost:5252.";
+      const activeHost = (() => {
+        try {
+          return new URL(getApiBaseUrl()).host;
+        } catch {
+          return "onefinancetracker.runasp.net";
+        }
+      })();
+      const msg = err?.message || `Failed to connect to backend server. Make sure API is running on ${activeHost}.`;
       setErrors({ mobile: msg });
       setApiBanner({ type: "error", message: msg });
       toast.error("Network Error", { description: msg });
@@ -307,7 +314,9 @@ export function AuthPage({
           </div>
         </div>
         <p className="relative text-xs opacity-70">
-          Connected to localhost:5252 · SQL Server 2022 · Optimistic Concurrency
+          Connected to {(() => {
+            try { return new URL(getApiBaseUrl()).host; } catch { return "onefinancetracker.runasp.net"; }
+          })()} · SQL Server · Optimistic Concurrency
         </p>
       </section>
 
@@ -325,7 +334,9 @@ export function AuthPage({
               </p>
               <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400">
                 <span className="size-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                API Online :5252
+                API Online · {(() => {
+                  try { return new URL(getApiBaseUrl()).host; } catch { return "onefinancetracker.runasp.net"; }
+                })()}
               </span>
             </div>
             <h2 className="wt-display text-2xl sm:text-3xl font-extrabold text-foreground">
