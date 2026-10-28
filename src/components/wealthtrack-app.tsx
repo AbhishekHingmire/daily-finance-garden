@@ -32,7 +32,7 @@ const navItems: { label: Section; icon: typeof LayoutDashboard }[] = [
 
 function InputField({ label, value, onChange, type = "text", placeholder, error, required, min, step, ...props }: {
   label: string; value: string | number; onChange: (value: string) => void; type?: string;
-  placeholder?: string; error?: string; required?: boolean; min?: string; step?: string;
+  placeholder?: string; error?: string | undefined; required?: boolean; min?: string; step?: string;
   autoComplete?: string; disabled?: boolean;
 }) {
   return <label className="block min-w-0">
@@ -56,7 +56,7 @@ function SelectField({ label, value, onChange, options, placeholder, error }: {
 }
 
 function Modal({ title, description, onClose, children, wide = false }: {
-  title: string; description?: string; onClose: () => void; children: React.ReactNode; wide?: boolean;
+  title: string; description?: string | undefined; onClose: () => void; children: React.ReactNode; wide?: boolean;
 }) {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") onClose(); };
@@ -103,6 +103,7 @@ export function WealthTrackApp() {
   const [fullName, setFullName] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [remember, setRemember] = useState(true);
+  const [termsAccepted, setTermsAccepted] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authErrors, setAuthErrors] = useState<Record<string, string>>({});
@@ -187,12 +188,13 @@ export function WealthTrackApp() {
 
   const submitAuth = () => {
     const errors: Record<string, string> = {};
-    if (authView !== "forgot" && !password.trim()) errors.password = "Enter your password.";
-    if (authView !== "forgot" && password.trim().length < 6) errors.password = "Use at least 6 characters.";
-    if (authView === "signup" && !fullName.trim()) errors.fullName = "Enter your name.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = "Enter a valid email address.";
-    if (authView === "signup" && password !== confirmPassword) errors.confirmPassword = "Passwords do not match.";
-    if (authView === "signup" && password.length < 8) errors.password = "Use at least 8 characters for your password.";
+    if (authView !== "forgot" && !password.trim()) errors["password"] = "Enter your password.";
+    if (authView !== "forgot" && password.trim().length < 6) errors["password"] = "Use at least 6 characters.";
+    if (authView === "signup" && !fullName.trim()) errors["fullName"] = "Enter your name.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors["email"] = "Enter a valid email address.";
+    if (authView === "signup" && password !== confirmPassword) errors["confirmPassword"] = "Passwords do not match.";
+    if (authView === "signup" && password.length < 8) errors["password"] = "Use at least 8 characters for your password.";
+    if (authView === "signup" && !termsAccepted) errors["terms"] = "Accept the demo terms to continue.";
     setAuthErrors(errors);
     if (Object.keys(errors).length) return;
     if (authView === "forgot") {
@@ -213,7 +215,7 @@ export function WealthTrackApp() {
   const beginTransaction = (preset?: Partial<Transaction>, existing?: Transaction) => {
     const form: Partial<Transaction> = existing ? { ...existing } : {
       date: new Date().toISOString().slice(0, 16), description: "", type: preset?.type ?? data.preferences.defaultType,
-      amount: undefined, categoryId: "", accountId: data.preferences.defaultAccount || liveAccounts[0]?.id,
+      amount: 0, categoryId: "", accountId: data.preferences.defaultAccount || liveAccounts[0]?.id || "",
       destinationAccountId: "", paymentMethod: data.preferences.defaultPaymentMethod, need: "Need", merchant: "",
       tags: [], notes: "", recurring: false, customValues: {}, ...preset,
     };
@@ -228,22 +230,26 @@ export function WealthTrackApp() {
   const saveTransaction = () => {
     const type = transactionForm.type ?? "Expense";
     const errors: Record<string, string> = {};
-    if (!transactionForm.description?.trim()) errors.description = "Add a description.";
-    if (!transactionForm.amount || Number(transactionForm.amount) <= 0) errors.amount = "Enter an amount greater than zero.";
-    if (!transactionForm.date) errors.date = "Choose a date.";
-    if (!transactionForm.accountId) errors.accountId = "Choose an account.";
-    if (!accountById(transactionForm.accountId ?? "")) errors.accountId = "Choose an available account.";
-    if (type === "Transfer" && !transactionForm.destinationAccountId) errors.destinationAccountId = "Choose a destination account.";
-    if (type === "Transfer" && transactionForm.accountId === transactionForm.destinationAccountId) errors.destinationAccountId = "Choose a different destination.";
-    if (type !== "Transfer" && type !== "Adjustment" && !categoryById(transactionForm.categoryId ?? "")) errors.categoryId = "Choose a category.";
-    if (type === "Income" && categoryById(transactionForm.categoryId ?? "")?.kind !== "Income") errors.categoryId = "Choose an income category.";
-    if (type === "Expense" && categoryById(transactionForm.categoryId ?? "")?.kind !== "Expense") errors.categoryId = "Choose an expense category.";
+    if (!transactionForm.description?.trim()) errors["description"] = "Add a description.";
+    if (!transactionForm.amount || Number(transactionForm.amount) <= 0) errors["amount"] = "Enter an amount greater than zero.";
+    if (!transactionForm.date) errors["date"] = "Choose a date.";
+    if (!transactionForm.accountId) errors["accountId"] = "Choose an account.";
+    if (!accountById(transactionForm.accountId ?? "")) errors["accountId"] = "Choose an available account.";
+    if (type === "Transfer" && !transactionForm.destinationAccountId) errors["destinationAccountId"] = "Choose a destination account.";
+    if (type === "Transfer" && transactionForm.accountId === transactionForm.destinationAccountId) errors["destinationAccountId"] = "Choose a different destination.";
+    if (type !== "Transfer" && type !== "Adjustment" && !categoryById(transactionForm.categoryId ?? "")) errors["categoryId"] = "Choose a category.";
+    if (type === "Income" && categoryById(transactionForm.categoryId ?? "")?.kind !== "Income") errors["categoryId"] = "Choose an income category.";
+    if (type === "Expense" && categoryById(transactionForm.categoryId ?? "")?.kind !== "Expense") errors["categoryId"] = "Choose an expense category.";
     setTransactionErrors(errors);
     if (Object.keys(errors).length) return;
+    const description = transactionForm.description?.trim();
+    const date = transactionForm.date;
+    const accountId = transactionForm.accountId;
+    if (!description || !date || !accountId) return;
     const saved: Transaction = {
-      id: editTransaction?.id ?? createTransactionId(), date: transactionForm.date!, description: transactionForm.description!.trim(),
+      id: editTransaction?.id ?? createTransactionId(), date, description,
       type, amount: Number(transactionForm.amount), categoryId: type === "Transfer" ? "" : transactionForm.categoryId ?? "",
-      accountId: transactionForm.accountId!, destinationAccountId: transactionForm.destinationAccountId ?? "",
+      accountId, destinationAccountId: transactionForm.destinationAccountId ?? "",
       paymentMethod: transactionForm.paymentMethod ?? "UPI", need: transactionForm.need ?? "Need",
       merchant: transactionForm.merchant ?? "", tags: transactionForm.tags ?? [], notes: transactionForm.notes ?? "",
       recurring: transactionForm.recurring ?? false, customValues: transactionForm.customValues ?? {},
@@ -255,11 +261,12 @@ export function WealthTrackApp() {
   };
 
   const duplicateTransaction = (transaction: Transaction) => {
-    beginTransaction({ ...transaction, id: undefined, description: `${transaction.description} (copy)` });
+    const { id: _id, ...copy } = transaction;
+    beginTransaction({ ...copy, description: `${transaction.description} (copy)` });
   };
 
   const requestDelete = (kind: string, id: string, label: string, amount?: number) => {
-    setPendingDelete({ kind, id, label, amount });
+    setPendingDelete(amount === undefined ? { kind, id, label } : { kind, id, label, amount });
     setModal("confirm");
   };
 
@@ -400,17 +407,17 @@ export function WealthTrackApp() {
             <p className="mt-2 text-sm text-muted-foreground">{authView === "forgot" ? "Enter your email to simulate a password reset." : "Sign in to your personal finance workspace."}</p>
           </div>
           <div className="space-y-4">
-            {authView === "signup" && <InputField label="Full name" value={fullName} onChange={setFullName} placeholder="Your name" error={authErrors.fullName} required />}
-            <InputField label="Email address" value={email} onChange={setEmail} type="email" placeholder="you@example.com" error={authErrors.email} required autoComplete="email" />
+            {authView === "signup" && <InputField label="Full name" value={fullName} onChange={setFullName} placeholder="Your name" error={authErrors["fullName"]} required />}
+            <InputField label="Email address" value={email} onChange={setEmail} type="email" placeholder="you@example.com" error={authErrors["email"]} required autoComplete="email" />
             {authView !== "forgot" && <label className="block">
               <span className="wt-label">Password<span className="ml-1 text-destructive">*</span></span>
               <span className="relative block"><input className="wt-field pr-16" type={showPassword ? "text" : "password"} value={password} onChange={(event) => setPassword(event.target.value)} autoComplete={authView === "signup" ? "new-password" : "current-password"} />
                 <Button type="button" variant="ghost" size="sm" className="absolute right-1 top-1 h-8 px-2 text-xs" onClick={() => setShowPassword((value) => !value)}>{showPassword ? "Hide" : "Show"}</Button></span>
-              {authErrors.password && <span className="mt-1 block text-xs text-destructive">{authErrors.password}</span>}
+              {authErrors["password"] && <span className="mt-1 block text-xs text-destructive">{authErrors["password"]}</span>}
             </label>}
-            {authView === "signup" && <InputField label="Confirm password" value={confirmPassword} onChange={setConfirmPassword} type={showPassword ? "text" : "password"} error={authErrors.confirmPassword} required />}
+            {authView === "signup" && <InputField label="Confirm password" value={confirmPassword} onChange={setConfirmPassword} type={showPassword ? "text" : "password"} error={authErrors["confirmPassword"]} required />}
             {authView === "signin" && <div className="flex items-center justify-between text-sm"><label className="flex cursor-pointer items-center gap-2"><Checkbox checked={remember} onCheckedChange={(checked) => setRemember(Boolean(checked))} /><span className="text-muted-foreground">Remember me</span></label><Button variant="link" className="h-auto p-0 text-primary" onClick={() => { setAuthErrors({}); setAuthView("forgot"); }}>Forgot password?</Button></div>}
-            {authView === "signup" && <label className="flex cursor-pointer items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={remember} onCheckedChange={(checked) => setRemember(Boolean(checked))} /><span>I agree to the demo terms and privacy notice. No personal details are sent anywhere.</span></label>}
+            {authView === "signup" && <div><label className="flex cursor-pointer items-start gap-2 text-xs text-muted-foreground"><Checkbox checked={termsAccepted} onCheckedChange={(checked) => setTermsAccepted(Boolean(checked))} /><span>I agree to the demo terms and privacy notice. No personal details are sent anywhere.</span></label>{authErrors["terms"] && <p className="mt-1 text-xs text-destructive">{authErrors["terms"]}</p>}</div>}
             <Button className="h-11 w-full" disabled={authLoading} onClick={submitAuth}>{authLoading ? "Please wait…" : authView === "signin" ? "Sign in" : authView === "signup" ? "Create account" : "Send reset link"}<ArrowRight size={16} /></Button>
             {authView === "signin" && <>
               <div className="flex items-center gap-3 py-1"><span className="h-px flex-1 bg-border" /><span className="text-xs text-muted-foreground">or continue with</span><span className="h-px flex-1 bg-border" /></div>
@@ -558,7 +565,7 @@ function Dashboard({ data, summary, money, monthTitle, monthFilter, setMonthOffs
 
 function EmptyInline({ title, body }: { title: string; body: string }) { return <div className="py-6 text-center"><p className="text-sm font-semibold">{title}</p><p className="mt-1 text-xs text-muted-foreground">{body}</p></div>; }
 
-function TransactionRow({ transaction, category, account, money, onClick }: { transaction: Transaction; category?: Category; account?: Account; money: (amount: number) => string; onClick: () => void }) {
+function TransactionRow({ transaction, category, account, money, onClick }: { transaction: Transaction; category?: Category | undefined; account?: Account | undefined; money: (amount: number) => string; onClick: () => void }) {
   const amount = transaction.type === "Expense" ? -transaction.amount : transaction.type === "Adjustment" ? transaction.amount : transaction.amount;
   return <button onClick={onClick} className="grid w-full grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-md px-2 py-2.5 text-left hover:bg-muted/55 sm:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,.8fr)_auto]">
     <span className="flex min-w-0 items-center gap-3"><span className={`grid size-9 shrink-0 place-items-center rounded-full ${transaction.type === "Income" || transaction.type === "Refund" ? "wt-success-bg text-success" : "bg-muted text-foreground"}`}>{transaction.type === "Income" ? <ArrowDownLeft size={16} /> : transaction.type === "Transfer" ? <ArrowLeftRight size={15} /> : <ArrowUpRight size={16} />}</span><span className="min-w-0"><span className="block truncate text-sm font-semibold">{transaction.description}</span><span className="block truncate text-xs text-muted-foreground">{transaction.merchant || category?.name || transaction.type}</span></span></span>
