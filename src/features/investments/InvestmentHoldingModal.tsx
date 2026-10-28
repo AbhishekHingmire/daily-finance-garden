@@ -1,10 +1,26 @@
 import { useMemo, useState, useEffect, useRef } from "react";
-import { AlertCircle, AlertTriangle, TrendingDown, TrendingUp, Search, Sparkles, Loader2, Check, RefreshCw } from "lucide-react";
+import {
+  AlertCircle,
+  AlertTriangle,
+  TrendingDown,
+  TrendingUp,
+  Search,
+  Sparkles,
+  Loader2,
+  Check,
+  RefreshCw,
+  Calculator,
+  Percent,
+  Layers,
+  Coins,
+  Landmark,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
 import { marketApi, type InstrumentSearchResult } from "@/services/api";
 import { getAccountBalance, type AssetType, type InvestmentHolding, type WealthState } from "@/lib/wealthtrack";
+import { calculateInvestmentValuation, getDefaultExpenseRatio } from "@/lib/investment-calculator";
 
 const ASSET_TYPES: AssetType[] = [
   "Mutual fund",
@@ -71,6 +87,30 @@ export function InvestmentHoldingModal({
   const [currentAmount, setCurrentAmount] = useState<number | "">(
     existing?.currentAmount !== undefined ? existing.currentAmount : ""
   );
+
+  // Smart Calculation Engine States
+  const [valuationMode, setValuationMode] = useState<"auto" | "manual">(
+    existing?.calculationMode === "manual" ? "manual" : "auto"
+  );
+  const [units, setUnits] = useState<number | "">(
+    existing?.units !== undefined ? existing.units : ""
+  );
+  const [purchasePrice, setPurchasePrice] = useState<number | "">(
+    existing?.purchasePrice !== undefined ? existing.purchasePrice : ""
+  );
+  const [currentPrice, setCurrentPrice] = useState<number | "">(
+    existing?.currentPrice !== undefined ? existing.currentPrice : ""
+  );
+  const [expenseRatio, setExpenseRatio] = useState<number | "">(
+    existing?.expenseRatio !== undefined
+      ? existing.expenseRatio
+      : getDefaultExpenseRatio(existing?.assetType ?? "Mutual fund", existing?.name ?? "")
+  );
+  const [fdAnnualRate, setFdAnnualRate] = useState<number | "">(
+    existing?.interestRate !== undefined ? existing.interestRate : 7.1
+  );
+  const [fdCompounding, setFdCompounding] = useState<"Quarterly" | "Monthly" | "Annual">("Quarterly");
+
   const [isRecurring, setIsRecurring] = useState<boolean>(existing?.isRecurring ?? false);
   const [sipAmount, setSipAmount] = useState<number | "">(
     existing?.sipAmount !== undefined ? existing.sipAmount : ""
@@ -136,7 +176,6 @@ export function InvestmentHoldingModal({
     if (searchQuery.trim().length >= 2) {
       return searchResults;
     }
-    // If query is short or empty, show filtered popular items
     if (searchFilter === "All") return POPULAR_INSTRUMENTS;
     return POPULAR_INSTRUMENTS.filter(
       (item) => item.category.toLowerCase().includes(searchFilter.toLowerCase()) ||
@@ -144,13 +183,18 @@ export function InvestmentHoldingModal({
     );
   }, [searchQuery, searchResults, searchFilter]);
 
+  // When user selects an instrument from the search registry
   const handleSelectInstrument = (item: InstrumentSearchResult) => {
     setName(item.name);
     setAssetType(item.assetType);
     if (item.exchange) {
       setInstitution(item.exchange);
     }
+    const defaultTer = getDefaultExpenseRatio(item.assetType, item.name);
+    setExpenseRatio(defaultTer);
+
     if (item.currentPrice && item.currentPrice > 0) {
+      setCurrentPrice(item.currentPrice);
       setSelectedQuote({
         symbol: item.symbol,
         name: item.name,
@@ -158,23 +202,110 @@ export function InvestmentHoldingModal({
         currency: item.currency,
         category: item.category,
       });
-      // Prefill current valuation if blank
-      if (currentAmount === "") {
-        setCurrentAmount(item.currentPrice);
+
+      // Auto-compute units if investedAmount is filled and units is blank
+      const inv = Number(investedAmount) || 0;
+      if (inv > 0 && units === "") {
+        const derivedUnits = Math.round((inv / item.currentPrice) * 10000) / 10000;
+        setUnits(derivedUnits);
+        setPurchasePrice(item.currentPrice);
       }
     }
     setShowSearchDropdown(false);
     setSearchQuery("");
   };
 
-  const investedNum = Number(investedAmount) || 0;
-  const currentNum = Number(currentAmount) || 0;
+  // Asset type change handler
+  const handleAssetTypeChange = (newType: AssetType) => {
+    setAssetType(newType);
+    const newTer = getDefaultExpenseRatio(newType, name);
+    setExpenseRatio(newTer);
+  };
 
-  const returnStats = useMemo(() => {
-    const pnl = currentNum - investedNum;
-    const pnlPct = investedNum > 0 ? (pnl / investedNum) * 100 : 0;
-    return { pnl, pnlPct };
-  }, [investedNum, currentNum]);
+  // Units input change handler (synchronizes buy price)
+  const handleUnitsChange = (val: string) => {
+    if (val === "") {
+      setUnits("");
+      return;
+    }
+    const num = Number(val);
+    setUnits(num);
+    const inv = Number(investedAmount) || 0;
+    if (inv > 0 && num > 0) {
+      setPurchasePrice(Math.round((inv / num) * 10000) / 10000);
+    }
+  };
+
+  // Purchase Price change handler (synchronizes units)
+  const handlePurchasePriceChange = (val: string) => {
+    if (val === "") {
+      setPurchasePrice("");
+      return;
+    }
+    const num = Number(val);
+    setPurchasePrice(num);
+    const inv = Number(investedAmount) || 0;
+    if (inv > 0 && num > 0) {
+      setUnits(Math.round((inv / num) * 10000) / 10000);
+    }
+  };
+
+  // Comprehensive valuation calculations using investment-calculator engine
+  const valuation = useMemo(() => {
+    return calculateInvestmentValuation({
+      investedAmount: Number(investedAmount) || 0,
+      currentPrice: currentPrice === "" ? undefined : Number(currentPrice),
+      units: units === "" ? undefined : Number(units),
+      purchasePrice: purchasePrice === "" ? undefined : Number(purchasePrice),
+      assetType,
+      calculationMode:
+        valuationMode === "manual"
+          ? "manual"
+          : assetType === "Fixed deposit"
+          ? "fixed_deposit"
+          : "auto_units",
+      startMonthYear,
+      endMonthYear,
+      expenseRatio: expenseRatio === "" ? 0 : Number(expenseRatio),
+      fdAnnualRate: fdAnnualRate === "" ? 7.1 : Number(fdAnnualRate),
+      fdCompounding,
+      manualCurrentAmount: currentAmount === "" ? undefined : Number(currentAmount),
+    });
+  }, [
+    investedAmount,
+    currentPrice,
+    units,
+    purchasePrice,
+    assetType,
+    valuationMode,
+    startMonthYear,
+    endMonthYear,
+    expenseRatio,
+    fdAnnualRate,
+    fdCompounding,
+    currentAmount,
+  ]);
+
+  // Sync calculated currentAmount into state when in auto mode
+  useEffect(() => {
+    if (valuationMode === "auto") {
+      setCurrentAmount(valuation.currentAmount);
+    }
+  }, [valuation.currentAmount, valuationMode]);
+
+  // Auto-derive units from current ongoing price if user only entered invested amount
+  const handleAutoDeriveUnitsFromPrice = () => {
+    const inv = Number(investedAmount) || 0;
+    const price = Number(currentPrice) || 0;
+    if (inv > 0 && price > 0) {
+      const derived = Math.round((inv / price) * 10000) / 10000;
+      setUnits(derived);
+      setPurchasePrice(price);
+    }
+  };
+
+  const investedNum = Number(investedAmount) || 0;
+  const currentNum = valuationMode === "auto" ? valuation.currentAmount : Number(currentAmount) || 0;
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -182,7 +313,8 @@ export function InvestmentHoldingModal({
     if (!name.trim()) errs.name = "Enter the name of the holding.";
     if (!startMonthYear) errs.startMonthYear = "Start Month & Year is mandatory.";
     if (investedAmount === "" || investedNum < 0) errs.investedAmount = "Enter a valid invested amount.";
-    if (currentAmount === "" || currentNum < 0) errs.currentAmount = "Enter a valid current valuation.";
+    if (currentNum < 0) errs.currentAmount = "Current valuation cannot be negative.";
+
     if (isRecurring) {
       if (!sipAmount || Number(sipAmount) <= 0) {
         errs.sipAmount = "Enter a valid SIP installment amount.";
@@ -219,6 +351,12 @@ export function InvestmentHoldingModal({
       status: existing?.status ?? "Active",
       notes: notes.trim() || undefined,
       updatedAt: new Date().toISOString().slice(0, 10),
+      units: units !== "" ? Number(units) : undefined,
+      purchasePrice: purchasePrice !== "" ? Number(purchasePrice) : undefined,
+      currentPrice: currentPrice !== "" ? Number(currentPrice) : undefined,
+      expenseRatio: expenseRatio !== "" ? Number(expenseRatio) : undefined,
+      interestRate: fdAnnualRate !== "" ? Number(fdAnnualRate) : undefined,
+      calculationMode: valuationMode === "manual" ? "manual" : "auto_units",
     };
 
     onSave(holding);
@@ -227,7 +365,7 @@ export function InvestmentHoldingModal({
   return (
     <Modal
       title={existing ? "Update Investment Holding" : "Add Investment Holding"}
-      description="Track your portfolio with invested capital, current valuation, and real-time earned returns."
+      description="Track and calculate valuation from ongoing market prices, units, compound interest, and expense ratio."
       onClose={onClose}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
@@ -239,9 +377,9 @@ export function InvestmentHoldingModal({
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
               <Sparkles className="size-3.5 text-primary" />
-              <span>Search & Pick Instrument (National, Global, AMFI, Gold)</span>
+              <span>Search & Pick Market Asset (National, Global, AMFI, Gold)</span>
             </span>
-            <span className="text-[10px] text-muted-foreground font-medium">Public API Lookup</span>
+            <span className="text-[10px] text-muted-foreground font-medium">Public API Autocomplete</span>
           </div>
 
           {/* Category Chips */}
@@ -271,7 +409,7 @@ export function InvestmentHoldingModal({
             <input
               type="text"
               className="wt-field pl-8.5 pr-8 text-xs placeholder:text-muted-foreground/60"
-              placeholder="Search TCS, Apple (AAPL), Parag Parikh, Gold BeES..."
+              placeholder="Search TCS, Apple (AAPL), Parag Parikh, Gold BeES, Nifty 50..."
               value={searchQuery}
               onFocus={() => setShowSearchDropdown(true)}
               onChange={(e) => {
@@ -298,7 +436,7 @@ export function InvestmentHoldingModal({
 
               {displayedList.length === 0 ? (
                 <div className="p-4 text-center text-xs text-muted-foreground">
-                  {isSearching ? "Searching market registry..." : "No instruments found. You can type the details manually below."}
+                  {isSearching ? "Searching registry..." : "No instruments found. You can type details manually below."}
                 </div>
               ) : (
                 <div className="divide-y divide-border/40">
@@ -349,7 +487,7 @@ export function InvestmentHoldingModal({
                             })}
                           </span>
                           <span className="block text-[9px] text-muted-foreground">
-                            {item.category === "Mutual Fund" ? "NAV" : "Last Price"}
+                            {item.category === "Mutual Fund" ? "Ongoing NAV" : "Live Price"}
                           </span>
                         </div>
                       )}
@@ -360,27 +498,24 @@ export function InvestmentHoldingModal({
             </div>
           )}
 
-          {/* Active linked instrument badge */}
+          {/* Active linked instrument banner */}
           {selectedQuote && (
             <div className="flex items-center justify-between rounded-lg bg-background p-2 border border-border/80 text-xs">
               <div className="flex items-center gap-1.5">
                 <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
                 <span className="font-semibold text-foreground">{selectedQuote.symbol}</span>
                 <span className="text-muted-foreground text-[11px]">
-                  ({selectedQuote.currency === "INR" ? "₹" : "$"}{selectedQuote.price.toLocaleString("en-IN")})
+                  Ongoing: {selectedQuote.currency === "INR" ? "₹" : "$"}{selectedQuote.price.toLocaleString("en-IN")}
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={() => setCurrentAmount(selectedQuote.price)}
-                className="text-[10px] text-primary hover:underline font-medium cursor-pointer"
-              >
-                Apply unit price to valuation
-              </button>
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded">
+                Live Market Sync Active
+              </span>
             </div>
           )}
         </div>
 
+        {/* Name, Type & Broker */}
         <InputField
           label="Holding / Asset Name"
           placeholder="e.g. Parag Parikh Flexi Cap, Nifty 50 ETF, Gold BeES"
@@ -394,7 +529,7 @@ export function InvestmentHoldingModal({
           <SelectField
             label="Asset Type"
             value={assetType}
-            onChange={(v) => setAssetType(v as AssetType)}
+            onChange={(v) => handleAssetTypeChange(v as AssetType)}
             options={ASSET_TYPES.map((t) => ({ value: t, label: t }))}
           />
           <InputField
@@ -435,90 +570,377 @@ export function InvestmentHoldingModal({
           </label>
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <label className="block">
-            <span className="wt-label">
-              Invested Amount ({currencySymbol}) <span className="text-destructive">*</span>
-            </span>
-            <div className="relative">
-              <span className="absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">
-                {currencySymbol}
-              </span>
-              <input
-                className="wt-field pl-8 font-semibold"
-                type="number"
-                min="0"
-                step="any"
-                placeholder="0.00"
-                value={investedAmount}
-                onChange={(e) => setInvestedAmount(e.target.value === "" ? "" : Number(e.target.value))}
-              />
+        {/* VALUATION ENGINE COCKPIT */}
+        <div className="rounded-xl border border-primary/20 bg-muted/20 p-4 space-y-3.5">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <Calculator className="size-4 text-primary" />
+              <span className="text-xs font-bold text-foreground">Valuation & Pricing Engine</span>
             </div>
-            {errors.investedAmount && (
-              <span className="mt-1 block text-xs text-destructive">{errors.investedAmount}</span>
-            )}
-          </label>
+            <div className="flex items-center gap-1 bg-background p-0.5 rounded-lg border border-border">
+              <button
+                type="button"
+                onClick={() => setValuationMode("auto")}
+                className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                  valuationMode === "auto"
+                    ? "bg-primary text-primary-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                ⚡ Live Auto-Calculate
+              </button>
+              <button
+                type="button"
+                onClick={() => setValuationMode("manual")}
+                className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                  valuationMode === "manual"
+                    ? "bg-primary text-primary-foreground font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                ✏️ Manual Entry
+              </button>
+            </div>
+          </div>
 
-          <label className="block">
-            <span className="wt-label">
-              Current Valuation ({currencySymbol}) <span className="text-destructive">*</span>
-            </span>
-            <div className="relative">
-              <span className="absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">
-                {currencySymbol}
+          {/* Invested Amount (Always required) */}
+          <div>
+            <label className="block">
+              <span className="wt-label">
+                Invested Amount / Capital ({currencySymbol}) <span className="text-destructive">*</span>
               </span>
-              <input
-                className="wt-field pl-8 font-semibold"
-                type="number"
-                min="0"
-                step="any"
-                placeholder="0.00"
-                value={currentAmount}
-                onChange={(e) => setCurrentAmount(e.target.value === "" ? "" : Number(e.target.value))}
-              />
+              <div className="relative">
+                <span className="absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">
+                  {currencySymbol}
+                </span>
+                <input
+                  className="wt-field pl-8 font-semibold"
+                  type="number"
+                  min="0"
+                  step="any"
+                  placeholder="e.g. 50000"
+                  value={investedAmount}
+                  onChange={(e) => setInvestedAmount(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+              {errors.investedAmount && (
+                <span className="mt-1 block text-xs text-destructive">{errors.investedAmount}</span>
+              )}
+            </label>
+          </div>
+
+          {/* AUTO-CALCULATE CONTROLS */}
+          {valuationMode === "auto" ? (
+            <div className="space-y-3 pt-2 border-t border-border/60">
+              {assetType === "Fixed deposit" ? (
+                /* FIXED DEPOSIT ACCRUED INTEREST CONTROLS */
+                <div className="space-y-2.5">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <span className="wt-label">Annual Interest Rate (% p.a.) *</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.05"
+                        placeholder="e.g. 7.10"
+                        className="wt-field font-semibold text-xs"
+                        value={fdAnnualRate}
+                        onChange={(e) => setFdAnnualRate(e.target.value === "" ? "" : Number(e.target.value))}
+                      />
+                    </div>
+                    <div>
+                      <span className="wt-label">Compounding Frequency</span>
+                      <select
+                        className="wt-field text-xs font-semibold"
+                        value={fdCompounding}
+                        onChange={(e) => setFdCompounding(e.target.value as any)}
+                      >
+                        <option value="Quarterly">Quarterly (RBI Standard)</option>
+                        <option value="Monthly">Monthly</option>
+                        <option value="Annual">Annual</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="rounded-lg bg-teal-500/10 border border-teal-500/25 p-3 text-xs flex items-center justify-between">
+                    <div>
+                      <span className="text-teal-700 dark:text-teal-300 font-semibold flex items-center gap-1">
+                        <Landmark size={14} /> Accrued Compounded Interest ({valuation.elapsedMonths} mos)
+                      </span>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Compounded {fdCompounding.toLowerCase()} at {fdAnnualRate}% p.a.
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-extrabold text-teal-700 dark:text-teal-300">
+                        +{currencySymbol}{(valuation.fdAccruedInterest || 0).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                      </span>
+                      {valuation.fdMaturityAmount && (
+                        <span className="block text-[10px] text-muted-foreground">
+                          Maturity: {currencySymbol}{valuation.fdMaturityAmount.toLocaleString("en-IN")}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* STOCKS, MUTUAL FUNDS, ETFS, GOLD & CRYPTO LIVE CONTROLS */
+                <div className="space-y-2.5">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="wt-label mb-0">Ongoing Market Price / NAV ({currencySymbol})</span>
+                      </div>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="e.g. 89.28"
+                        className="wt-field font-semibold text-xs bg-background"
+                        value={currentPrice}
+                        onChange={(e) => setCurrentPrice(e.target.value === "" ? "" : Number(e.target.value))}
+                      />
+                    </div>
+
+                    <div>
+                      <span className="wt-label">Units / Quantity Held</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="e.g. 560"
+                        className="wt-field font-semibold text-xs"
+                        value={units}
+                        onChange={(e) => handleUnitsChange(e.target.value)}
+                      />
+                    </div>
+
+                    <div>
+                      <span className="wt-label">Buy Price / Average NAV ({currencySymbol})</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="any"
+                        placeholder="e.g. 70.00"
+                        className="wt-field font-semibold text-xs"
+                        value={purchasePrice}
+                        onChange={(e) => handlePurchasePriceChange(e.target.value)}
+                      />
+                    </div>
+                  </div>
+
+                  {/* One-click derive button if only invested amount is known */}
+                  {investedNum > 0 && Number(currentPrice) > 0 && units === "" && (
+                    <button
+                      type="button"
+                      onClick={handleAutoDeriveUnitsFromPrice}
+                      className="inline-flex items-center gap-1.5 text-[11px] text-primary hover:underline font-semibold cursor-pointer"
+                    >
+                      <Coins size={12} />
+                      Derive units at current price ({investedNum} ÷ {currentPrice} = {Math.round((investedNum / Number(currentPrice)) * 100) / 100} units)
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Calculated Current Valuation Banner */}
+              <div className="flex items-center justify-between rounded-xl bg-background p-3 border border-primary/30 shadow-2xs">
+                <div>
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Auto-Calculated Current Valuation
+                  </span>
+                  <p className="text-xs text-muted-foreground">
+                    {assetType === "Fixed deposit"
+                      ? `Principal + ${valuation.elapsedMonths}m Accrued Compound Interest`
+                      : valuation.units > 0 && valuation.currentPrice > 0
+                      ? `${valuation.units.toLocaleString("en-IN", { maximumFractionDigits: 3 })} units × ${currencySymbol}${valuation.currentPrice}`
+                      : "Based on active market holdings"}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-base font-extrabold text-foreground">
+                    {currencySymbol}{valuation.currentAmount.toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
             </div>
-            {errors.currentAmount && (
-              <span className="mt-1 block text-xs text-destructive">{errors.currentAmount}</span>
-            )}
-          </label>
+          ) : (
+            /* MANUAL VALUATION ENTRY */
+            <div className="pt-2 border-t border-border/60">
+              <label className="block">
+                <span className="wt-label">
+                  Manual Current Valuation ({currencySymbol}) <span className="text-destructive">*</span>
+                </span>
+                <div className="relative">
+                  <span className="absolute left-3 top-2.5 text-sm font-bold text-muted-foreground">
+                    {currencySymbol}
+                  </span>
+                  <input
+                    className="wt-field pl-8 font-semibold"
+                    type="number"
+                    min="0"
+                    step="any"
+                    placeholder="0.00"
+                    value={currentAmount}
+                    onChange={(e) => setCurrentAmount(e.target.value === "" ? "" : Number(e.target.value))}
+                  />
+                </div>
+                {errors.currentAmount && (
+                  <span className="mt-1 block text-xs text-destructive">{errors.currentAmount}</span>
+                )}
+              </label>
+            </div>
+          )}
         </div>
 
-        {/* Live Real-Time Earned Returns Preview */}
+        {/* EXPENSE RATIO (TER) & FUND MANAGEMENT COST */}
+        {["Mutual fund", "ETF", "Gold & Commodities"].includes(assetType) && (
+          <div className="rounded-xl border border-border/80 bg-muted/15 p-3.5 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1.5">
+                <Percent className="size-3.5 text-primary" />
+                <span className="text-xs font-bold text-foreground">Total Expense Ratio (TER) Analytics</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground font-medium">AMC Management Fee</span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 items-center">
+              <div>
+                <span className="wt-label">Expense Ratio (% p.a.)</span>
+                <input
+                  type="number"
+                  min="0"
+                  max="10"
+                  step="0.01"
+                  placeholder="e.g. 0.65"
+                  className="wt-field font-semibold text-xs"
+                  value={expenseRatio}
+                  onChange={(e) => setExpenseRatio(e.target.value === "" ? "" : Number(e.target.value))}
+                />
+              </div>
+
+              {/* Quick preset chips */}
+              <div className="flex flex-wrap gap-1 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setExpenseRatio(0.65)}
+                  className="rounded px-2 py-0.5 text-[10px] bg-background border border-border hover:bg-muted font-medium cursor-pointer"
+                >
+                  Direct Plan (0.65%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExpenseRatio(1.75)}
+                  className="rounded px-2 py-0.5 text-[10px] bg-background border border-border hover:bg-muted font-medium cursor-pointer"
+                >
+                  Regular Plan (1.75%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExpenseRatio(0.15)}
+                  className="rounded px-2 py-0.5 text-[10px] bg-background border border-border hover:bg-muted font-medium cursor-pointer"
+                >
+                  Index/ETF (0.15%)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setExpenseRatio(0)}
+                  className="rounded px-2 py-0.5 text-[10px] bg-background border border-border hover:bg-muted font-medium cursor-pointer"
+                >
+                  Zero TER (0%)
+                </button>
+              </div>
+            </div>
+
+            {Number(expenseRatio) > 0 && valuation.currentAmount > 0 && (
+              <div className="flex items-center justify-between text-xs bg-background/80 rounded-lg p-2 border border-border/60">
+                <span className="text-muted-foreground text-[11px]">
+                  Estimated annual fund fee drag:
+                </span>
+                <div className="text-right">
+                  <span className="font-semibold text-foreground">
+                    ~{currencySymbol}{valuation.annualExpenseFee.toLocaleString("en-IN", { maximumFractionDigits: 2 })}/yr
+                  </span>
+                  <span className="text-[10px] text-muted-foreground block">
+                    ({expenseRatio}% of {currencySymbol}{valuation.currentAmount.toLocaleString("en-IN")})
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* IN-DEPTH FINANCIAL GAIN / LOSS & CAGR MATRIX */}
         {investedNum > 0 && currentNum >= 0 && (
           <div
-            className={`rounded-xl border p-3.5 transition-all ${
-              returnStats.pnl >= 0
+            className={`rounded-xl border p-3.5 space-y-2.5 transition-all ${
+              valuation.absolutePnL >= 0
                 ? "border-emerald-500/30 bg-emerald-500/10"
                 : "border-destructive/30 bg-destructive/10"
             }`}
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {returnStats.pnl >= 0 ? (
+                {valuation.absolutePnL >= 0 ? (
                   <TrendingUp className="size-4 text-emerald-600 dark:text-emerald-400" />
                 ) : (
                   <TrendingDown className="size-4 text-destructive" />
                 )}
-                <span className="text-xs font-semibold text-foreground">Earned Returns (P&L)</span>
+                <span className="text-xs font-bold text-foreground">In-Depth Returns Cockpit</span>
               </div>
-              <div className="text-right">
-                <span
-                  className={`text-sm font-extrabold ${
-                    returnStats.pnl >= 0
-                      ? "text-emerald-600 dark:text-emerald-400"
-                      : "text-destructive"
-                  }`}
-                >
-                  {returnStats.pnl >= 0 ? "+" : ""}
-                  {currencySymbol}
-                  {Math.abs(returnStats.pnl).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
-                  {" ("}
-                  {returnStats.pnl >= 0 ? "+" : ""}
-                  {returnStats.pnlPct.toFixed(2)}%
-                  {")"}
+              <span
+                className={`text-sm font-extrabold ${
+                  valuation.absolutePnL >= 0
+                    ? "text-emerald-600 dark:text-emerald-400"
+                    : "text-destructive"
+                }`}
+              >
+                {valuation.absolutePnL >= 0 ? "+" : ""}
+                {currencySymbol}
+                {Math.abs(valuation.absolutePnL).toLocaleString("en-IN", { maximumFractionDigits: 2 })}
+                {" ("}
+                {valuation.absolutePnL >= 0 ? "+" : ""}
+                {valuation.absolutePnLPct.toFixed(2)}%
+                {")"}
+              </span>
+            </div>
+
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-3 gap-2 pt-2 border-t border-border/40 text-xs">
+              <div>
+                <span className="block text-[10px] text-muted-foreground uppercase font-semibold">
+                  Tenure
+                </span>
+                <span className="font-bold text-foreground">
+                  {valuation.elapsedMonths} months ({valuation.elapsedYears.toFixed(1)} yrs)
+                </span>
+              </div>
+
+              <div>
+                <span className="block text-[10px] text-muted-foreground uppercase font-semibold">
+                  Annualized CAGR
+                </span>
+                <span className="font-bold text-foreground">
+                  {valuation.cagr !== null ? `${valuation.cagr >= 0 ? "+" : ""}${valuation.cagr.toFixed(2)}% p.a.` : "N/A (<3m)"}
+                </span>
+              </div>
+
+              <div>
+                <span className="block text-[10px] text-muted-foreground uppercase font-semibold">
+                  Net CAGR (post-TER)
+                </span>
+                <span className={`font-bold ${valuation.netCagr !== null && valuation.netCagr >= 0 ? "text-emerald-600 dark:text-emerald-400" : "text-foreground"}`}>
+                  {valuation.netCagr !== null ? `${valuation.netCagr >= 0 ? "+" : ""}${valuation.netCagr.toFixed(2)}% p.a.` : "N/A"}
                 </span>
               </div>
             </div>
+
+            {/* Special asset callouts */}
+            {valuation.sgbBonusInterest !== undefined && valuation.sgbBonusInterest > 0 && (
+              <p className="text-[11px] text-amber-700 dark:text-amber-300 font-medium pt-1">
+                ✨ Sovereign Gold Bond (SGB) Bonus: +2.5% p.a. semi-annual interest = +{currencySymbol}{valuation.sgbBonusInterest.toLocaleString("en-IN")}
+              </p>
+            )}
           </div>
         )}
 
@@ -611,33 +1033,6 @@ export function InvestmentHoldingModal({
                 {errors.sipAccountId && (
                   <span className="mt-1 block text-[10px] text-destructive">{errors.sipAccountId}</span>
                 )}
-                {(() => {
-                  const acc = data.accounts.find((a) => a.id === sipAccountId);
-                  if (!acc) return null;
-                  const bal = getAccountBalance(acc, data.transactions);
-                  const sipNum = Number(sipAmount) || 0;
-                  const isInsufficient = sipNum > 0 && bal < sipNum;
-                  const isLow = sipNum > 0 && !isInsufficient && bal - sipNum < 2000;
-                  return (
-                    <div className="mt-1 text-[11px]">
-                      {isInsufficient ? (
-                        <p className="text-destructive font-semibold flex items-center gap-1">
-                          <AlertCircle size={12} className="shrink-0" />
-                          Insufficient balance: Available {currencySymbol}{bal.toLocaleString("en-IN")}
-                        </p>
-                      ) : isLow ? (
-                        <p className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-                          <AlertTriangle size={12} className="shrink-0" />
-                          Low balance alert: Balance will drop to {currencySymbol}{(bal - sipNum).toLocaleString("en-IN")}
-                        </p>
-                      ) : (
-                        <p className="text-muted-foreground">
-                          Available balance: {currencySymbol}{bal.toLocaleString("en-IN")}
-                        </p>
-                      )}
-                    </div>
-                  );
-                })()}
               </div>
             </div>
           )}

@@ -58,6 +58,15 @@ export function InvestmentsPage({
 
   const summary = useMemo(() => getHoldingsSummary(holdings), [holdings]);
 
+  // Total annual fund management expense fee drag
+  const annualExpenseDrag = useMemo(() => {
+    return holdings.reduce((sum, h) => {
+      const ter = Number(h.expenseRatio) || 0;
+      const cur = safeAmount(h.currentAmount);
+      return sum + (cur * (ter / 100));
+    }, 0);
+  }, [holdings]);
+
   // Asset allocation breakdown
   const assetBreakdown = useMemo(() => {
     const map = new Map<AssetType, { current: number; invested: number }>();
@@ -181,6 +190,15 @@ export function InvestmentsPage({
                 <span className="block text-[10px] sm:text-[11px] font-medium">Active Holdings</span>
                 <span className="font-bold text-foreground text-xs sm:text-sm whitespace-nowrap">{holdings.length} assets</span>
               </div>
+              {annualExpenseDrag > 0 && (
+                <>
+                  <div className="h-5 sm:h-6 w-px bg-border" />
+                  <div>
+                    <span className="block text-[10px] sm:text-[11px] font-medium">Est. Annual TER Fee</span>
+                    <span className="font-bold text-foreground text-xs sm:text-sm whitespace-nowrap">~{money(annualExpenseDrag)}/yr</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -284,6 +302,16 @@ export function InvestmentsPage({
             const allocationPct = summary.currentValue > 0 ? (current / summary.currentValue) * 100 : 0;
             const colors = ASSET_COLORS[h.assetType] || ASSET_COLORS.Other;
 
+            let cagrBadge: string | null = null;
+            if (h.startMonthYear && invested > 0 && current > 0) {
+              const [y, m] = h.startMonthYear.split("-").map(Number);
+              const elapsedYears = Math.max(0.0833, ((new Date().getFullYear() - y) * 12 + (new Date().getMonth() - (m - 1))) / 12);
+              if (elapsedYears >= 0.25) {
+                const rawCagr = (Math.pow(current / invested, 1 / elapsedYears) - 1) * 100;
+                cagrBadge = `${rawCagr >= 0 ? "+" : ""}${rawCagr.toFixed(1)}% p.a.`;
+              }
+            }
+
             return (
               <div
                 key={h.id}
@@ -347,6 +375,23 @@ export function InvestmentsPage({
                     />
                   </div>
 
+                  {/* Units & Expense Ratio Chips */}
+                  {((h.units !== undefined && h.units > 0) || (h.expenseRatio !== undefined && h.expenseRatio > 0)) && (
+                    <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10px]">
+                      {h.units !== undefined && h.units > 0 && (
+                        <span className="rounded bg-muted px-1.5 py-0.5 font-medium text-foreground">
+                          {h.units.toLocaleString("en-IN", { maximumFractionDigits: 3 })} units
+                          {h.currentPrice ? ` @ ₹${h.currentPrice.toLocaleString("en-IN")}` : ""}
+                        </span>
+                      )}
+                      {h.expenseRatio !== undefined && h.expenseRatio > 0 && (
+                        <span className="rounded bg-primary/10 px-1.5 py-0.5 font-semibold text-primary">
+                          TER: {h.expenseRatio}%
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Notes / Strategy */}
                   {h.notes && (
                     <p className="mt-1 text-[11px] text-muted-foreground line-clamp-1">
@@ -379,9 +424,16 @@ export function InvestmentsPage({
 
                   {/* Earned Returns Bar */}
                   <div className="mt-3 flex items-center justify-between rounded-lg bg-muted/40 p-2 text-xs">
-                    <span className="text-[11px] font-medium text-muted-foreground">
-                      Earned Returns
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-[11px] font-medium text-muted-foreground">
+                        Earned Returns
+                      </span>
+                      {cagrBadge && (
+                        <span className="rounded bg-background px-1.5 py-0.2 text-[9px] font-bold text-foreground border border-border/60">
+                          CAGR {cagrBadge}
+                        </span>
+                      )}
+                    </div>
                     <div
                       className={`flex items-center gap-1 font-bold ${
                         pnl >= 0

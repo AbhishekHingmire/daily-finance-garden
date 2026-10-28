@@ -183,6 +183,12 @@ export class RestWealthRepository implements WealthRepository {
         sipAmount: i.sipAmount,
         sipAccountId: i.sipAccountId,
         status: i.status || "Active",
+        units: i.units !== undefined ? Number(i.units) : undefined,
+        purchasePrice: i.purchasePrice !== undefined ? Number(i.purchasePrice) : undefined,
+        currentPrice: i.currentPrice !== undefined ? Number(i.currentPrice) : undefined,
+        expenseRatio: i.expenseRatio !== undefined ? Number(i.expenseRatio) : undefined,
+        interestRate: i.interestRate !== undefined ? Number(i.interestRate) : undefined,
+        calculationMode: i.calculationMode,
       })),
       loans: (d.loans || []).map((l: any) => ({
         id: l.id,

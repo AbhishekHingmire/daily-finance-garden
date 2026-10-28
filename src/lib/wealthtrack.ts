@@ -84,6 +84,12 @@ export interface InvestmentHolding {
   sipFrequency?: string;
   sipAccountId?: string;
   status?: "Active" | "Paused";
+  units?: number;
+  purchasePrice?: number;
+  currentPrice?: number;
+  expenseRatio?: number;
+  interestRate?: number;
+  calculationMode?: "auto_units" | "auto_purchase_price" | "fixed_deposit" | "manual";
 }
 
 export interface UserProfile {
