@@ -379,6 +379,8 @@ export function OnboardingFlow({
             </div>
             <span className="wt-display text-xl font-extrabold text-foreground">WealthTrack</span>
           </div>
+          {/* Direct skip disabled per requirements; users progress via Next buttons */}
+          {/*
           <Button
             variant="ghost"
             size="sm"
@@ -387,6 +389,7 @@ export function OnboardingFlow({
           >
             Skip setup →
           </Button>
+          */}
         </div>
 
         {/* Step Progress Bar */}

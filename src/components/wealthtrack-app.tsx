@@ -1162,6 +1162,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         setData({
           ...updatedState,
           session: true,
+          onboarded: true, // Land directly on dashboard for sign-in
           notifications: syncedNotifications,
           profile: {
             ...updatedState.profile,
@@ -1187,6 +1188,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         setData((prev) => ({
           ...prev,
           session: true,
+          onboarded: true, // Land directly on dashboard for sign-in
           profile: {
             ...prev.profile,
             fullName: authData?.user?.fullName || prev.profile?.fullName || "User",

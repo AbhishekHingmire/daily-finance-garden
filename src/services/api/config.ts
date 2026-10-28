@@ -1,3 +1,5 @@
+import { getApiBaseUrl } from "./auth-api";
+
 /**
  * Central WealthTrack API configuration.
  * Configures endpoints, timeout thresholds, and headers for the API layer.
@@ -20,13 +22,8 @@ export interface ApiConfig {
 }
 
 export const DEFAULT_API_CONFIG: ApiConfig = {
-  baseUrl:
-    typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
-      ? import.meta.env.VITE_API_BASE_URL
-      : typeof window !== "undefined" && window.location && window.location.port !== "5173"
-      ? window.location.origin
-      : "http://localhost:5252",
-  timeoutMs: 12000,
+  baseUrl: getApiBaseUrl(),
+  timeoutMs: 15000,
   endpoints: {
     state: "/api/v1/state",
     transactions: "/api/v1/transactions",

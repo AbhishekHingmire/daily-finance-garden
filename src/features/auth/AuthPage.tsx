@@ -162,6 +162,7 @@ export function AuthPage({
         otp,
         fullName: authView === "signup" ? fullName.trim() : undefined,
         email: email.trim() || undefined,
+        purpose: authView === "signin" ? "login" : "signup",
       });
 
       if (!res.success) {

@@ -129,6 +129,7 @@ describe("<AuthPage />", () => {
         otp: "889900",
         fullName: undefined,
         email: undefined,
+        purpose: "login",
       });
       expect(mockOnLoginSuccess).toHaveBeenCalledWith("9876543210", expect.anything());
     });

@@ -33,6 +33,7 @@ export interface VerifyOtpRequest {
   otp: string;
   fullName?: string;
   email?: string;
+  purpose?: "login" | "signup" | "signin";
 }
 
 export interface AuthUser {
