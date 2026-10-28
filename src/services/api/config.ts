@@ -17,7 +17,12 @@ export interface ApiConfig {
 }
 
 export const DEFAULT_API_CONFIG: ApiConfig = {
-  baseUrl: typeof window !== "undefined" && window.location ? window.location.origin : "http://localhost:5173",
+  baseUrl:
+    typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
+      ? import.meta.env.VITE_API_BASE_URL
+      : typeof window !== "undefined" && window.location && window.location.port !== "5173"
+      ? window.location.origin
+      : "http://localhost:5252",
   timeoutMs: 10000,
   endpoints: {
     state: "/api/wealth/state",

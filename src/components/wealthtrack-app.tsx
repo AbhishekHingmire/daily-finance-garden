@@ -30,6 +30,7 @@ import { AppLogo } from "@/components/shared/AppLogo";
 import { Modal } from "@/components/shared/Modal";
 import { matchesDateRange, type DateRangeValue } from "@/components/shared/DateRangeFilter";
 import { AuthPage, type AuthView } from "@/features/auth/AuthPage";
+import type { AuthResponseData } from "@/services/api";
 import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { Dashboard } from "@/features/dashboard/Dashboard";
 import { TransactionsPage } from "@/features/transactions/TransactionsPage";
@@ -1045,17 +1046,34 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     }, 450);
   };
 
-  const handleLoginSuccess = (mobile: string) => {
+  const handleLoginSuccess = (mobile: string, authData?: AuthResponseData) => {
     setAuthLoading(true);
     setTimeout(() => {
-      updateData({ session: true });
+      setData((prev) => ({
+        ...prev,
+        session: true,
+        profile: authData?.user
+          ? {
+              ...(prev.profile ?? {
+                occupation: "Engineer",
+                monthlyIncomeTarget: 100000,
+                emergencyFundTarget: 180000,
+                savingsRateTarget: 25,
+                riskProfile: "Balanced",
+              }),
+              fullName: authData.user.fullName || prev.profile?.fullName || "User",
+              email: authData.user.email || prev.profile?.email || "user@example.com",
+              phone: authData.user.mobileNumber || mobile,
+            }
+          : prev.profile,
+      }));
       setAuthLoading(false);
       setAuthErrors({});
       toast.success(`Welcome back! Logged in with +91 ${mobile}`);
-    }, 450);
+    }, 300);
   };
 
-  const handleSignupSuccess = (info: { fullName: string; email?: string; mobile: string }) => {
+  const handleSignupSuccess = (info: { fullName: string; email?: string; mobile: string; authData?: AuthResponseData }) => {
     setAuthLoading(true);
     setTimeout(() => {
       setData((prev) => ({
@@ -1070,15 +1088,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             savingsRateTarget: 25,
             riskProfile: "Balanced",
           }),
-          fullName: info.fullName,
-          email: info.email || prev.profile?.email || "user@example.com",
-          phone: info.mobile,
+          fullName: info.authData?.user?.fullName || info.fullName,
+          email: info.authData?.user?.email || info.email || prev.profile?.email || "user@example.com",
+          phone: info.authData?.user?.mobileNumber || info.mobile,
         },
       }));
       setAuthLoading(false);
       setAuthErrors({});
       toast.success(`Account verified! Welcome to onboarding, ${info.fullName}`);
-    }, 450);
+    }, 300);
   };
 
   const submitAuth = () => {
