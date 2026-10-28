@@ -47,6 +47,9 @@ describe("<AuthPage />", () => {
     const getOtpBtn = screen.getByRole("button", { name: /get otp/i });
     expect(getOtpBtn).toBeInTheDocument();
 
+    const mobileInput = screen.getByPlaceholderText("9876543210");
+    fireEvent.change(mobileInput, { target: { value: "9876543210" } });
+
     fireEvent.click(getOtpBtn);
 
     await waitFor(() => {
@@ -104,6 +107,9 @@ describe("<AuthPage />", () => {
         onQuickLogin={vi.fn()}
       />
     );
+
+    const mobileInput = screen.getByPlaceholderText("9876543210");
+    fireEvent.change(mobileInput, { target: { value: "9876543210" } });
 
     fireEvent.click(screen.getByRole("button", { name: /get otp/i }));
 

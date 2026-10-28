@@ -38,7 +38,7 @@ export function AuthPage({
   onQuickLogin: (address?: string) => void;
 }) {
   // Form states
-  const [mobile, setMobile] = useState("9876543210");
+  const [mobile, setMobile] = useState("");
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
@@ -131,8 +131,8 @@ export function AuthPage({
         message: res.message || "OTP generated and dispatched successfully.",
       });
 
-      toast.success("Verification OTP Generated!", {
-        description: testOtp ? `Live Test OTP: ${testOtp}` : "OTP dispatched via SMS.",
+      toast.success("Verification OTP Dispatched!", {
+        description: testOtp ? `Live Test OTP: ${testOtp}` : `SMS sent to +91 ${mobile} (Valid for 5 min).`,
         duration: 8000,
       });
     } catch (err: any) {
@@ -453,7 +453,15 @@ export function AuthPage({
                 )}
               </div>
 
-              {/* Dynamic Test OTP Screen Display (Per User Requirement) */}
+              {/* Real SMS Mode Information Banner */}
+              {!generatedTestOtp && (
+                <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground flex items-center gap-2.5">
+                  <ShieldCheck size={18} className="text-primary shrink-0" />
+                  <span>Enter the 6-digit verification code received via SMS on <strong>+91 {mobile}</strong> (valid for 5 minutes).</span>
+                </div>
+              )}
+
+              {/* Dynamic Test OTP Screen Display (When gateway in test mode) */}
               {generatedTestOtp && (
                 <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs text-foreground space-y-2">
                   <div className="flex items-center justify-between">

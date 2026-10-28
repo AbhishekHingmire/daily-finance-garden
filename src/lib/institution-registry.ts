@@ -292,3 +292,21 @@ export function resolveInstitution(nameOrQuery?: string): InstitutionMeta | null
 
   return null;
 }
+
+/**
+ * Dynamically registers or updates institutions fetched from the backend API.
+ */
+export function registerInstitutionsFromApi(items: Array<Partial<InstitutionMeta> & { id: string; name: string }>): void {
+  for (const item of items) {
+    INSTITUTIONS[item.id] = {
+      id: item.id,
+      name: item.name,
+      shortName: item.shortName || item.name,
+      category: (item.category as any) || "Bank",
+      primaryColor: item.primaryColor || "#0f172a",
+      accentColor: item.accentColor || "#ffffff",
+      textColor: item.textColor || "#ffffff",
+      aliases: item.aliases || [item.name.toLowerCase()],
+    };
+  }
+}

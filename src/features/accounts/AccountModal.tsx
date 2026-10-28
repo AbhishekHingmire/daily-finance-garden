@@ -1,8 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
 import { InstitutionLogo } from "@/components/shared/InstitutionLogo";
+import { registerInstitutionsFromApi } from "@/lib/institution-registry";
+import { institutionsApi } from "@/services/api";
 import type { Account, AccountKind } from "@/lib/wealthtrack";
 
 export const POPULAR_BANKS = [
@@ -66,6 +68,31 @@ export function AccountModal({
   onSave: (form: Partial<Account>) => void;
 }) {
   const [kind, setKind] = useState<AccountKind>(() => account?.kind ?? "Bank account");
+  const [popularBanks, setPopularBanks] = useState<string[]>(POPULAR_BANKS);
+  const [popularWallets, setPopularWallets] = useState<string[]>(POPULAR_WALLETS);
+  const [popularCards, setPopularCards] = useState<string[]>(POPULAR_CARDS);
+
+  // Fetch verified financial institutions dynamically from backend API
+  useEffect(() => {
+    let isMounted = true;
+    institutionsApi.getInstitutions().then((items) => {
+      if (!isMounted || !items || items.length === 0) return;
+      registerInstitutionsFromApi(items);
+      const banks = items.filter((i) => i.category === "Bank").map((i) => i.name);
+      const wallets = items.filter((i) => i.category === "Wallet").map((i) => i.name);
+      const cards = items.filter((i) => i.category === "Credit").map((i) => i.name);
+
+      if (banks.length > 0) setPopularBanks(Array.from(new Set([...banks, ...POPULAR_BANKS])));
+      if (wallets.length > 0) setPopularWallets(Array.from(new Set([...wallets, ...POPULAR_WALLETS])));
+      if (cards.length > 0) setPopularCards(Array.from(new Set([...cards, ...POPULAR_CARDS])));
+    }).catch(() => {
+      // Fallback safely to embedded verified presets
+    });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
   const [selectedPreset, setSelectedPreset] = useState<string>(() => {
     if (!account) return "";
     const k = account.kind;
@@ -225,7 +252,7 @@ export function AccountModal({
               onChange={handlePresetChange}
               placeholder="Choose bank from list..."
               options={[
-                ...POPULAR_BANKS.map((b) => ({ value: b, label: b })),
+                ...popularBanks.map((b) => ({ value: b, label: b })),
                 { value: "custom", label: "+ Other Bank (Enter custom name)" },
               ]}
             />
@@ -249,7 +276,7 @@ export function AccountModal({
               onChange={handlePresetChange}
               placeholder="Choose wallet..."
               options={[
-                ...POPULAR_WALLETS.map((w) => ({ value: w, label: w })),
+                ...popularWallets.map((w) => ({ value: w, label: w })),
                 { value: "custom", label: "+ Other Wallet (Enter custom name)" },
               ]}
             />
@@ -273,7 +300,7 @@ export function AccountModal({
               onChange={handlePresetChange}
               placeholder="Choose card issuer..."
               options={[
-                ...POPULAR_CARDS.map((c) => ({ value: c, label: c })),
+                ...popularCards.map((c) => ({ value: c, label: c })),
                 { value: "custom", label: "+ Other Card (Enter custom issuer)" },
               ]}
             />
