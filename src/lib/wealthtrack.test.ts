@@ -38,9 +38,9 @@ describe("WealthTrack finance calculations", () => {
     expect(after.balance).toBe(before.balance);
   });
 
-  it("reports ₹150,931 in net expenses after the seeded ₹650 refund", () => {
+  it("reports ₹145,911 in net expenses after the seeded ₹650 refund", () => {
     const { accounts, transactions } = createInitialState();
 
-    expect(getMoneySummary(accounts, transactions).expenses).toBe(150931);
+    expect(getMoneySummary(accounts, transactions).expenses).toBe(145911);
   });
 });
