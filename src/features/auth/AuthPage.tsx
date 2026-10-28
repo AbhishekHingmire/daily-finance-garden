@@ -50,11 +50,12 @@ export function AuthPage({
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const [generatedTestOtp, setGeneratedTestOtp] = useState<string | null>(null);
   const [otpExpiresIn, setOtpExpiresIn] = useState<number>(300);
-  const [countdown, setCountdown] = useState<number>(60);
+  const [otpSecondsLeft, setOtpSecondsLeft] = useState<number>(300); // live 5-min countdown
+  const [countdown, setCountdown] = useState<number>(60); // resend OTP cooldown
   const [apiBanner, setApiBanner] = useState<{ type: "success" | "error" | "info"; message: string } | null>(null);
   const [copiedOtp, setCopiedOtp] = useState(false);
 
-  // Timer countdown for resending OTP
+  // 60-second resend cooldown
   useEffect(() => {
     let timer: NodeJS.Timeout;
     if (otpSent && countdown > 0) {
@@ -62,6 +63,25 @@ export function AuthPage({
     }
     return () => clearTimeout(timer);
   }, [otpSent, countdown]);
+
+  // Live 5-minute OTP expiry countdown – green > 2min, yellow ≤ 2min, red ≤ 30s
+  useEffect(() => {
+    if (!otpSent) {
+      setOtpSecondsLeft(300);
+      return;
+    }
+    setOtpSecondsLeft(otpExpiresIn);
+    const interval = setInterval(() => {
+      setOtpSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [otpSent, otpExpiresIn]);
 
   const handleMobileChange = (val: string) => {
     const cleaned = val.replace(/\D/g, "").slice(0, 10);
@@ -123,7 +143,8 @@ export function AuthPage({
 
       const testOtp = res.data?.testOtp || null;
       setGeneratedTestOtp(testOtp);
-      setOtpExpiresIn(res.data?.expiresInSeconds || 300);
+      const expirySeconds = res.data?.expiresInSeconds || 300;
+      setOtpExpiresIn(expirySeconds);
       setOtpSent(true);
       setCountdown(60);
       setApiBanner({
@@ -150,6 +171,11 @@ export function AuthPage({
     e.preventDefault();
     if (!otp || otp.length < 6) {
       setErrors({ otp: "Please enter the complete 6-digit verification code." });
+      return;
+    }
+
+    if (otpSecondsLeft <= 0) {
+      setErrors({ otp: "OTP has expired. Please request a new one." });
       return;
     }
 
@@ -214,6 +240,27 @@ export function AuthPage({
 
   const isLoading = authLoading || isRequestingOtp || isVerifyingOtp;
 
+  // Countdown colour helpers
+  const otpTimerColorClass =
+    otpSecondsLeft <= 30
+      ? "text-destructive border-destructive/30 bg-destructive/10"
+      : otpSecondsLeft <= 120
+      ? "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10"
+      : "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
+  const otpTimerDotClass =
+    otpSecondsLeft <= 30
+      ? "bg-destructive animate-pulse"
+      : otpSecondsLeft <= 120
+      ? "bg-amber-500 animate-pulse"
+      : "bg-emerald-500";
+  const otpTimerTextClass =
+    otpSecondsLeft <= 30
+      ? "text-destructive"
+      : otpSecondsLeft <= 120
+      ? "text-amber-500"
+      : "text-muted-foreground";
+  const otpTimerFormatted = `${Math.floor(otpSecondsLeft / 60)}:${(otpSecondsLeft % 60).toString().padStart(2, "0")}`;
+
   return (
     <div className="grid min-h-screen bg-background lg:grid-cols-[minmax(0,1fr)_minmax(420px,0.85fr)]">
       {/* Visual Left Banner */}
@@ -251,9 +298,9 @@ export function AuthPage({
                 <Database size={20} />
               </div>
               <div>
-                <p className="text-sm font-bold">.NET 10 & SQL Server Backend</p>
+                <p className="text-sm font-bold">.NET 10 &amp; SQL Server Backend</p>
                 <p className="mt-0.5 text-xs opacity-80">
-                  Real REST API with JWT access & refresh tokens and auto DB migrations
+                  Real REST API with JWT access &amp; refresh tokens and auto DB migrations
                 </p>
               </div>
             </div>
@@ -462,6 +509,22 @@ export function AuthPage({
                 </div>
               )}
 
+              {/* Live OTP Expiry Countdown */}
+              {otpSecondsLeft > 0 ? (
+                <div className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-xs font-semibold ${otpTimerColorClass}`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`size-2 rounded-full ${otpTimerDotClass}`} />
+                    <span>OTP expires in</span>
+                  </div>
+                  <span className="font-mono text-sm font-bold tabular-nums">{otpTimerFormatted}</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-xs font-semibold text-destructive">
+                  <span className="size-2 rounded-full bg-destructive animate-pulse" />
+                  OTP has expired. Request a new code below.
+                </div>
+              )}
+
               {/* Dynamic Test OTP Screen Display (When gateway in test mode) */}
               {generatedTestOtp && (
                 <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs text-foreground space-y-2">
@@ -470,8 +533,8 @@ export function AuthPage({
                       <span className="size-2 rounded-full bg-primary animate-pulse" />
                       <span className="font-semibold text-primary">Test Mode Verification OTP</span>
                     </div>
-                    <span className="text-[10px] text-muted-foreground font-mono">
-                      Expires in {Math.floor(otpExpiresIn / 60)}m
+                    <span className={`text-[10px] font-mono font-bold tabular-nums ${otpTimerTextClass}`}>
+                      {otpTimerFormatted}
                     </span>
                   </div>
                   <div className="flex items-center justify-between bg-background/80 rounded-lg p-2.5 border border-primary/20">
@@ -509,7 +572,7 @@ export function AuthPage({
               <Button
                 type="submit"
                 className="h-11 w-full gap-2 font-semibold shadow-xs"
-                disabled={isLoading}
+                disabled={isLoading || otpSecondsLeft <= 0}
               >
                 {isVerifyingOtp ? (
                   <>

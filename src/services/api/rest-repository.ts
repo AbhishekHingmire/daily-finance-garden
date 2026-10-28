@@ -93,7 +93,9 @@ export class RestWealthRepository implements WealthRepository {
     const d = res.data;
     const state: WealthState = {
       session: true,
-      onboarded: d.onboarded ?? (d.accounts?.length > 0),
+      // Treat the user as onboarded once they have saved a profile or have accounts.
+      // This avoids falsely showing onboarding for existing users after login.
+      onboarded: d.onboarded === true ? true : Boolean(d.profile?.fullName || (d.accounts?.length ?? 0) > 0),
       preferences: d.preferences ?? {
         displayName: "User",
         currency: "INR",

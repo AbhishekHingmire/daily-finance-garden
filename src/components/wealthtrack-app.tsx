@@ -411,12 +411,23 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
   // Concurrency lock against rapid duplicate clicks
   const savingLockRef = useRef(false);
+  // Tracks whether state has been loaded from API so handleLoginSuccess/handleSignupSuccess
+  // can skip the mount-level getState call when they take over.
+  const stateLoadedByAuthRef = useRef(false);
 
   // Load state from repository on mount
   useEffect(() => {
     const token = authStorage.getAccessToken();
     if (!token) {
       setData(createEmptyWorkspaceState());
+      setLoaded(true);
+      return;
+    }
+
+    // If auth handlers (login/signup) will immediately call getState themselves,
+    // they set stateLoadedByAuthRef.current = true before this effect resolves.
+    // In that case the mount-load is superseded and we skip it.
+    if (stateLoadedByAuthRef.current) {
       setLoaded(true);
       return;
     }
@@ -1203,6 +1214,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const handleLoginSuccess = async (mobile: string, authData?: AuthResponseData) => {
     setAuthLoading(true);
     try {
+      // After login, fetch state ONCE from API and go to dashboard directly.
       const res = await repository.getState();
       if (res.success && res.data) {
         const baseState: WealthState = syncLoansWithRecurring(res.data);
@@ -1235,14 +1247,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           }, 300);
         }
       } else {
+        // State fetch failed but auth succeeded — restore from cached user
+        const cachedUser = authStorage.getUser();
         setData((prev) => ({
           ...prev,
           session: true,
           onboarded: true, // Land directly on dashboard for sign-in
           profile: {
-            ...prev.profile,
-            fullName: authData?.user?.fullName || prev.profile?.fullName || "User",
-            email: authData?.user?.email || prev.profile?.email || "",
+            fullName: authData?.user?.fullName || cachedUser?.fullName || prev.profile?.fullName || "User",
+            email: authData?.user?.email || cachedUser?.email || prev.profile?.email || "",
             phone: authData?.user?.mobileNumber || mobile,
             occupation: prev.profile?.occupation || "Professional",
             monthlyIncomeTarget: prev.profile?.monthlyIncomeTarget || 100000,
@@ -1264,14 +1277,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const handleSignupSuccess = async (info: { fullName: string; email?: string; mobile: string; authData?: AuthResponseData }) => {
     setAuthLoading(true);
     try {
+      // After signup: fetch fresh state from backend (new user will have empty state).
+      // Set onboarded:false so user goes through onboarding wizard.
       const res = await repository.getState();
       const stateData = res.success && res.data ? res.data : createEmptyWorkspaceState();
       setData({
         ...stateData,
         session: true,
-        onboarded: false, // Land into stepper form as requested
+        onboarded: false, // Always show onboarding for newly registered users
         profile: {
-          ...stateData.profile,
           fullName: info.authData?.user?.fullName || info.fullName,
           email: info.authData?.user?.email || info.email || "",
           phone: info.authData?.user?.mobileNumber || info.mobile,
