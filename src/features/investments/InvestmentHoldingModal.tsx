@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect, useRef } from "react";
+import { useMemo, useState, useEffect, useRef, useCallback } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -178,6 +178,8 @@ export function InvestmentHoldingModal({
   } | null>(null);
   const [isServiceDown, setIsServiceDown] = useState(false);
   const [isFetchingQuote, setIsFetchingQuote] = useState(false);
+  const [isCalculatingLumpSum, setIsCalculatingLumpSum] = useState(false);
+  const [lumpSumStatusMessage, setLumpSumStatusMessage] = useState<string | null>(null);
   const [exchangeRateInfo, setExchangeRateInfo] = useState<{
     rate: number;
     fromCurrency: string;
@@ -290,7 +292,9 @@ export function InvestmentHoldingModal({
 
         // Auto-compute units & purchase price if investedAmount is already entered
         const inv = Number(investedAmount) || 0;
-        if (inv > 0 && (units === "" || Number(units) <= 0)) {
+        if (investmentStyle === "LumpSum" && inv > 0 && startMonthYear) {
+          executeAutonomousLumpSumValuation(inv, startMonthYear, item.name, finalPriceInUserCurrency);
+        } else if (inv > 0 && (units === "" || Number(units) <= 0)) {
           const derivedUnits = Math.round((inv / finalPriceInUserCurrency) * 10000) / 10000;
           setUnits(derivedUnits);
           setPurchasePrice(finalPriceInUserCurrency);
@@ -316,6 +320,49 @@ export function InvestmentHoldingModal({
     setExpenseRatio(newTer);
   };
 
+  // 2-step Autonomous Lump Sum Valuation Engine (as requested by user):
+  // 1. Get that time NAV price and divide by lump sum invested to derive total units
+  // 2. Multiply derived units by today's NAV price to compute current valuation & PnL
+  const executeAutonomousLumpSumValuation = useCallback(
+    async (invAmt: number, startDt: string, holdingName: string, knownLivePrice?: number) => {
+      if (!invAmt || invAmt <= 0 || !startDt || !holdingName.trim()) {
+        return;
+      }
+
+      setIsCalculatingLumpSum(true);
+      setLumpSumStatusMessage(null);
+
+      try {
+        const liveP = knownLivePrice && knownLivePrice > 0 ? knownLivePrice : Number(currentPrice) || undefined;
+        // Step 1: That time NAV price
+        const buyNav = await marketApi.getHistoricalNavOrPrice(holdingName, startDt, liveP);
+
+        if (buyNav && buyNav > 0) {
+          setPurchasePrice(buyNav);
+
+          // Step 1 cont.: Total units = invested capital ÷ that time NAV
+          const derivedUnits = Math.round((invAmt / buyNav) * 10000) / 10000;
+          setUnits(derivedUnits);
+
+          // Step 2: Current valuation = total units × today's live NAV
+          const todayNav = liveP || buyNav;
+          if (todayNav > 0) {
+            const todaysValue = Math.round(derivedUnits * todayNav * 100) / 100;
+            setCurrentAmount(todaysValue);
+          }
+          setLumpSumStatusMessage(null);
+        } else {
+          setLumpSumStatusMessage("Could not retrieve AMFI historical NAV. You can enter Buy Price directly below.");
+        }
+      } catch {
+        setLumpSumStatusMessage("Market quote service temporarily slow. You can enter Buy Price directly below.");
+      } finally {
+        setIsCalculatingLumpSum(false);
+      }
+    },
+    [currentPrice]
+  );
+
   // Invested amount change handler (synchronizes units or buy price)
   const handleInvestedAmountChange = (val: string) => {
     if (val === "") {
@@ -324,26 +371,19 @@ export function InvestmentHoldingModal({
     }
     const inv = Number(val);
     setInvestedAmount(inv);
-    const price = Number(currentPrice);
-    if (units !== "" && Number(units) > 0) {
-      setPurchasePrice(Math.round((inv / Number(units)) * 100) / 100);
-    } else if (purchasePrice !== "" && Number(purchasePrice) > 0) {
-      const derivedUnits = Math.round((inv / Number(purchasePrice)) * 10000) / 10000;
-      setUnits(derivedUnits);
-      if (price > 0) {
-        setCurrentAmount(Math.round(derivedUnits * price * 100) / 100);
-      }
-    } else if (investmentStyle === "LumpSum" && startMonthYear && inv > 0) {
-      marketApi.getHistoricalNavOrPrice(name, startMonthYear).then((histPrice) => {
-        if (histPrice && histPrice > 0) {
-          setPurchasePrice(histPrice);
-          const derivedUnits = Math.round((inv / histPrice) * 10000) / 10000;
-          setUnits(derivedUnits);
-          if (price > 0) {
-            setCurrentAmount(Math.round(derivedUnits * price * 100) / 100);
-          }
+    if (investmentStyle === "LumpSum" && startMonthYear && inv > 0) {
+      executeAutonomousLumpSumValuation(inv, startMonthYear, name, Number(currentPrice) || undefined);
+    } else {
+      const price = Number(currentPrice);
+      if (units !== "" && Number(units) > 0) {
+        setPurchasePrice(Math.round((inv / Number(units)) * 100) / 100);
+      } else if (purchasePrice !== "" && Number(purchasePrice) > 0) {
+        const derivedUnits = Math.round((inv / Number(purchasePrice)) * 10000) / 10000;
+        setUnits(derivedUnits);
+        if (price > 0) {
+          setCurrentAmount(Math.round(derivedUnits * price * 100) / 100);
         }
-      }).catch(() => {});
+      }
     }
   };
 
@@ -434,16 +474,7 @@ export function InvestmentHoldingModal({
       const progress = calculateSipHistoricalProgress(val, Number(sipAmount), sipDay);
       setInvestedAmount(progress.totalEstimatedInvested);
     } else if (investmentStyle === "LumpSum" && Number(investedAmount) > 0 && val) {
-      marketApi.getHistoricalNavOrPrice(name, val).then((histPrice) => {
-        if (histPrice && histPrice > 0) {
-          setPurchasePrice(histPrice);
-          const derivedUnits = Math.round((Number(investedAmount) / histPrice) * 10000) / 10000;
-          setUnits(derivedUnits);
-          if (currentPrice && Number(currentPrice) > 0) {
-            setCurrentAmount(Math.round(derivedUnits * Number(currentPrice) * 100) / 100);
-          }
-        }
-      }).catch(() => {});
+      executeAutonomousLumpSumValuation(Number(investedAmount), val, name, Number(currentPrice) || undefined);
     }
   };
 
@@ -791,7 +822,9 @@ export function InvestmentHoldingModal({
               <Calendar className="size-3.5 text-primary" />
               <span>Investment Style &amp; Schedule</span>
             </span>
-            <span className="text-[10px] text-muted-foreground font-medium">Pre-calculates Invested Capital</span>
+            {investmentStyle === "SIP" && (
+              <span className="text-[10px] text-muted-foreground font-medium">Pre-calculates Invested Capital</span>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-2">
@@ -805,6 +838,9 @@ export function InvestmentHoldingModal({
               onClick={() => {
                 setInvestmentStyle("LumpSum");
                 setIsRecurring(false);
+                if (investedNum > 0 && startMonthYear && name) {
+                  executeAutonomousLumpSumValuation(investedNum, startMonthYear, name, Number(currentPrice) || undefined);
+                }
               }}
             >
               One-time (Lump Sum)
@@ -953,27 +989,57 @@ export function InvestmentHoldingModal({
                   </span>
                 </div>
                 {startMonthYear && investedNum > 0 ? (
-                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
-                    <div>
-                      <span className="text-muted-foreground block text-[10px]">Invested Capital</span>
-                      <strong className="text-foreground">{currencySymbol}{investedNum.toLocaleString("en-IN")}</strong>
+                  <div className="mt-2 space-y-2">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">Invested Capital</span>
+                        <strong className="text-foreground">{currencySymbol}{investedNum.toLocaleString("en-IN")}</strong>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">Purchase Date NAV</span>
+                        <strong className="text-foreground">
+                          {purchasePrice
+                            ? `${currencySymbol}${Number(purchasePrice).toLocaleString("en-IN")}`
+                            : isCalculatingLumpSum
+                            ? "Fetching…"
+                            : "Auto-fetching…"}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">Allotted Units</span>
+                        <strong className="text-foreground">
+                          {units
+                            ? Number(units).toLocaleString("en-IN")
+                            : isCalculatingLumpSum
+                            ? "Calculating…"
+                            : "Ready"}
+                        </strong>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground block text-[10px]">Total Return / PnL</span>
+                        <strong className={valuation.absolutePnL >= 0 ? "text-emerald-500" : "text-rose-500"}>
+                          {valuation.absolutePnL >= 0 ? "+" : ""}{currencySymbol}{Math.abs(valuation.absolutePnL).toLocaleString("en-IN")} ({valuation.absolutePnLPct}%)
+                        </strong>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground block text-[10px]">Purchase Date NAV</span>
-                      <strong className="text-foreground">
-                        {purchasePrice ? `${currencySymbol}${Number(purchasePrice).toLocaleString("en-IN")}` : "Auto-fetching…"}
-                      </strong>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-[10px]">Allotted Units</span>
-                      <strong className="text-foreground">{units ? Number(units).toLocaleString("en-IN") : "Calculating…"}</strong>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground block text-[10px]">Total Return / PnL</span>
-                      <strong className={valuation.absolutePnL >= 0 ? "text-emerald-500" : "text-rose-500"}>
-                        {valuation.absolutePnL >= 0 ? "+" : ""}{currencySymbol}{Math.abs(valuation.absolutePnL).toLocaleString("en-IN")} ({valuation.absolutePnLPct}%)
-                      </strong>
-                    </div>
+
+                    {lumpSumStatusMessage && (
+                      <div className="flex items-center gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-300">
+                        <span>⚠️</span>
+                        <span>{lumpSumStatusMessage}</span>
+                      </div>
+                    )}
+
+                    {purchasePrice && units ? (
+                      <div className="text-[10px] text-muted-foreground bg-muted/40 border border-border/50 rounded-md p-1.5 flex flex-wrap items-center justify-between gap-1">
+                        <span>
+                          <strong>1. Units:</strong> {currencySymbol}{investedNum.toLocaleString("en-IN")} ÷ {currencySymbol}{Number(purchasePrice).toLocaleString("en-IN")} = <strong>{units} units</strong>
+                        </span>
+                        <span>
+                          <strong>2. Current:</strong> {units} × {currencySymbol}{currentPrice || purchasePrice} = <strong>{currencySymbol}{valuation.currentAmount.toLocaleString("en-IN")}</strong>
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 ) : (
                   <p className="mt-1.5 text-[11px] text-muted-foreground">
@@ -1176,7 +1242,7 @@ export function InvestmentHoldingModal({
                     </p>
                   </div>
 
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <div className="grid gap-3.5 grid-cols-1 sm:grid-cols-2">
                     {/* Ongoing Live Market Price */}
                     <div>
                       <span className="wt-label">Live Price / NAV ({currencySymbol})</span>

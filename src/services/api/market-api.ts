@@ -52,6 +52,10 @@ const MASTER_FALLBACK_INSTRUMENTS: InstrumentSearchResult[] = [
   { symbol: "MON100.NS", name: "Motilal Oswal Nasdaq 100 ETF", category: "ETF", assetType: "ETF", exchange: "NSE", currentPrice: 165.00, currency: "INR" },
 ];
 
+// In-memory Scheme & Historical Data Caches for lightning-fast lookups
+const MF_SCHEME_CACHE = new Map<string, string>();
+const MF_HISTORICAL_CACHE = new Map<string, Array<{ date: string; nav: string }>>();
+
 export const marketApi = {
   /**
    * Searches National & International stocks, Mutual Funds, ETFs, and Gold.
@@ -59,7 +63,7 @@ export const marketApi = {
   async searchInstruments(query: string, category?: string): Promise<InstrumentSearchResult[]> {
     const cleanQ = query.trim().toLowerCase();
 
-    // 1. Try Backend search API
+    // 1. Try Backend search API (if running)
     try {
       const baseUrl = getApiBaseUrl();
       const params = new URLSearchParams();
@@ -68,7 +72,7 @@ export const marketApi = {
 
       const res = await fetch(`${baseUrl}/api/v1/investments/search?${params.toString()}`, {
         headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(2000),
       });
 
       if (res.ok) {
@@ -76,13 +80,14 @@ export const marketApi = {
         if (json.data && json.data.length > 0) return json.data;
       }
     } catch {
-      // Fallback
+      // Backend down or timed out, advance to public search
     }
 
     // 2. Direct public AMFI search fallback if searching mutual funds
-    if (cleanQ.length >= 2 && (!category || category.toLowerCase().includes("fund"))) {
+    if (cleanQ.length >= 2 && (!category || category.toLowerCase().includes("fund") || category.toLowerCase().includes("mutual"))) {
       try {
-        const mfRes = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(cleanQ)}`, {
+        const cleanSearchQ = cleanQ.split("-")[0].trim() || cleanQ;
+        const mfRes = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(cleanSearchQ)}`, {
           signal: AbortSignal.timeout(3000),
         });
         if (mfRes.ok) {
@@ -119,100 +124,112 @@ export const marketApi = {
     if (!raw) return { quote: null, isServiceDown: false, provider: "none" };
 
     const isNumericScheme = /^\d+$/.test(raw);
-    const isMf = isNumericScheme || (category && category.toLowerCase().includes("fund"));
+    const isMf =
+      isNumericScheme ||
+      Boolean(category && (category.toLowerCase().includes("fund") || category.toLowerCase().includes("mutual"))) ||
+      raw.toLowerCase().includes("fund") ||
+      raw.toLowerCase().includes("mutual") ||
+      raw.toLowerCase().includes("direct") ||
+      raw.toLowerCase().includes("growth") ||
+      raw.toLowerCase().includes("plan") ||
+      raw.toLowerCase().includes("index") ||
+      raw.toLowerCase().includes("cap") ||
+      raw.includes(" ");
 
-    // --- FALLBACK TIER 1: Backend API ---
-    try {
-      const baseUrl = getApiBaseUrl();
-      const res = await fetch(`${baseUrl}/api/v1/investments/quote?query=${encodeURIComponent(raw)}`, {
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(3500),
-      });
-
-      if (res.ok) {
-        const json = await res.json();
-        if (json.data && json.data.currentPrice > 0) {
-          return { quote: json.data, isServiceDown: false, provider: "backend-api" };
-        }
-      }
-    } catch {
-      // Backend down or timed out, advance to public fallbacks
-    }
-
-    // --- FALLBACK TIER 2: Direct Open Public APIs ---
+    // --- FALLBACK TIER 1: Mutual Funds via Direct AMFI API ---
     if (isMf) {
-      // Direct AMFI api.mfapi.in
       try {
-        const schemeCode = isNumericScheme ? raw : "122639"; // Parag Parikh Flexi Cap default if query wasn't numeric
-        const mfRes = await fetch(`https://api.mfapi.in/mf/${schemeCode}/latest`, {
-          signal: AbortSignal.timeout(3500),
-        });
-        if (mfRes.ok) {
-          const json = await mfRes.json();
-          const navStr = json?.data?.[0]?.nav;
-          const navVal = Number(navStr);
-          if (navVal > 0) {
-            return {
-              quote: {
-                symbol: schemeCode,
-                name: json?.meta?.scheme_name || `Mutual Fund (${schemeCode})`,
-                instrumentType: "MutualFund",
-                currentPrice: Math.round(navVal * 100) / 100,
-                previousClose: Math.round(navVal * 100) / 100,
-                changeAmount: 0,
-                changePercent: 0,
-                currency: "INR",
-              },
-              isServiceDown: false,
-              provider: "mfapi.in-direct",
-            };
+        let schemeCode = isNumericScheme ? raw : MF_SCHEME_CACHE.get(raw.toLowerCase()) || "";
+        if (!schemeCode) {
+          const cleanQ = raw.split("-")[0].replace(/fund/gi, "").trim() || raw;
+          const searchRes = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(cleanQ)}`, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (searchRes.ok) {
+            const list: { schemeCode: number; schemeName: string }[] = await searchRes.json();
+            if (Array.isArray(list) && list.length > 0) {
+              const directMatch = raw.toLowerCase().includes("direct")
+                ? list.find((s) => s.schemeName.toLowerCase().includes("direct"))
+                : null;
+              schemeCode = (directMatch || list[0]).schemeCode.toString();
+              MF_SCHEME_CACHE.set(raw.toLowerCase(), schemeCode);
+            }
           }
         }
-      } catch {
-        // Fallback
-      }
-    } else {
-      // Direct Stock Quote via Yahoo Finance public chart API (query1 & query2)
-      let sym = raw.toUpperCase();
-      if (!sym.includes(".") && !sym.includes("^") && !["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK-B"].includes(sym)) {
-        sym = `${sym}.NS`;
-      }
 
-      for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
-        try {
-          const yRes = await fetch(`https://${host}/v8/finance/chart/${sym}?interval=1d&range=1d`, {
+        if (schemeCode) {
+          const mfRes = await fetch(`https://api.mfapi.in/mf/${schemeCode}/latest`, {
             signal: AbortSignal.timeout(3500),
           });
-          if (yRes.ok) {
-            const doc = await yRes.json();
-            const result = doc?.chart?.result?.[0];
-            const meta = result?.meta;
-            const price = Number(meta?.regularMarketPrice);
-            if (price > 0) {
-              const prev = Number(meta?.chartPreviousClose) || price;
+          if (mfRes.ok) {
+            const json = await mfRes.json();
+            const navStr = json?.data?.[0]?.nav;
+            const navVal = Number(navStr);
+            if (navVal > 0) {
               return {
                 quote: {
-                  symbol: sym,
-                  name: meta?.shortName || sym,
-                  instrumentType: "Stock",
-                  currentPrice: Math.round(price * 100) / 100,
-                  previousClose: Math.round(prev * 100) / 100,
-                  changeAmount: Math.round((price - prev) * 100) / 100,
-                  changePercent: prev > 0 ? Math.round(((price - prev) / prev) * 10000) / 100 : 0,
-                  currency: meta?.currency || (sym.endsWith(".NS") || sym.endsWith(".BO") ? "INR" : "USD"),
+                  symbol: schemeCode,
+                  name: json?.meta?.scheme_name || raw,
+                  instrumentType: "MutualFund",
+                  currentPrice: Math.round(navVal * 100) / 100,
+                  previousClose: Math.round(navVal * 100) / 100,
+                  changeAmount: 0,
+                  changePercent: 0,
+                  currency: "INR",
                 },
                 isServiceDown: false,
-                provider: `${host}-direct`,
+                provider: "mfapi.in-direct",
               };
             }
           }
-        } catch {
-          // Try next host
+        }
+      } catch {
+        // Fallback to local catalog
+      }
+    } else {
+      // --- STOCKS: Query Yahoo Finance ONLY for valid ticker symbols without spaces ---
+      if (!raw.includes(" ") && /^[A-Z0-9^.-]+$/i.test(raw)) {
+        let sym = raw.toUpperCase();
+        if (!sym.includes(".") && !sym.includes("^") && !["AAPL", "MSFT", "GOOGL", "AMZN", "NVDA", "META", "TSLA", "BRK-B"].includes(sym)) {
+          sym = `${sym}.NS`;
+        }
+
+        for (const host of ["query1.finance.yahoo.com", "query2.finance.yahoo.com"]) {
+          try {
+            const yRes = await fetch(`https://${host}/v8/finance/chart/${sym}?interval=1d&range=1d`, {
+              signal: AbortSignal.timeout(3500),
+            });
+            if (yRes.ok) {
+              const doc = await yRes.json();
+              const result = doc?.chart?.result?.[0];
+              const meta = result?.meta;
+              const price = Number(meta?.regularMarketPrice);
+              if (price > 0) {
+                const prev = Number(meta?.chartPreviousClose) || price;
+                return {
+                  quote: {
+                    symbol: sym,
+                    name: meta?.shortName || sym,
+                    instrumentType: "Stock",
+                    currentPrice: Math.round(price * 100) / 100,
+                    previousClose: Math.round(prev * 100) / 100,
+                    changeAmount: Math.round((price - prev) * 100) / 100,
+                    changePercent: prev > 0 ? Math.round(((price - prev) / prev) * 10000) / 100 : 0,
+                    currency: meta?.currency || (sym.endsWith(".NS") || sym.endsWith(".BO") ? "INR" : "USD"),
+                  },
+                  isServiceDown: false,
+                  provider: `${host}-direct`,
+                };
+              }
+            }
+          } catch {
+            // Try next host
+          }
         }
       }
     }
 
-    // --- FALLBACK TIER 3: Local Master Instrument Registry Match ---
+    // --- FALLBACK TIER 2: Local Master Instrument Registry Match ---
     const localMatch = MASTER_FALLBACK_INSTRUMENTS.find(
       (m) =>
         m.symbol.toLowerCase() === raw.toLowerCase() ||
@@ -236,7 +253,7 @@ export const marketApi = {
       };
     }
 
-    // All 3 tiers failed or instrument could not be identified
+    // All tiers failed or instrument could not be identified
     return {
       quote: null,
       isServiceDown: true,
@@ -248,7 +265,11 @@ export const marketApi = {
    * Fetches or estimates historical NAV or price for a given instrument and start date (YYYY-MM).
    * Enables autonomous valuation for Lump Sum investments on purchase date.
    */
-  async getHistoricalNavOrPrice(symbolOrName: string, startMonthYear: string): Promise<number | null> {
+  async getHistoricalNavOrPrice(
+    symbolOrName: string,
+    startMonthYear: string,
+    knownCurrentPrice?: number
+  ): Promise<number | null> {
     const raw = symbolOrName.trim();
     if (!raw || !startMonthYear || !/^\d{4}-\d{2}$/.test(startMonthYear)) return null;
 
@@ -257,67 +278,96 @@ export const marketApi = {
     const targetSubstr = `-${mStr}-${year}`;
 
     const isNumericScheme = /^\d+$/.test(raw);
-    const isMf = isNumericScheme || raw.toLowerCase().includes("fund") || raw.toLowerCase().includes("mutual");
+    const isMf =
+      isNumericScheme ||
+      raw.toLowerCase().includes("fund") ||
+      raw.toLowerCase().includes("mutual") ||
+      raw.toLowerCase().includes("direct") ||
+      raw.toLowerCase().includes("growth") ||
+      raw.toLowerCase().includes("plan") ||
+      raw.toLowerCase().includes("index") ||
+      raw.toLowerCase().includes("cap") ||
+      raw.includes(" ");
 
+    // 1. Try AMFI historical lookup for mutual funds
     if (isMf) {
       try {
-        let schemeCode = isNumericScheme ? raw : "";
+        let schemeCode = isNumericScheme ? raw : MF_SCHEME_CACHE.get(raw.toLowerCase()) || "";
         if (!schemeCode) {
-          const searchRes = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(raw)}`, {
+          const cleanQ = raw.split("-")[0].replace(/fund/gi, "").trim() || raw;
+          const searchRes = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(cleanQ)}`, {
             signal: AbortSignal.timeout(3000),
           });
           if (searchRes.ok) {
-            const list = await searchRes.json();
+            const list: { schemeCode: number; schemeName: string }[] = await searchRes.json();
             if (Array.isArray(list) && list.length > 0) {
-              schemeCode = list[0].schemeCode.toString();
+              const directMatch = raw.toLowerCase().includes("direct")
+                ? list.find((s) => s.schemeName.toLowerCase().includes("direct"))
+                : null;
+              schemeCode = (directMatch || list[0]).schemeCode.toString();
+              MF_SCHEME_CACHE.set(raw.toLowerCase(), schemeCode);
             }
           }
         }
 
         if (schemeCode) {
-          const detailRes = await fetch(`https://api.mfapi.in/mf/${schemeCode}`, {
-            signal: AbortSignal.timeout(4000),
-          });
-          if (detailRes.ok) {
-            const json = await detailRes.json();
-            const dataArr = json?.data;
-            if (Array.isArray(dataArr) && dataArr.length > 0) {
-              const match = dataArr.find((d: { date: string; nav: string }) => d.date.endsWith(targetSubstr));
-              if (match && Number(match.nav) > 0) {
-                return Math.round(Number(match.nav) * 100) / 100;
+          let dataArr = MF_HISTORICAL_CACHE.get(schemeCode);
+          if (!dataArr) {
+            const detailRes = await fetch(`https://api.mfapi.in/mf/${schemeCode}`, {
+              signal: AbortSignal.timeout(6000),
+            });
+            if (detailRes.ok) {
+              const json = await detailRes.json();
+              if (Array.isArray(json?.data) && json.data.length > 0) {
+                const list: Array<{ date: string; nav: string }> = json.data;
+                dataArr = list;
+                MF_HISTORICAL_CACHE.set(schemeCode, list);
               }
-              const targetDate = new Date(year, month - 1, 15).getTime();
-              let closestNav: number | null = null;
-              let minDiff = Infinity;
-              for (const d of dataArr.slice(0, 500)) {
-                const parts = d.date.split("-").map(Number);
-                if (parts.length === 3) {
-                  const dTime = new Date(parts[2], parts[1] - 1, parts[0]).getTime();
-                  const diff = Math.abs(dTime - targetDate);
-                  if (diff < minDiff) {
-                    minDiff = diff;
-                    closestNav = Number(d.nav);
-                  }
+            }
+          }
+
+          if (dataArr && dataArr.length > 0) {
+            // Find record matching target month/year (e.g. -07-2025)
+            const match = dataArr.find((d: { date: string; nav: string }) => d.date.endsWith(targetSubstr));
+            if (match && Number(match.nav) > 0) {
+              return Math.round(Number(match.nav) * 100) / 100;
+            }
+            // Find closest historical date
+            const targetDate = new Date(year, month - 1, 15).getTime();
+            let closestNav: number | null = null;
+            let minDiff = Infinity;
+            for (const d of dataArr.slice(0, 1000)) {
+              const parts = d.date.split("-").map(Number);
+              if (parts.length === 3) {
+                const dTime = new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+                const diff = Math.abs(dTime - targetDate);
+                if (diff < minDiff) {
+                  minDiff = diff;
+                  closestNav = Number(d.nav);
                 }
               }
-              if (closestNav && closestNav > 0) {
-                return Math.round(closestNav * 100) / 100;
-              }
+            }
+            if (closestNav && closestNav > 0) {
+              return Math.round(closestNav * 100) / 100;
             }
           }
         }
       } catch {
-        // Fallback to calculation
+        // Fallback to calculation below
       }
     }
 
-    // Fallback: estimate from live quote using elapsed years and standard market return (12% p.a.)
-    const quoteRes = await this.getLiveQuoteWithFallbacks(raw);
-    if (quoteRes.quote && quoteRes.quote.currentPrice > 0) {
+    // 2. Immediate calculation fallback using current price and holding period
+    const price =
+      knownCurrentPrice && knownCurrentPrice > 0
+        ? knownCurrentPrice
+        : (await this.getLiveQuoteWithFallbacks(raw)).quote?.currentPrice;
+
+    if (price && price > 0) {
       const now = new Date();
       const elapsedMonths = Math.max(1, (now.getFullYear() - year) * 12 + (now.getMonth() - (month - 1)));
-      const elapsedYears = elapsedMonths / 12;
-      const estimatedHistoricalPrice = quoteRes.quote.currentPrice / Math.pow(1.12, elapsedYears);
+      const elapsedYears = Math.max(0.0833, elapsedMonths / 12);
+      const estimatedHistoricalPrice = price / Math.pow(1.12, elapsedYears);
       return Math.round(estimatedHistoricalPrice * 100) / 100;
     }
 
