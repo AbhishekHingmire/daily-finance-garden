@@ -96,6 +96,7 @@ export function AccountModal({
   const [notes, setNotes] = useState<string>(() => account?.notes ?? "");
   const [showNotes, setShowNotes] = useState<boolean>(() => Boolean(account?.notes));
   const [nameError, setNameError] = useState<string>("");
+  const [balanceError, setBalanceError] = useState<string>("");
 
   const handleKindChange = (newKind: AccountKind) => {
     setKind(newKind);
@@ -147,8 +148,17 @@ export function AccountModal({
 
   const handleSubmit = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    setNameError("");
+    setBalanceError("");
+
     if (!name.trim()) {
       setNameError("Please enter an account name");
+      return;
+    }
+
+    const numBal = Number(openingBalance) || 0;
+    if (kind !== "Credit card" && numBal < 0) {
+      setBalanceError("Opening balance for bank, cash, or wallet cannot be negative.");
       return;
     }
 
@@ -364,7 +374,11 @@ export function AccountModal({
             type="number"
             step="0.01"
             value={openingBalance}
-            onChange={(val) => setOpeningBalance(val)}
+            onChange={(val) => {
+              setOpeningBalance(val);
+              if (balanceError) setBalanceError("");
+            }}
+            error={balanceError}
             placeholder="0.00"
           />
           <span className="mt-1 block text-[11px] text-muted-foreground">

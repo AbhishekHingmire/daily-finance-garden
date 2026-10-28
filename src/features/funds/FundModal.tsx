@@ -31,8 +31,10 @@ export function FundModal({
   const [linkedAccountId, setLinkedAccountId] = useState("");
   const [icon, setIcon] = useState("🛡️");
   const [notes, setNotes] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    setErrors({});
     if (fund) {
       setName(fund.name);
       setType(fund.type);
@@ -58,7 +60,35 @@ export function FundModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    const newErrors: Record<string, string> = {};
+
+    if (!name.trim()) {
+      newErrors.name = "Fund name is required.";
+    }
+
+    const targetNum = Number(targetAmount);
+    if (!targetAmount || isNaN(targetNum) || targetNum <= 0) {
+      newErrors.targetAmount = "Target amount must be greater than 0.";
+    }
+
+    const currentNum = Number(currentAmount);
+    if (currentAmount !== "" && (isNaN(currentNum) || currentNum < 0)) {
+      newErrors.currentAmount = "Current saved amount cannot be negative.";
+    }
+
+    if (monthlyContribution !== "") {
+      const monthlyNum = Number(monthlyContribution);
+      if (isNaN(monthlyNum) || monthlyNum < 0) {
+        newErrors.monthlyContribution = "Monthly contribution cannot be negative.";
+      }
+    }
+
+    if (!linkedAccountId && accounts.length > 0) {
+      newErrors.linkedAccountId = "Please select a linked account.";
+    }
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
 
     const payload: CustomFund = {
       id: fund?.id || `fund-${Date.now()}`,
@@ -110,7 +140,11 @@ export function FundModal({
             label="Fund Name"
             placeholder="e.g. 6-Month Emergency Buffer, House Downpayment"
             value={name}
-            onChange={setName}
+            onChange={(val) => {
+              setName(val);
+              if (errors.name) setErrors((prev) => ({ ...prev, name: "" }));
+            }}
+            error={errors.name}
             required
           />
         </div>
@@ -129,7 +163,11 @@ export function FundModal({
           <SelectField
             label="Linked Bank / Wallet *"
             value={linkedAccountId}
-            onChange={setLinkedAccountId}
+            onChange={(v) => {
+              setLinkedAccountId(v);
+              if (errors.linkedAccountId) setErrors((prev) => ({ ...prev, linkedAccountId: "" }));
+            }}
+            error={errors.linkedAccountId}
             options={accounts
               .filter((a) => !a.archived && a.kind !== "Credit card")
               .map((a) => ({
@@ -146,7 +184,11 @@ export function FundModal({
             type="number"
             placeholder="150000"
             value={targetAmount}
-            onChange={setTargetAmount}
+            onChange={(val) => {
+              setTargetAmount(val);
+              if (errors.targetAmount) setErrors((prev) => ({ ...prev, targetAmount: "" }));
+            }}
+            error={errors.targetAmount}
             required
           />
           <InputField
@@ -154,7 +196,11 @@ export function FundModal({
             type="number"
             placeholder="50000"
             value={currentAmount}
-            onChange={setCurrentAmount}
+            onChange={(val) => {
+              setCurrentAmount(val);
+              if (errors.currentAmount) setErrors((prev) => ({ ...prev, currentAmount: "" }));
+            }}
+            error={errors.currentAmount}
             required
           />
         </div>
@@ -165,7 +211,11 @@ export function FundModal({
             type="number"
             placeholder="10000"
             value={monthlyContribution}
-            onChange={setMonthlyContribution}
+            onChange={(val) => {
+              setMonthlyContribution(val);
+              if (errors.monthlyContribution) setErrors((prev) => ({ ...prev, monthlyContribution: "" }));
+            }}
+            error={errors.monthlyContribution}
           />
           <InputField
             label="Target Completion Date"

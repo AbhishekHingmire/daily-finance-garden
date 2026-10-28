@@ -27,8 +27,10 @@ export function PlanModal({
   const [estimatedLoanRate, setEstimatedLoanRate] = useState("8.5");
   const [loanTenureYears, setLoanTenureYears] = useState("5");
   const [notes, setNotes] = useState("");
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
+    setErrors({});
     if (plan) {
       setTitle(plan.title);
       setCategory(plan.category);
@@ -52,7 +54,42 @@ export function PlanModal({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !Number(targetCost)) return;
+    const newErrors: Record<string, string> = {};
+
+    if (!title.trim()) {
+      newErrors.title = "Purchase title is required.";
+    }
+
+    const costNum = Number(targetCost);
+    if (!targetCost || isNaN(costNum) || costNum <= 0) {
+      newErrors.targetCost = "Estimated cost must be greater than 0.";
+    }
+
+    const dpNum = Number(downPaymentPercent);
+    if (downPaymentPercent !== "" && (isNaN(dpNum) || dpNum < 0 || dpNum > 100)) {
+      newErrors.downPaymentPercent = "Down payment portion must be between 0% and 100%.";
+    }
+
+    if (!targetDate) {
+      newErrors.targetDate = "Target month is required.";
+    }
+
+    if (estimatedLoanRate !== "") {
+      const rateNum = Number(estimatedLoanRate);
+      if (isNaN(rateNum) || rateNum < 0 || rateNum > 50) {
+        newErrors.estimatedLoanRate = "Interest rate must be between 0% and 50%.";
+      }
+    }
+
+    if (loanTenureYears !== "") {
+      const tenureNum = Number(loanTenureYears);
+      if (isNaN(tenureNum) || tenureNum <= 0 || tenureNum > 50) {
+        newErrors.loanTenureYears = "Tenure must be between 1 and 50 years.";
+      }
+    }
+
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
 
     const payload: PurchasePlan = {
       id: plan?.id || `plan-${Date.now()}`,
@@ -85,7 +122,11 @@ export function PlanModal({
           label="Purchase / Goal Title"
           placeholder="e.g. 3BHK Apartment, Electric SUV, Higher Education"
           value={title}
-          onChange={setTitle}
+          onChange={(val) => {
+            setTitle(val);
+            if (errors.title) setErrors((prev) => ({ ...prev, title: "" }));
+          }}
+          error={errors.title}
           required
         />
 
@@ -108,7 +149,11 @@ export function PlanModal({
             type="number"
             placeholder="2500000"
             value={targetCost}
-            onChange={setTargetCost}
+            onChange={(val) => {
+              setTargetCost(val);
+              if (errors.targetCost) setErrors((prev) => ({ ...prev, targetCost: "" }));
+            }}
+            error={errors.targetCost}
             required
           />
         </div>
@@ -119,14 +164,22 @@ export function PlanModal({
             type="number"
             placeholder="20"
             value={downPaymentPercent}
-            onChange={setDownPaymentPercent}
+            onChange={(val) => {
+              setDownPaymentPercent(val);
+              if (errors.downPaymentPercent) setErrors((prev) => ({ ...prev, downPaymentPercent: "" }));
+            }}
+            error={errors.downPaymentPercent}
             required
           />
           <InputField
             label="Target Month (YYYY-MM)"
             type="month"
             value={targetDate}
-            onChange={setTargetDate}
+            onChange={(val) => {
+              setTargetDate(val);
+              if (errors.targetDate) setErrors((prev) => ({ ...prev, targetDate: "" }));
+            }}
+            error={errors.targetDate}
             required
           />
         </div>
@@ -144,14 +197,22 @@ export function PlanModal({
               step="0.05"
               placeholder="8.5"
               value={estimatedLoanRate}
-              onChange={setEstimatedLoanRate}
+              onChange={(val) => {
+                setEstimatedLoanRate(val);
+                if (errors.estimatedLoanRate) setErrors((prev) => ({ ...prev, estimatedLoanRate: "" }));
+              }}
+              error={errors.estimatedLoanRate}
             />
             <InputField
               label="Loan Tenure (Years)"
               type="number"
               placeholder="5"
               value={loanTenureYears}
-              onChange={setLoanTenureYears}
+              onChange={(val) => {
+                setLoanTenureYears(val);
+                if (errors.loanTenureYears) setErrors((prev) => ({ ...prev, loanTenureYears: "" }));
+              }}
+              error={errors.loanTenureYears}
             />
           </div>
         </div>

@@ -20,13 +20,31 @@ export function CategoryModal({
     category ? { ...category } : { name: "", kind, icon: "📁", color: "blue", monthlyLimit: 0, defaultNeed: "Need" }
   );
   const [iconManuallyPicked, setIconManuallyPicked] = useState(Boolean(category?.icon));
+  const [nameError, setNameError] = useState("");
+  const [limitError, setLimitError] = useState("");
   const colors = ["blue", "rose", "teal", "violet", "amber", "green", "pink"];
 
   const handleNameChange = (name: string) => {
+    if (nameError) setNameError("");
     setForm((f) => {
       const autoIcon = !iconManuallyPicked ? matchCategoryIcon(name, f.icon || "📁") : f.icon || "📁";
       return { ...f, name, icon: autoIcon };
     });
+  };
+
+  const handleSave = () => {
+    let hasError = false;
+    if (!form.name?.trim()) {
+      setNameError("Category name is required.");
+      hasError = true;
+    }
+    const limit = Number(form.monthlyLimit) || 0;
+    if (limit < 0) {
+      setLimitError("Monthly limit cannot be negative.");
+      hasError = true;
+    }
+    if (hasError) return;
+    onSave(form);
   };
 
   return (
@@ -41,6 +59,7 @@ export function CategoryModal({
           value={form.name ?? ""}
           onChange={handleNameChange}
           placeholder="e.g. Groceries, Gym, Rent, Fuel, Freelance"
+          error={nameError}
           required
         />
         <SelectField
@@ -120,7 +139,11 @@ export function CategoryModal({
             label="Monthly Budget Limit (optional)"
             type="number"
             value={form.monthlyLimit ?? 0}
-            onChange={(val) => setForm((f) => ({ ...f, monthlyLimit: Number(val) || 0 }))}
+            onChange={(val) => {
+              if (limitError) setLimitError("");
+              setForm((f) => ({ ...f, monthlyLimit: Number(val) || 0 }));
+            }}
+            error={limitError}
             placeholder="0 = No limit"
           />
         )}
@@ -128,7 +151,7 @@ export function CategoryModal({
           <Button variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={() => onSave(form)}>
+          <Button onClick={handleSave}>
             {category ? "Save Changes" : "Add Category"}
           </Button>
         </div>
