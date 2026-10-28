@@ -158,6 +158,73 @@ function saveClearedNotificationIds(ids: string[]) {
   } catch {}
 }
 
+function processAutomatedState(
+  state: WealthState,
+  repository: any
+): {
+  updatedState: WealthState;
+  processedCount: number;
+  processedItems: { name: string; amount: number; date: string }[];
+} {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
+  const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(state, todayStr);
+
+  // Autonomous Monthly Salary Processing
+  const salaryDay = updatedState.profile?.salaryCreditDay || updatedState.preferences?.salaryDay;
+  const salaryAmount = updatedState.profile?.monthlyIncomeTarget || 0;
+  const salaryAccId = updatedState.profile?.salaryAccountId || updatedState.accounts.find((a) => !a.archived && a.kind !== "Credit card")?.id;
+
+  if (salaryDay && salaryAmount > 0 && salaryAccId) {
+    const currentYear = today.getFullYear();
+    const currentMonth = today.getMonth() + 1;
+    const currentDay = today.getDate();
+
+    if (currentDay >= salaryDay) {
+      const ymPrefix = `${currentYear}-${String(currentMonth).padStart(2, "0")}`;
+      const alreadyCredited = (updatedState.transactions || []).some(
+        (t) =>
+          t.accountId === salaryAccId &&
+          t.type === "Income" &&
+          (t.notes?.includes("salary credit") || t.tags?.includes("Salary") || t.description.toLowerCase().includes("salary")) &&
+          t.date.startsWith(ymPrefix)
+      );
+
+      if (!alreadyCredited) {
+        const dStr = String(Math.min(salaryDay, new Date(currentYear, currentMonth, 0).getDate())).padStart(2, "0");
+        const salaryTxDate = `${ymPrefix}-${dStr}`;
+        const salaryTx: Transaction = {
+          id: `tx-sal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+          date: salaryTxDate,
+          description: "Monthly Salary Credit",
+          type: "Income",
+          amount: salaryAmount,
+          categoryId: updatedState.categories.find((c) => c.name.toLowerCase().includes("salary"))?.id || "cat-salary",
+          accountId: salaryAccId,
+          destinationAccountId: "",
+          paymentMethod: "Bank Transfer",
+          need: "Need",
+          merchant: updatedState.profile?.fullName || "Employer",
+          tags: ["Salary", "Income", "Auto-credit"],
+          notes: "Autonomous monthly salary credit based on profile salary preferences.",
+          recurring: true,
+          customValues: {},
+        };
+
+        repository.createTransaction(salaryTx).catch(() => {});
+        updatedState.transactions = [salaryTx, ...(updatedState.transactions || [])];
+        processedItems.push({ name: "Monthly Salary Credit", amount: salaryAmount, date: salaryTxDate });
+      }
+    }
+  }
+
+  return {
+    updatedState,
+    processedCount: processedItems.length,
+    processedItems,
+  };
+}
+
 export function WealthTrackApp({ initialSection }: { initialSection?: Section } = {}) {
   const repository = useMemo(() => getWealthRepository(), []);
 
@@ -486,7 +553,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           ...res.data,
           categories: upgradedCategories,
         });
-        const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(baseState);
+        const { updatedState, processedCount, processedItems } = processAutomatedState(baseState, repository);
         const clearedNoticeIds = getClearedNotificationIds();
         const syncedNotifications = syncSystemNotifications(updatedState, clearedNoticeIds);
         setData({ ...updatedState, notifications: syncedNotifications, session: true });
@@ -605,7 +672,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           ...res.data,
           categories: upgradedCategories,
         });
-        const { updatedState } = processDueRecurringTransactions(baseState);
+        const { updatedState } = processAutomatedState(baseState, repository);
         setData({ ...updatedState, session: true, onboarded: true });
       } else {
         toast.error("API is still unreachable", {
@@ -1028,6 +1095,16 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setData((current) => ({ ...current, profile }));
     setEmail(profile.email);
     setFullName(profile.fullName);
+
+    // Synchronize salary in preferences and recurring schedules if configured
+    if (profile.monthlyIncomeTarget > 0 || profile.salaryCreditDay || profile.salaryAccountId) {
+      handleUpdateSalary({
+        amount: profile.monthlyIncomeTarget,
+        salaryDay: profile.salaryCreditDay || data.preferences.salaryDay || 1,
+        accountId: profile.salaryAccountId || data.accounts.find((a) => !a.archived && a.kind !== "Credit card")?.id || "",
+      });
+    }
+
     toast.success("Profile saved successfully");
   };
 
@@ -1045,9 +1122,16 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       const salaryDay = payload.salaryDay;
       const amount = payload.amount;
       const preferences = { ...current.preferences, salaryDay };
-      const profile = current.profile ? { ...current.profile, monthlyIncomeTarget: amount } : undefined;
+      const profile = current.profile
+        ? {
+            ...current.profile,
+            monthlyIncomeTarget: amount,
+            salaryCreditDay: salaryDay,
+            salaryAccountId: payload.accountId || current.profile.salaryAccountId,
+          }
+        : undefined;
 
-      const salaryInfo = calculateNextSalaryInfo(salaryDay, "2026-10-22");
+      const salaryInfo = calculateNextSalaryInfo(salaryDay);
 
       let nextRecurring = [...current.recurring];
       const salaryIdx = nextRecurring.findIndex(
@@ -1329,7 +1413,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       const res = await repository.getState();
       if (res.success && res.data) {
         const baseState: WealthState = syncLoansWithRecurring(res.data);
-        const { updatedState, processedCount, processedItems } = processDueRecurringTransactions(baseState);
+        const { updatedState, processedCount, processedItems } = processAutomatedState(baseState, repository);
         const clearedNoticeIds = getClearedNotificationIds();
         const syncedNotifications = syncSystemNotifications(updatedState, clearedNoticeIds);
         setData({

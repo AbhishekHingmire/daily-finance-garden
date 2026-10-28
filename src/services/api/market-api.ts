@@ -245,6 +245,86 @@ export const marketApi = {
   },
 
   /**
+   * Fetches or estimates historical NAV or price for a given instrument and start date (YYYY-MM).
+   * Enables autonomous valuation for Lump Sum investments on purchase date.
+   */
+  async getHistoricalNavOrPrice(symbolOrName: string, startMonthYear: string): Promise<number | null> {
+    const raw = symbolOrName.trim();
+    if (!raw || !startMonthYear || !/^\d{4}-\d{2}$/.test(startMonthYear)) return null;
+
+    const [year, month] = startMonthYear.split("-").map(Number);
+    const mStr = String(month).padStart(2, "0");
+    const targetSubstr = `-${mStr}-${year}`;
+
+    const isNumericScheme = /^\d+$/.test(raw);
+    const isMf = isNumericScheme || raw.toLowerCase().includes("fund") || raw.toLowerCase().includes("mutual");
+
+    if (isMf) {
+      try {
+        let schemeCode = isNumericScheme ? raw : "";
+        if (!schemeCode) {
+          const searchRes = await fetch(`https://api.mfapi.in/mf/search?q=${encodeURIComponent(raw)}`, {
+            signal: AbortSignal.timeout(3000),
+          });
+          if (searchRes.ok) {
+            const list = await searchRes.json();
+            if (Array.isArray(list) && list.length > 0) {
+              schemeCode = list[0].schemeCode.toString();
+            }
+          }
+        }
+
+        if (schemeCode) {
+          const detailRes = await fetch(`https://api.mfapi.in/mf/${schemeCode}`, {
+            signal: AbortSignal.timeout(4000),
+          });
+          if (detailRes.ok) {
+            const json = await detailRes.json();
+            const dataArr = json?.data;
+            if (Array.isArray(dataArr) && dataArr.length > 0) {
+              const match = dataArr.find((d: { date: string; nav: string }) => d.date.endsWith(targetSubstr));
+              if (match && Number(match.nav) > 0) {
+                return Math.round(Number(match.nav) * 100) / 100;
+              }
+              const targetDate = new Date(year, month - 1, 15).getTime();
+              let closestNav: number | null = null;
+              let minDiff = Infinity;
+              for (const d of dataArr.slice(0, 500)) {
+                const parts = d.date.split("-").map(Number);
+                if (parts.length === 3) {
+                  const dTime = new Date(parts[2], parts[1] - 1, parts[0]).getTime();
+                  const diff = Math.abs(dTime - targetDate);
+                  if (diff < minDiff) {
+                    minDiff = diff;
+                    closestNav = Number(d.nav);
+                  }
+                }
+              }
+              if (closestNav && closestNav > 0) {
+                return Math.round(closestNav * 100) / 100;
+              }
+            }
+          }
+        }
+      } catch {
+        // Fallback to calculation
+      }
+    }
+
+    // Fallback: estimate from live quote using elapsed years and standard market return (12% p.a.)
+    const quoteRes = await this.getLiveQuoteWithFallbacks(raw);
+    if (quoteRes.quote && quoteRes.quote.currentPrice > 0) {
+      const now = new Date();
+      const elapsedMonths = Math.max(1, (now.getFullYear() - year) * 12 + (now.getMonth() - (month - 1)));
+      const elapsedYears = elapsedMonths / 12;
+      const estimatedHistoricalPrice = quoteRes.quote.currentPrice / Math.pow(1.12, elapsedYears);
+      return Math.round(estimatedHistoricalPrice * 100) / 100;
+    }
+
+    return null;
+  },
+
+  /**
    * Compatibility alias for existing getQuote calls
    */
   async getQuote(query: string): Promise<MarketQuote | null> {

@@ -333,6 +333,17 @@ export function InvestmentHoldingModal({
       if (price > 0) {
         setCurrentAmount(Math.round(derivedUnits * price * 100) / 100);
       }
+    } else if (investmentStyle === "LumpSum" && startMonthYear && inv > 0) {
+      marketApi.getHistoricalNavOrPrice(name, startMonthYear).then((histPrice) => {
+        if (histPrice && histPrice > 0) {
+          setPurchasePrice(histPrice);
+          const derivedUnits = Math.round((inv / histPrice) * 10000) / 10000;
+          setUnits(derivedUnits);
+          if (price > 0) {
+            setCurrentAmount(Math.round(derivedUnits * price * 100) / 100);
+          }
+        }
+      }).catch(() => {});
     }
   };
 
@@ -422,6 +433,17 @@ export function InvestmentHoldingModal({
     if (investmentStyle === "SIP" && Number(sipAmount) > 0) {
       const progress = calculateSipHistoricalProgress(val, Number(sipAmount), sipDay);
       setInvestedAmount(progress.totalEstimatedInvested);
+    } else if (investmentStyle === "LumpSum" && Number(investedAmount) > 0 && val) {
+      marketApi.getHistoricalNavOrPrice(name, val).then((histPrice) => {
+        if (histPrice && histPrice > 0) {
+          setPurchasePrice(histPrice);
+          const derivedUnits = Math.round((Number(investedAmount) / histPrice) * 10000) / 10000;
+          setUnits(derivedUnits);
+          if (currentPrice && Number(currentPrice) > 0) {
+            setCurrentAmount(Math.round(derivedUnits * Number(currentPrice) * 100) / 100);
+          }
+        }
+      }).catch(() => {});
     }
   };
 
@@ -488,6 +510,12 @@ export function InvestmentHoldingModal({
     if (!name.trim()) errs.name = "Enter the name of the holding.";
     if (investedAmount === "" || investedNum < 0) errs.investedAmount = "Enter a valid invested amount.";
     if (currentNum < 0) errs.currentAmount = "Current valuation cannot be negative.";
+
+    if (investmentStyle === "LumpSum") {
+      if (!startMonthYear || !startMonthYear.trim()) {
+        errs.startMonthYear = "Start Date (Month & Year) is required for Lump Sum investment.";
+      }
+    }
 
     if (isRecurring) {
       if (!sipAmount || Number(sipAmount) <= 0) {
@@ -724,10 +752,16 @@ export function InvestmentHoldingModal({
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
             <span className="wt-label">
-              Start Date (Month & Year) <span className="text-muted-foreground text-[10px] font-normal">(optional)</span>
+              Start Date (Month & Year){" "}
+              {investmentStyle === "LumpSum" ? (
+                <span className="text-destructive font-bold">*</span>
+              ) : (
+                <span className="text-muted-foreground text-[10px] font-normal">(optional)</span>
+              )}
             </span>
             <input
               type="month"
+              required={investmentStyle === "LumpSum"}
               className="wt-field font-semibold text-xs bg-background"
               value={startMonthYear}
               onChange={(e) => handleStartMonthYearChange(e.target.value)}
@@ -908,8 +942,45 @@ export function InvestmentHoldingModal({
               )}
             </div>
           ) : (
-            <div className="pt-1.5 border-t border-border/60 text-xs text-muted-foreground">
-              <span>One-time lumpsum investment. No recurring automated bank debits will be scheduled.</span>
+            <div className="pt-2 border-t border-border/60 space-y-2">
+              <div className="rounded-lg bg-background border border-border p-2.5 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-1.5 pb-1 border-b border-border/50">
+                  <span className="font-bold text-foreground flex items-center gap-1.5">
+                    <span>⚡ Autonomous Purchase Valuation</span>
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium">
+                    {startMonthYear ? `Holding since ${startMonthYear}` : "Enter start date above"}
+                  </span>
+                </div>
+                {startMonthYear && investedNum > 0 ? (
+                  <div className="mt-2 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
+                    <div>
+                      <span className="text-muted-foreground block text-[10px]">Invested Capital</span>
+                      <strong className="text-foreground">{currencySymbol}{investedNum.toLocaleString("en-IN")}</strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px]">Purchase Date NAV</span>
+                      <strong className="text-foreground">
+                        {purchasePrice ? `${currencySymbol}${Number(purchasePrice).toLocaleString("en-IN")}` : "Auto-fetching…"}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px]">Allotted Units</span>
+                      <strong className="text-foreground">{units ? Number(units).toLocaleString("en-IN") : "Calculating…"}</strong>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-[10px]">Total Return / PnL</span>
+                      <strong className={valuation.absolutePnL >= 0 ? "text-emerald-500" : "text-rose-500"}>
+                        {valuation.absolutePnL >= 0 ? "+" : ""}{currencySymbol}{Math.abs(valuation.absolutePnL).toLocaleString("en-IN")} ({valuation.absolutePnLPct}%)
+                      </strong>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-1.5 text-[11px] text-muted-foreground">
+                    Enter your lumpsum invested amount and investment start date above. The engine autonomously calculates historical NAV, allotted units, and live market PnL.
+                  </p>
+                )}
+              </div>
             </div>
           )}
         </div>

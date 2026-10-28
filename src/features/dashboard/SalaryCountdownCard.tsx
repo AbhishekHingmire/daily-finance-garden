@@ -60,9 +60,10 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
     data.accounts.find((a) => a.id === salaryAccountId) || data.accounts[0];
 
   // Calculate next salary date and days remaining using verified calculation engine
+  const todayStr = new Date().toISOString().slice(0, 10);
   const { nextDate, daysRemaining, isToday } = calculateNextSalaryInfo(
     salaryDay,
-    "2026-10-22"
+    todayStr
   );
 
   // Modal form states
@@ -120,7 +121,7 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
   };
 
   // Preview for modal
-  const previewInfo = calculateNextSalaryInfo(formSalaryDay, "2026-10-22");
+  const previewInfo = calculateNextSalaryInfo(formSalaryDay, todayStr);
   const previewAccount = data.accounts.find((a) => a.id === formAccountId) || receivingAccount;
 
   return (

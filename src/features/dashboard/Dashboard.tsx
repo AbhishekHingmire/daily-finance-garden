@@ -92,9 +92,11 @@ export function Dashboard({
         wealthMetrics.liquidCash,
         emergencyGoal,
         unified.entries,
-        sharedPeriod
+        sharedPeriod,
+        6,
+        data.profile?.monthlyIncomeTarget || 0
       ),
-    [wealthMetrics.liquidCash, emergencyGoal, unified.entries, sharedPeriod]
+    [wealthMetrics.liquidCash, emergencyGoal, unified.entries, sharedPeriod, data.profile?.monthlyIncomeTarget]
   );
   const budgetMetrics = useMemo(
     () => getBudgetMetrics(unified.categories, unified.entries, sharedPeriod),
@@ -518,15 +520,25 @@ export function Dashboard({
                     <button
                       type="button"
                       className="text-muted-foreground hover:text-foreground cursor-help p-0.5"
-                      title={`${money(wealthMetrics.liquidCash)} ÷ ${money(runwayMetrics.essentialSpend)}/month essentials (average of last ${runwayMetrics.countMonths} month${runwayMetrics.countMonths !== 1 ? "s" : ""})${runwayMetrics.differsByMoreThan25Pct ? ` · Based on ${runwayMetrics.countMonths} months of history` : ""}`}
+                      title={
+                        runwayMetrics.essentialSpend > 0
+                          ? `${money(wealthMetrics.liquidCash)} ÷ ${money(runwayMetrics.essentialSpend)}/month essentials (average of last ${runwayMetrics.countMonths} month${runwayMetrics.countMonths !== 1 ? "s" : ""})${runwayMetrics.differsByMoreThan25Pct ? ` · Based on ${runwayMetrics.countMonths} months of history` : ""}`
+                          : `${money(wealthMetrics.liquidCash)} in liquid cash · Reserve runway buffer`
+                      }
                       aria-label="Cash runway basis details"
                     >
                       <Info size={11} />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs text-xs">
-                    {money(wealthMetrics.liquidCash)} ÷ {money(runwayMetrics.essentialSpend)}/month essentials (average of last {runwayMetrics.countMonths} month{runwayMetrics.countMonths !== 1 ? "s" : ""})
-                    {runwayMetrics.differsByMoreThan25Pct && ` · Based on ${runwayMetrics.countMonths} months of history`}
+                    {runwayMetrics.essentialSpend > 0 ? (
+                      <>
+                        {money(wealthMetrics.liquidCash)} ÷ {money(runwayMetrics.essentialSpend)}/month essentials (average of last {runwayMetrics.countMonths} month{runwayMetrics.countMonths !== 1 ? "s" : ""})
+                        {runwayMetrics.differsByMoreThan25Pct && ` · Based on ${runwayMetrics.countMonths} months of history`}
+                      </>
+                    ) : (
+                      `${money(wealthMetrics.liquidCash)} in liquid cash · Essential spend based on standard baseline`
+                    )}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -544,15 +556,25 @@ export function Dashboard({
                     <button
                       type="button"
                       className="text-muted-foreground hover:text-foreground cursor-help p-0.5"
-                      title={`${money(runwayMetrics.emergencyGoalCurrent)} ÷ ${money(runwayMetrics.essentialSpend)}/month essentials (average of last ${runwayMetrics.countMonths} month${runwayMetrics.countMonths !== 1 ? "s" : ""})${runwayMetrics.differsByMoreThan25Pct ? ` · Based on ${runwayMetrics.countMonths} months of history` : ""}`}
+                      title={
+                        runwayMetrics.essentialSpend > 0
+                          ? `${money(runwayMetrics.emergencyGoalCurrent)} ÷ ${money(runwayMetrics.essentialSpend)}/month essentials (average of last ${runwayMetrics.countMonths} month${runwayMetrics.countMonths !== 1 ? "s" : ""})${runwayMetrics.differsByMoreThan25Pct ? ` · Based on ${runwayMetrics.countMonths} months of history` : ""}`
+                          : `${money(runwayMetrics.emergencyGoalCurrent)} reserved for emergency safety`
+                      }
                       aria-label="Emergency cover basis details"
                     >
                       <Info size={11} />
                     </button>
                   </TooltipTrigger>
                   <TooltipContent side="top" className="max-w-xs text-xs">
-                    {money(runwayMetrics.emergencyGoalCurrent)} ÷ {money(runwayMetrics.essentialSpend)}/month essentials (average of last {runwayMetrics.countMonths} month{runwayMetrics.countMonths !== 1 ? "s" : ""})
-                    {runwayMetrics.differsByMoreThan25Pct && ` · Based on ${runwayMetrics.countMonths} months of history`}
+                    {runwayMetrics.essentialSpend > 0 ? (
+                      <>
+                        {money(runwayMetrics.emergencyGoalCurrent)} ÷ {money(runwayMetrics.essentialSpend)}/month essentials (average of last {runwayMetrics.countMonths} month{runwayMetrics.countMonths !== 1 ? "s" : ""})
+                        {runwayMetrics.differsByMoreThan25Pct && ` · Based on ${runwayMetrics.countMonths} months of history`}
+                      </>
+                    ) : (
+                      `${money(runwayMetrics.emergencyGoalCurrent)} reserved for emergency safety`
+                    )}
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

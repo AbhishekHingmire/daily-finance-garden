@@ -107,6 +107,8 @@ export interface UserProfile {
   savingsRateTarget: number;
   riskProfile: "Conservative" | "Balanced" | "Aggressive";
   bio?: string;
+  salaryCreditDay?: number; // 1-31 (Day of month when monthly salary is credited)
+  salaryAccountId?: string; // Linked bank account ID where salary is credited
 }
 
 export type LoanType =
@@ -960,7 +962,7 @@ export function syncSystemNotifications(
 
 export function processDueRecurringTransactions(
   state: WealthState,
-  referenceDateStr = "2026-10-22"
+  referenceDateStr = new Date().toISOString().slice(0, 10)
 ): {
   updatedState: WealthState;
   processedCount: number;
@@ -1257,7 +1259,7 @@ export function getPlanSimulation(
 
 export function calculateNextSalaryInfo(
   salaryDay: number | null | undefined,
-  referenceDateStr = "2026-10-22"
+  referenceDateStr = new Date().toISOString().slice(0, 10)
 ): {
   nextDate: string;
   daysRemaining: number;

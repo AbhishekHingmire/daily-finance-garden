@@ -253,13 +253,17 @@ export function calculateSipHistoricalProgress(
   const currentMonth = referenceDate.getMonth() + 1; // 1-indexed
   const currentDay = referenceDate.getDate();
 
-  // Total months between start month and current month (inclusive)
-  const monthsDiff = (currentYear - startYear) * 12 + (currentMonth - startMonth);
-  let installments = Math.max(0, monthsDiff);
-
-  // If this month's SIP day has arrived or passed, count current month installment as paid
-  if (currentDay >= sipDay) {
-    installments += 1;
+  // Full calendar months elapsed between start month and current month
+  const calendarMonths = (currentYear - startYear) * 12 + (currentMonth - startMonth);
+  
+  // Total completed cycles: initial setup installment + intervening cycles + current cycle if due date passed
+  let installments: number;
+  if (calendarMonths <= 0) {
+    installments = 1;
+  } else {
+    // Mandate start payment (1) + calendar months elapsed (calendarMonths)
+    // If current month's SIP debit day has arrived or passed, add the current scheduled installment (+1)
+    installments = calendarMonths + (currentDay >= sipDay ? 2 : 1);
   }
 
   const finalInstallments = Math.max(1, installments);
@@ -268,6 +272,6 @@ export function calculateSipHistoricalProgress(
   return {
     elapsedInstallments: finalInstallments,
     totalEstimatedInvested,
-    monthsElapsed: Math.max(1, monthsDiff + 1),
+    monthsElapsed: finalInstallments,
   };
 }

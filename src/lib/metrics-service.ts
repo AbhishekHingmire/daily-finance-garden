@@ -575,7 +575,8 @@ export function getRunwayMetrics(
   emergencyGoal: Goal | undefined,
   entries: Entry[],
   referencePeriod: PeriodSelector,
-  targetMonths = 6
+  targetMonths = 6,
+  monthlyIncomeBenchmark = 0
 ): RunwayMetrics {
   // Trailing 3-month average of Needs
   let totalNeeds = 0;
@@ -597,16 +598,38 @@ export function getRunwayMetrics(
 
   const currentMonthNeeds = getPeriodMetrics(entries, referencePeriod).needs;
   const countMonthsFinal = Math.max(1, countMonths);
-  const essentialSpend = Math.max(1, Math.round(totalNeeds / countMonthsFinal));
-  const diffPct = currentMonthNeeds > 0 ? Math.abs(essentialSpend - currentMonthNeeds) / currentMonthNeeds : 0;
+
+  let essentialSpend = 0;
+  if (totalNeeds > 0) {
+    essentialSpend = Math.max(1, Math.round(totalNeeds / countMonthsFinal));
+  } else if (monthlyIncomeBenchmark > 0) {
+    // 50/30/20 standard guideline: 50% of monthly income is baseline essential needs
+    essentialSpend = Math.round(monthlyIncomeBenchmark * 0.5);
+  } else if (emergencyGoal && emergencyGoal.target > 0 && targetMonths > 0) {
+    // Derived from user's emergency fund target divided by target months
+    essentialSpend = Math.round(emergencyGoal.target / targetMonths);
+  }
+
+  const diffPct = currentMonthNeeds > 0 && essentialSpend > 0
+    ? Math.abs(essentialSpend - currentMonthNeeds) / currentMonthNeeds
+    : 0;
   const differsByMoreThan25Pct = diffPct > 0.25;
 
-  const cashRunwayMonths = Math.round((liquidCash / essentialSpend) * 10) / 10;
-
   const emergencyGoalCurrent = emergencyGoal ? emergencyGoal.opening_amount : 125000;
-  const emergencyCoverageMonths = Math.round((emergencyGoalCurrent / essentialSpend) * 10) / 10;
-  const emergencyGoalTarget = emergencyGoal?.target || targetMonths * essentialSpend;
+  const emergencyGoalTarget = emergencyGoal?.target || (targetMonths * (essentialSpend > 0 ? essentialSpend : 25000));
   const emergencyReadinessPct = emergencyGoalTarget > 0 ? Math.round((emergencyGoalCurrent / emergencyGoalTarget) * 100) : 0;
+
+  let cashRunwayMonths = 0;
+  let emergencyCoverageMonths = 0;
+
+  if (essentialSpend > 0) {
+    // Cap at 36 months to prevent numerical blowouts or distorted division
+    cashRunwayMonths = Math.min(36, Math.round((liquidCash / essentialSpend) * 10) / 10);
+    emergencyCoverageMonths = Math.min(36, Math.round((emergencyGoalCurrent / essentialSpend) * 10) / 10);
+  } else {
+    cashRunwayMonths = liquidCash > 0 ? 12 : 0;
+    emergencyCoverageMonths = emergencyGoalCurrent > 0 ? 6 : 0;
+  }
 
   return {
     essentialSpend,

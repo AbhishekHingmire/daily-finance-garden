@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import {
+  Banknote,
   PiggyBank,
   Save,
   Target,
@@ -24,6 +25,7 @@ export function ProfilePage({
   money: (val: number) => string;
   onSaveProfile: (profile: UserProfile) => void;
 }) {
+  const defaultSalaryAccount = data.accounts.find((a) => !a.archived && a.kind !== "Credit card")?.id || "";
   const currentProfile: UserProfile = {
     fullName: data.profile?.fullName || "",
     email: data.profile?.email || "",
@@ -34,6 +36,8 @@ export function ProfilePage({
     savingsRateTarget: data.profile?.savingsRateTarget || 30,
     riskProfile: data.profile?.riskProfile || "Balanced",
     bio: data.profile?.bio || "",
+    salaryCreditDay: data.profile?.salaryCreditDay || data.preferences.salaryDay || 1,
+    salaryAccountId: data.profile?.salaryAccountId || defaultSalaryAccount,
   };
 
   const [form, setForm] = useState<UserProfile>(currentProfile);
@@ -48,7 +52,9 @@ export function ProfilePage({
       form.monthlyIncomeTarget !== currentProfile.monthlyIncomeTarget ||
       form.emergencyFundTarget !== currentProfile.emergencyFundTarget ||
       form.savingsRateTarget !== currentProfile.savingsRateTarget ||
-      form.riskProfile !== currentProfile.riskProfile
+      form.riskProfile !== currentProfile.riskProfile ||
+      form.salaryCreditDay !== currentProfile.salaryCreditDay ||
+      form.salaryAccountId !== currentProfile.salaryAccountId
     );
   }, [form, currentProfile]);
 
@@ -239,6 +245,70 @@ export function ProfilePage({
                 { value: "Aggressive", label: "Aggressive (Direct Equity, Small Cap, High Growth)" },
               ]}
             />
+          </div>
+
+          {/* Monthly Salary & Autonomous Income Credit Schedule */}
+          <div className="rounded-xl border border-primary/25 bg-primary/5 p-5 sm:p-6 hover:border-primary/40 hover:shadow-xs transition-all space-y-4">
+            <div className="flex items-center justify-between border-b border-primary/20 pb-3">
+              <div className="flex items-center gap-2">
+                <Banknote className="size-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Monthly Salary &amp; Income Schedule</h3>
+              </div>
+              <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
+                ⚡ Auto-credit Active
+              </span>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <InputField
+                label="Monthly Salary / Income (₹) *"
+                type="number"
+                min="0"
+                value={form.monthlyIncomeTarget}
+                onChange={(v) => setForm({ ...form, monthlyIncomeTarget: Number(v) || 0 })}
+                placeholder="100000"
+              />
+
+              <label className="block">
+                <span className="wt-label">Salary Credit Day of Month *</span>
+                <select
+                  aria-label="Salary credit day of month"
+                  className="wt-field text-xs font-semibold cursor-pointer bg-background"
+                  value={form.salaryCreditDay || 1}
+                  onChange={(e) => setForm({ ...form, salaryCreditDay: Number(e.target.value) })}
+                >
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <option key={day} value={day}>
+                      {day}{day === 1 ? "st" : day === 2 ? "nd" : day === 3 ? "rd" : "th"} of every month
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="block">
+                <span className="wt-label">Salary Credit Bank Account *</span>
+                <select
+                  aria-label="Salary credit bank account"
+                  className="wt-field text-xs font-semibold cursor-pointer bg-background"
+                  value={form.salaryAccountId || ""}
+                  onChange={(e) => setForm({ ...form, salaryAccountId: e.target.value })}
+                >
+                  <option value="">-- Select Bank Account --</option>
+                  {data.accounts
+                    .filter((a) => !a.archived && a.kind !== "Credit card")
+                    .map((a) => (
+                      <option key={a.id} value={a.id}>
+                        {a.name} ({a.institution || a.kind})
+                      </option>
+                    ))}
+                </select>
+              </label>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              💡 <strong>Autonomous Income Processing:</strong> On the {form.salaryCreditDay || 1}
+              {form.salaryCreditDay === 1 ? "st" : form.salaryCreditDay === 2 ? "nd" : form.salaryCreditDay === 3 ? "rd" : "th"} of every month, WealthTrack automatically logs a salary deposit of {money(form.monthlyIncomeTarget)} into your designated bank account, seamlessly refreshing your Cash Flow, Savings Rate, and Health Metrics.
+            </p>
           </div>
         </div>
 
