@@ -381,7 +381,16 @@ export function InvestmentsPage({
                       {h.units !== undefined && h.units > 0 && (
                         <span className="rounded bg-muted px-1.5 py-0.5 font-medium text-foreground">
                           {h.units.toLocaleString("en-IN", { maximumFractionDigits: 3 })} units
-                          {h.currentPrice ? ` @ ₹${h.currentPrice.toLocaleString("en-IN")}` : ""}
+                          {h.originalPrice && h.currency && h.currency !== "INR"
+                            ? ` @ $${h.originalPrice.toLocaleString("en-IN", { maximumFractionDigits: 2 })} ${h.currency} (₹${(h.currentPrice || 0).toLocaleString("en-IN")})`
+                            : h.currentPrice
+                            ? ` @ ₹${h.currentPrice.toLocaleString("en-IN")}`
+                            : ""}
+                        </span>
+                      )}
+                      {h.currency && h.currency !== "INR" && (
+                        <span className="rounded bg-blue-500/10 text-blue-700 dark:text-blue-300 font-semibold px-1.5 py-0.5">
+                          {h.currency} Converted
                         </span>
                       )}
                       {h.expenseRatio !== undefined && h.expenseRatio > 0 && (

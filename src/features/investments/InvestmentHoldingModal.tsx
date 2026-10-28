@@ -21,6 +21,7 @@ import { Modal } from "@/components/shared/Modal";
 import { marketApi, type InstrumentSearchResult } from "@/services/api";
 import { getAccountBalance, type AssetType, type InvestmentHolding, type WealthState } from "@/lib/wealthtrack";
 import { calculateInvestmentValuation, getDefaultExpenseRatio } from "@/lib/investment-calculator";
+import { currencyService } from "@/lib/currency-service";
 
 const ASSET_TYPES: AssetType[] = [
   "Mutual fund",
@@ -135,6 +136,13 @@ export function InvestmentHoldingModal({
     currency: string;
     category: string;
   } | null>(null);
+  const [isServiceDown, setIsServiceDown] = useState(false);
+  const [isFetchingQuote, setIsFetchingQuote] = useState(false);
+  const [exchangeRateInfo, setExchangeRateInfo] = useState<{
+    rate: number;
+    fromCurrency: string;
+    toCurrency: string;
+  } | null>(null);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on click outside
@@ -184,7 +192,7 @@ export function InvestmentHoldingModal({
   }, [searchQuery, searchResults, searchFilter]);
 
   // When user selects an instrument from the search registry
-  const handleSelectInstrument = (item: InstrumentSearchResult) => {
+  const handleSelectInstrument = async (item: InstrumentSearchResult) => {
     setName(item.name);
     setAssetType(item.assetType);
     if (item.exchange) {
@@ -192,27 +200,73 @@ export function InvestmentHoldingModal({
     }
     const defaultTer = getDefaultExpenseRatio(item.assetType, item.name);
     setExpenseRatio(defaultTer);
-
-    if (item.currentPrice && item.currentPrice > 0) {
-      setCurrentPrice(item.currentPrice);
-      setSelectedQuote({
-        symbol: item.symbol,
-        name: item.name,
-        price: item.currentPrice,
-        currency: item.currency,
-        category: item.category,
-      });
-
-      // Auto-compute units if investedAmount is filled and units is blank
-      const inv = Number(investedAmount) || 0;
-      if (inv > 0 && units === "") {
-        const derivedUnits = Math.round((inv / item.currentPrice) * 10000) / 10000;
-        setUnits(derivedUnits);
-        setPurchasePrice(item.currentPrice);
-      }
-    }
     setShowSearchDropdown(false);
     setSearchQuery("");
+
+    setIsFetchingQuote(true);
+    setIsServiceDown(false);
+
+    try {
+      // 1. Fetch real-time market quote with 3-tier robust public fallbacks
+      const { quote, isServiceDown: serviceFailed } = await marketApi.getLiveQuoteWithFallbacks(
+        item.symbol || item.name,
+        item.category
+      );
+
+      const resolvedPrice = quote?.currentPrice ?? item.currentPrice;
+      const instrumentCurrency = (quote?.currency || item.currency || "INR").toUpperCase();
+      const userCurrency = (data.preferences.currency || "INR").toUpperCase();
+
+      if (serviceFailed && (!resolvedPrice || resolvedPrice <= 0)) {
+        setIsServiceDown(true);
+        setValuationMode("manual");
+        return;
+      }
+
+      if (resolvedPrice && resolvedPrice > 0) {
+        let finalPriceInUserCurrency = resolvedPrice;
+
+        // 2. International currency conversion: if instrument currency differs from user's chosen currency
+        if (instrumentCurrency !== userCurrency) {
+          const rateResult = await currencyService.getExchangeRate(instrumentCurrency, userCurrency);
+          finalPriceInUserCurrency = Math.round(resolvedPrice * rateResult.rate * 100) / 100;
+          setExchangeRateInfo({
+            rate: rateResult.rate,
+            fromCurrency: instrumentCurrency,
+            toCurrency: userCurrency,
+          });
+        } else {
+          setExchangeRateInfo(null);
+        }
+
+        setCurrentPrice(finalPriceInUserCurrency);
+        setSelectedQuote({
+          symbol: quote?.symbol || item.symbol,
+          name: quote?.name || item.name,
+          price: resolvedPrice,
+          currency: instrumentCurrency,
+          category: item.category,
+        });
+
+        // Auto-compute units & purchase price if investedAmount is already entered
+        const inv = Number(investedAmount) || 0;
+        if (inv > 0 && (units === "" || Number(units) <= 0)) {
+          const derivedUnits = Math.round((inv / finalPriceInUserCurrency) * 10000) / 10000;
+          setUnits(derivedUnits);
+          setPurchasePrice(finalPriceInUserCurrency);
+        } else if (units !== "" && Number(units) > 0 && purchasePrice === "") {
+          setPurchasePrice(finalPriceInUserCurrency);
+        }
+      } else {
+        setIsServiceDown(true);
+        setValuationMode("manual");
+      }
+    } catch {
+      setIsServiceDown(true);
+      setValuationMode("manual");
+    } finally {
+      setIsFetchingQuote(false);
+    }
   };
 
   // Asset type change handler
@@ -350,6 +404,9 @@ export function InvestmentHoldingModal({
       expenseRatio: expenseRatio !== "" ? Number(expenseRatio) : undefined,
       interestRate: fdAnnualRate !== "" ? Number(fdAnnualRate) : undefined,
       calculationMode: valuationMode === "manual" ? "manual" : "auto_units",
+      currency: selectedQuote?.currency || (assetType === "Stocks & Equity" && institution?.includes("NASDAQ") ? "USD" : data.preferences.currency || "INR"),
+      originalPrice: selectedQuote?.price ?? (currentPrice !== "" ? Number(currentPrice) : undefined),
+      exchangeRate: exchangeRateInfo?.rate ?? 1.0,
     };
 
     onSave(holding);
@@ -493,17 +550,27 @@ export function InvestmentHoldingModal({
 
           {/* Active linked instrument banner */}
           {selectedQuote && (
-            <div className="flex items-center justify-between rounded-lg bg-background p-2 border border-border/80 text-xs">
-              <div className="flex items-center gap-1.5">
-                <Check className="size-3.5 text-emerald-600 dark:text-emerald-400" />
-                <span className="font-semibold text-foreground">{selectedQuote.symbol}</span>
-                <span className="text-muted-foreground text-[11px]">
-                  Ongoing: {selectedQuote.currency === "INR" ? "₹" : "$"}{selectedQuote.price.toLocaleString("en-IN")}
+            <div className="flex flex-col gap-1.5 rounded-lg bg-background p-2.5 border border-border/80 text-xs shadow-2xs">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <Check className="size-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                  <span className="font-bold text-foreground truncate">{selectedQuote.symbol}</span>
+                  <span className="text-muted-foreground truncate hidden sm:inline text-[11px]">· {selectedQuote.name}</span>
+                </div>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded shrink-0">
+                  Live Sync Active
                 </span>
               </div>
-              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold bg-emerald-500/10 px-2 py-0.5 rounded">
-                Live Market Sync Active
-              </span>
+              <div className="flex flex-wrap items-center justify-between gap-1 text-[11px] text-muted-foreground pt-1 border-t border-border/40">
+                <span>
+                  Quote: <strong className="text-foreground">{selectedQuote.currency === "INR" ? "₹" : selectedQuote.currency === "USD" ? "$" : `${selectedQuote.currency} `}{selectedQuote.price.toLocaleString("en-IN", { maximumFractionDigits: 2 })}</strong>
+                </span>
+                {exchangeRateInfo && (
+                  <span className="inline-flex items-center gap-1 text-primary font-semibold text-[10px] bg-primary/5 px-1.5 py-0.5 rounded">
+                    🌐 1 {exchangeRateInfo.fromCurrency} = {exchangeRateInfo.toCurrency === "INR" ? "₹" : "$"}{exchangeRateInfo.rate.toLocaleString("en-IN", { maximumFractionDigits: 2 })} {exchangeRateInfo.toCurrency}
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -564,37 +631,48 @@ export function InvestmentHoldingModal({
         </div>
 
         {/* VALUATION ENGINE COCKPIT */}
-        <div className="rounded-xl border border-primary/20 bg-muted/20 p-4 space-y-3.5">
-          <div className="flex items-center justify-between">
+        <div className="rounded-xl border border-primary/20 bg-muted/20 p-3 sm:p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
-              <Calculator className="size-4 text-primary" />
-              <span className="text-xs font-bold text-foreground">Valuation & Pricing Engine</span>
+              <Calculator className="size-3.5 text-primary shrink-0" />
+              <span className="text-xs font-bold text-foreground">Valuation Mode</span>
             </div>
-            <div className="flex items-center gap-1 bg-background p-0.5 rounded-lg border border-border">
+            <div className="inline-flex items-center gap-0.5 bg-background p-0.5 rounded-lg border border-border shrink-0">
               <button
                 type="button"
+                disabled={isServiceDown}
                 onClick={() => setValuationMode("auto")}
-                className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
-                  valuationMode === "auto"
-                    ? "bg-primary text-primary-foreground font-semibold"
+                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+                  isServiceDown
+                    ? "opacity-40 cursor-not-allowed text-muted-foreground"
+                    : valuationMode === "auto"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                ⚡ Live Auto-Calculate
+                ⚡ Auto
               </button>
               <button
                 type="button"
                 onClick={() => setValuationMode("manual")}
-                className={`rounded-md px-2 py-0.5 text-[11px] font-medium transition-colors cursor-pointer ${
+                className={`rounded-md px-2.5 py-1 text-[11px] font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                   valuationMode === "manual"
-                    ? "bg-primary text-primary-foreground font-semibold"
+                    ? "bg-primary text-primary-foreground shadow-2xs"
                     : "text-muted-foreground hover:text-foreground"
                 }`}
               >
-                ✏️ Manual Entry
+                ✏️ Manual
               </button>
             </div>
           </div>
+
+          {/* Compact Service Offline Note if Fallback APIs are unavailable */}
+          {isServiceDown && (
+            <div className="flex items-center gap-1.5 rounded-md bg-amber-500/10 border border-amber-500/20 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-300">
+              <span className="shrink-0">⚠️</span>
+              <span className="font-medium">Live quotes temporarily offline · Manual entry active.</span>
+            </div>
+          )}
 
           {/* Invested Amount (Always required) */}
           <div>

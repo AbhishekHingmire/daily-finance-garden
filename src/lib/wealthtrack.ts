@@ -90,6 +90,9 @@ export interface InvestmentHolding {
   expenseRatio?: number;
   interestRate?: number;
   calculationMode?: "auto_units" | "auto_purchase_price" | "fixed_deposit" | "manual";
+  currency?: string;
+  originalPrice?: number;
+  exchangeRate?: number;
 }
 
 export interface UserProfile {
