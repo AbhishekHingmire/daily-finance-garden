@@ -321,13 +321,6 @@ export function InvestmentHoldingModal({
       }
       if (!sipAccountId) {
         errs.sipAccountId = "Select a bank account for SIP debit.";
-      } else {
-        const acc = data.accounts.find((a) => a.id === sipAccountId);
-        const bal = acc ? getAccountBalance(acc, data.transactions) : 0;
-        const sipNum = Number(sipAmount) || 0;
-        if (acc && !["Credit card", "Loan"].includes(acc.kind) && sipNum > bal) {
-          errs.sipAmount = `Insufficient balance in ${acc.name} (${currencySymbol}${bal.toLocaleString("en-IN")}) for SIP installment (${currencySymbol}${sipNum.toLocaleString("en-IN")}).`;
-        }
       }
     }
 
@@ -345,7 +338,7 @@ export function InvestmentHoldingModal({
       currentAmount: currentNum,
       isRecurring,
       recurringId: existing?.recurringId,
-      sipAmount: isRecurring ? Number(sipAmount) || investedNum : undefined,
+      sipAmount: isRecurring ? Number(sipAmount) : undefined,
       sipFrequency: isRecurring ? sipFrequency : undefined,
       sipAccountId: isRecurring ? sipAccountId : undefined,
       status: existing?.status ?? "Active",

@@ -125,6 +125,15 @@ export function AccountModal({
   const [nameError, setNameError] = useState<string>("");
   const [balanceError, setBalanceError] = useState<string>("");
 
+  useEffect(() => {
+    if (account) {
+      setOpeningBalance(account.openingBalance ?? 0);
+      setName(account.name ?? "");
+      setIdentifier(account.identifier ?? "");
+      setNotes(account.notes ?? "");
+    }
+  }, [account]);
+
   const handleKindChange = (newKind: AccountKind) => {
     setKind(newKind);
     setSelectedPreset("");
