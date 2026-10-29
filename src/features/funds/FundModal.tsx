@@ -226,7 +226,7 @@ export function FundModal({
         </div>
 
         <InputField
-          label="Notes & Purpose (Optional)"
+          label="Notes & Purpose"
           placeholder="e.g. Kept liquid for unforeseen medical or job transitions."
           value={notes}
           onChange={setNotes}

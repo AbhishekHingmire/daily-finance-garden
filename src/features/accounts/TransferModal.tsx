@@ -316,7 +316,7 @@ export function TransferModal({
             </div>
             <div>
               <label htmlFor="transfer-notes" className="mb-1 block text-xs font-semibold text-foreground">
-                Reference / Note (Optional)
+                Reference / Note
               </label>
               <input
                 id="transfer-notes"

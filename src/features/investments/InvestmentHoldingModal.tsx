@@ -153,6 +153,16 @@ export function InvestmentHoldingModal({
     existing?.sipAccountId ?? data.accounts[0]?.id ?? ""
   );
 
+  // Debounce the market-quote API calls triggered while the user is still typing an amount.
+  const investedAmountDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sipAmountDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return () => {
+      if (investedAmountDebounceRef.current) clearTimeout(investedAmountDebounceRef.current);
+      if (sipAmountDebounceRef.current) clearTimeout(sipAmountDebounceRef.current);
+    };
+  }, []);
+
   // Dynamic next SIP debit date calculation & historical progress
   const nextSipSchedule = useMemo(() => {
     return computeNextSipDate(sipDay);
@@ -435,8 +445,12 @@ export function InvestmentHoldingModal({
     const inv = Number(val);
     setInvestedAmount(inv);
     if (investmentStyle === "LumpSum" && startMonthYear && inv > 0) {
+      if (investedAmountDebounceRef.current) clearTimeout(investedAmountDebounceRef.current);
       const targetId = selectedSymbol || selectedQuote?.symbol || name;
-      executeAutonomousLumpSumValuation(inv, startMonthYear, targetId, Number(currentPrice) || undefined);
+      const livePrice = Number(currentPrice) || undefined;
+      investedAmountDebounceRef.current = setTimeout(() => {
+        executeAutonomousLumpSumValuation(inv, startMonthYear, targetId, livePrice);
+      }, 2000);
     } else {
       const price = Number(currentPrice);
       if (units !== "" && Number(units) > 0) {
@@ -518,8 +532,11 @@ export function InvestmentHoldingModal({
     }
     const sNum = Number(val);
     setSipAmount(sNum);
+    if (sipAmountDebounceRef.current) clearTimeout(sipAmountDebounceRef.current);
     if (startMonthYear) {
-      executeAutonomousSipValuation(sNum, startMonthYear, sipDay);
+      sipAmountDebounceRef.current = setTimeout(() => {
+        executeAutonomousSipValuation(sNum, startMonthYear, sipDay);
+      }, 2000);
     } else {
       const progress = calculateSipHistoricalProgress(startMonthYear, sNum, sipDay);
       setInvestedAmount(progress.totalEstimatedInvested);
@@ -858,7 +875,7 @@ export function InvestmentHoldingModal({
             options={ASSET_TYPES.map((t) => ({ value: t, label: t }))}
           />
           <InputField
-            label="Broker / Platform (optional)"
+            label="Broker / Platform"
             placeholder="e.g. Groww, Zerodha, HDFC"
             value={institution}
             onChange={setInstitution}
@@ -885,7 +902,7 @@ export function InvestmentHoldingModal({
 
           <label className="block">
             <span className="wt-label">
-              End / Target Date (DD/MM/YYYY) <span className="text-muted-foreground text-[10px] font-normal">(optional)</span>
+              End / Target Date (DD/MM/YYYY)
             </span>
             <input
               type="date"
@@ -916,14 +933,18 @@ export function InvestmentHoldingModal({
               onClick={() => {
                 setInvestmentStyle("LumpSum");
                 setIsRecurring(false);
+                // Switching modes starts fresh; don't carry over the other mode's amount/valuation.
+                setSipAmount("");
+                setSipValuationDetails(null);
+                setSipStatusMessage(null);
+                setInvestedAmount("");
+                setUnits("");
+                setPurchasePrice("");
+                setCurrentAmount("");
                 let initialDate = startMonthYear;
                 if (initialDate && /^\d{4}-\d{2}$/.test(initialDate)) {
                   initialDate = `${initialDate}-01`;
                   setStartMonthYear(initialDate);
-                }
-                if (investedNum > 0 && initialDate) {
-                  const targetId = selectedSymbol || selectedQuote?.symbol || name;
-                  executeAutonomousLumpSumValuation(investedNum, initialDate, targetId, Number(currentPrice) || undefined);
                 }
               }}
             >
@@ -939,15 +960,17 @@ export function InvestmentHoldingModal({
               onClick={() => {
                 setInvestmentStyle("SIP");
                 setIsRecurring(true);
+                // Switching modes starts fresh; don't carry over the other mode's amount/valuation.
+                setInvestedAmount("");
+                setUnits("");
+                setPurchasePrice("");
+                setCurrentAmount("");
+                setLumpSumStatusMessage(null);
+                setSipAmount("");
                 let initialDate = startMonthYear;
                 if (initialDate && /^\d{4}-\d{2}$/.test(initialDate)) {
                   initialDate = `${initialDate}-19`;
                   setStartMonthYear(initialDate);
-                }
-                const sAmt = Number(sipAmount) || (investedNum > 0 ? investedNum : 5000);
-                setSipAmount(sAmt);
-                if (initialDate) {
-                  executeAutonomousSipValuation(sAmt, initialDate, sipDay);
                 }
               }}
             >
@@ -1718,7 +1741,7 @@ export function InvestmentHoldingModal({
         )}
 
         <label className="block">
-          <span className="wt-label">Notes or Strategy (optional)</span>
+          <span className="wt-label">Notes or Strategy</span>
           <textarea
             className="wt-field min-h-16 resize-y text-xs"
             placeholder="e.g. SIP of ₹5,000 every 10th, emergency hedge, target ₹2L"

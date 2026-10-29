@@ -521,7 +521,7 @@ export function LoanModal({
 
         {/* Notes */}
         <label className="block">
-          <span className="wt-label">Notes / Account Reference (optional)</span>
+          <span className="wt-label">Notes / Account Reference</span>
           <textarea
             className="wt-field min-h-16 resize-y text-xs"
             placeholder="e.g. Loan account no: 9028340192, floating repo linked rate"

@@ -218,7 +218,7 @@ export function PlanModal({
         </div>
 
         <InputField
-          label="Notes & Strategy (Optional)"
+          label="Notes & Strategy"
           placeholder="e.g. Plan to trade in old vehicle and use mutual fund gains."
           value={notes}
           onChange={setNotes}

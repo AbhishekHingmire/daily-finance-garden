@@ -30,6 +30,7 @@ import { InvestmentHoldingModal } from "@/features/investments/InvestmentHolding
 import { LoanModal } from "@/features/loans/LoanModal";
 import { FundModal } from "@/features/funds/FundModal";
 import { RecurringModal } from "@/features/recurring/RecurringModal";
+import { getWealthRepository } from "@/services/api";
 import {
   formatMoney,
   safeAmount,
@@ -77,6 +78,7 @@ export function OnboardingFlow({
   onOpenAccountModal?: () => void;
 }) {
   const [step, setStep] = useState(0);
+  const repository = useMemo(() => getWealthRepository(), []);
 
   // Modal control states
   const [modalType, setModalType] = useState<"account" | "investment" | "loan" | "fund" | "recurring" | null>(null);
@@ -176,17 +178,24 @@ export function OnboardingFlow({
   // -------------------------------------------------------------
   // Account CRUD
   // -------------------------------------------------------------
-  const handleOpeningBalanceChange = (accountId: string, amount: string) => {
+  const handleOpeningBalanceChange = async (accountId: string, amount: string) => {
     const numeric = Number(amount) || 0;
+    const account = data.accounts.find((a) => a.id === accountId);
+    if (!account) return;
+    const updated = { ...account, openingBalance: numeric };
     onUpdateState({
-      accounts: data.accounts.map((a) => (a.id === accountId ? { ...a, openingBalance: numeric } : a)),
+      accounts: data.accounts.map((a) => (a.id === accountId ? updated : a)),
     });
+    await repository.updateAccount(updated);
   };
 
-  const handleSaveAccount = (form: Partial<Account>) => {
+  const handleSaveAccount = async (form: Partial<Account>) => {
     if (editingAccount) {
+      const updated = { ...editingAccount, ...form };
+      const res = await repository.updateAccount(updated);
+      if (!res.success) return;
       onUpdateState({
-        accounts: data.accounts.map((a) => (a.id === editingAccount.id ? { ...a, ...form } : a)),
+        accounts: data.accounts.map((a) => (a.id === editingAccount.id ? { ...updated, ...res.data } : a)),
       });
     } else {
       const newAccount: Account = {
@@ -199,17 +208,21 @@ export function OnboardingFlow({
         notes: form.notes || "",
         archived: false,
       };
+      const res = await repository.addAccount(newAccount);
+      if (!res.success) return;
       onUpdateState({
-        accounts: [...data.accounts, newAccount],
+        accounts: [...data.accounts, { ...newAccount, ...res.data }],
       });
     }
     setModalType(null);
     setEditingAccount(null);
   };
 
-  const handleDeleteAccount = (id: string) => {
+  const handleDeleteAccount = async (id: string) => {
+    const res = await repository.archiveAccount(id);
+    if (!res.success) return;
     onUpdateState({
-      accounts: data.accounts.filter((a) => a.id !== id),
+      accounts: data.accounts.map((a) => (a.id === id ? { ...a, archived: true } : a)),
     });
   };
 

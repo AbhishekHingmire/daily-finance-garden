@@ -136,7 +136,7 @@ export function CategoryModal({
         )}
         {form.kind === "Expense" && (
           <InputField
-            label="Monthly Budget Limit (optional)"
+            label="Monthly Budget Limit"
             type="number"
             value={form.monthlyLimit ?? 0}
             onChange={(val) => {

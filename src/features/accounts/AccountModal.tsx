@@ -382,7 +382,7 @@ export function AccountModal({
                 {kind === "Credit card"
                   ? "Last 4 digits"
                   : kind === "Digital wallet"
-                  ? "UPI ID / Phone (Optional)"
+                  ? "UPI ID / Phone"
                   : "Last 4 digits / Acc. No."}
               </span>
               <input
@@ -432,7 +432,7 @@ export function AccountModal({
               onClick={() => setShowNotes(true)}
               className="text-xs font-semibold text-primary hover:underline"
             >
-              + Add notes (optional)
+              + Add notes
             </button>
           ) : (
             <div className="space-y-1">

@@ -426,7 +426,7 @@ export function TransactionModal({
             <div className="mt-3 space-y-3 rounded-xl border border-border bg-muted/20 p-3.5 animate-in fade-in-50 duration-150">
               {/* Custom Title */}
               <InputField
-                label="Custom Description (optional)"
+                label="Custom Description"
                 placeholder="e.g. Nature's Basket, Team Lunch (defaults to category)"
                 value={form.description ?? ""}
                 onChange={(v) => set("description", v)}
@@ -465,7 +465,7 @@ export function TransactionModal({
                       ? "Lender / Source"
                       : type === "Lend / Loan Given" || type === "Debt Recovery"
                       ? "Borrower / Person"
-                      : "Merchant / Entity (optional)"
+                      : "Merchant / Entity"
                   }
                   placeholder="e.g. HDFC Bank, Rohan Verma, Airtel"
                   value={form.merchant ?? ""}
@@ -483,7 +483,7 @@ export function TransactionModal({
               </div>
 
               <label className="block">
-                <span className="wt-label">Notes (optional)</span>
+                <span className="wt-label">Notes</span>
                 <textarea
                   className="wt-field min-h-14 resize-y text-xs"
                   placeholder="Add any extra details…"

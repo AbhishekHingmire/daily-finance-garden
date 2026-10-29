@@ -406,9 +406,7 @@ export function AuthPage({
                   </div>
 
                   <div>
-                    <label className="wt-label">
-                      Email Address <span className="text-muted-foreground font-normal">(Optional)</span>
-                    </label>
+                    <label className="wt-label">Email Address</label>
                     <div className="relative">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">
                         <Mail size={15} />

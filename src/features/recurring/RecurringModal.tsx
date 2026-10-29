@@ -313,7 +313,7 @@ export function RecurringModal({
                 {/* Optional link to active registered loan */}
                 {(data.loans ?? []).length > 0 && (
                   <div>
-                    <label className="wt-label mb-1">Link to Registered Loan (Optional)</label>
+                    <label className="wt-label mb-1">Link to Registered Loan</label>
                     <select
                       className="wt-field text-xs font-medium bg-background"
                       value={selectedLoanId}

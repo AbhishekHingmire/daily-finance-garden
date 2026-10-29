@@ -155,7 +155,7 @@ export function ReconcileModal({
 
           <div>
             <label className="block min-w-0">
-              <span className="wt-label">Reconciliation Notes (optional)</span>
+              <span className="wt-label">Reconciliation Notes</span>
               <input
                 type="text"
                 className="wt-field text-xs"
