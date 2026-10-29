@@ -32,7 +32,8 @@ import { AppLogo } from "@/components/shared/AppLogo";
 import { Modal } from "@/components/shared/Modal";
 import { matchesDateRange, type DateRangeValue } from "@/components/shared/DateRangeFilter";
 import { AuthPage, type AuthView } from "@/features/auth/AuthPage";
-import { authApi, authStorage, type AuthResponseData, getWealthRepository, getApiBaseUrl } from "@/services/api";
+import { authApi, authStorage, marketApi, type AuthResponseData, getWealthRepository, getApiBaseUrl } from "@/services/api";
+import { currencyService } from "@/lib/currency-service";
 import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { Dashboard } from "@/features/dashboard/Dashboard";
 import { TransactionsPage } from "@/features/transactions/TransactionsPage";
@@ -297,11 +298,26 @@ function processAutomatedState(
   }
 }
 
+// Routes each mount a fresh <WealthTrackApp/> instance on navigation. Caching the loaded
+// workspace state at module scope means only the first mount per session hits the
+// repository and shows the full-screen loader — later page switches reuse it instantly.
+let cachedWorkspaceState: WealthState | null = null;
+let cachedStateLoaded = false;
+
+// Gate for live investment price refresh: shared across remounts so page switching
+// never triggers more than one quote fetch per instrument per 5-minute window.
+const INVESTMENT_QUOTE_REFRESH_MS = 5 * 60 * 1000;
+let lastInvestmentQuoteRefreshAt = 0;
+let isRefreshingInvestmentQuotes = false;
+
 export function WealthTrackApp({ initialSection }: { initialSection?: Section } = {}) {
   const repository = useMemo(() => getWealthRepository(), []);
 
-  const [data, setData] = useState<WealthState>(() => createEmptyWorkspaceState());
-  const [loaded, setLoaded] = useState(false);
+  const [data, setData] = useState<WealthState>(() => cachedWorkspaceState ?? createEmptyWorkspaceState());
+  const [loaded, setLoaded] = useState(() => cachedStateLoaded);
+  // Brief loader scoped to the content area only (sidebar/header stay put) on page switches,
+  // i.e. mounts that reuse already-cached data instead of hitting the full-screen loader below.
+  const [contentLoading, setContentLoading] = useState(() => cachedStateLoaded);
   const [hubsV2, setHubsV2] = useState<boolean>(() => getFeatureFlag("hubs_v2"));
   const [wealthSubtab, setWealthSubtab] = useState<WealthSubtab>(() => {
     if (typeof window !== "undefined") {
@@ -559,8 +575,105 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   // can skip the mount-level getState call when they take over.
   const stateLoadedByAuthRef = useRef(false);
 
-  // Load state from repository on mount
+  // Keep the module-level cache in sync so the next mount (page switch) can reuse it.
   useEffect(() => {
+    if (loaded) {
+      cachedWorkspaceState = data;
+      cachedStateLoaded = true;
+    }
+  }, [data, loaded]);
+
+  useEffect(() => {
+    if (!contentLoading) return;
+    const timer = setTimeout(() => setContentLoading(false), 220);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Always-current investments snapshot for the quote refresher below (avoids stale closures).
+  const investmentsRef = useRef(data.investments);
+  useEffect(() => {
+    investmentsRef.current = data.investments;
+  }, [data.investments]);
+
+  // Refresh live prices for all holdings, deduped by instrument so N holdings in the
+  // same fund/stock only cost 1 API call, not N.
+  const refreshInvestmentQuotes = async () => {
+    if (isRefreshingInvestmentQuotes) return;
+    const holdings = (investmentsRef.current ?? []).filter(
+      (h) => (h.symbol || h.name) && (h.units || 0) > 0 && h.assetType !== "Fixed deposit" && h.calculationMode !== "manual"
+    );
+    if (holdings.length === 0) return;
+
+    isRefreshingInvestmentQuotes = true;
+    lastInvestmentQuoteRefreshAt = Date.now();
+    try {
+      const groups = new Map<string, InvestmentHolding[]>();
+      for (const h of holdings) {
+        const key = (h.symbol || h.name).trim().toLowerCase();
+        groups.set(key, [...(groups.get(key) ?? []), h]);
+      }
+
+      const userCurrency = (data.preferences.currency || "INR").toUpperCase();
+      const updates = new Map<string, Partial<InvestmentHolding>>();
+
+      await Promise.all(
+        Array.from(groups.values()).map(async (group) => {
+          const first = group[0];
+          try {
+            const { quote } = await marketApi.getLiveQuoteWithFallbacks(first.symbol || first.name, first.assetType);
+            if (!quote || !(quote.currentPrice > 0)) return;
+
+            let price = quote.currentPrice;
+            const instrumentCurrency = (quote.currency || first.currency || "INR").toUpperCase();
+            if (instrumentCurrency !== userCurrency) {
+              const rateResult = await currencyService.getExchangeRate(instrumentCurrency, userCurrency);
+              price = Math.round(price * rateResult.rate * 100) / 100;
+            }
+
+            for (const h of group) {
+              const currentAmount = Math.round((h.units || 0) * price * 100) / 100;
+              updates.set(h.id, { currentPrice: price, currentAmount });
+            }
+          } catch {
+            // Skip this instrument on failure; keep its last known price
+          }
+        })
+      );
+
+      if (updates.size === 0) return;
+
+      setData((current) => ({
+        ...current,
+        investments: (current.investments ?? []).map((h) =>
+          updates.has(h.id) ? { ...h, ...updates.get(h.id) } : h
+        ),
+      }));
+
+      updates.forEach((patch, id) => {
+        const holding = holdings.find((h) => h.id === id);
+        if (holding) repository.updateHolding({ ...holding, ...patch }).catch(() => {});
+      });
+    } finally {
+      isRefreshingInvestmentQuotes = false;
+    }
+  };
+
+  // Run once per load (if stale) and then every 5 minutes while the app stays open.
+  useEffect(() => {
+    if (!loaded) return;
+    if (Date.now() - lastInvestmentQuoteRefreshAt > INVESTMENT_QUOTE_REFRESH_MS) {
+      refreshInvestmentQuotes();
+    }
+    const interval = setInterval(refreshInvestmentQuotes, INVESTMENT_QUOTE_REFRESH_MS);
+    return () => clearInterval(interval);
+  }, [loaded]);
+
+  // Load state from repository on mount (skipped if already cached from a prior page mount)
+  useEffect(() => {
+    if (cachedStateLoaded) {
+      setLoaded(true);
+      return;
+    }
     const token = authStorage.getAccessToken();
     if (!token) {
       setData(createEmptyWorkspaceState());
@@ -1017,6 +1130,13 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     if (!res.success) {
       toast.error(res.error || "Failed to remove holding");
       return;
+    }
+    // Cascade-delete the linked SIP recurring entry so it doesn't reappear after reload
+    const linkedRecurring = data.recurring.find(
+      (r) => r.investmentId === holding.id || r.id === holding.recurringId
+    );
+    if (linkedRecurring) {
+      await repository.deleteRecurring(linkedRecurring.id);
     }
     setData((current) => ({
       ...current,
@@ -3170,6 +3290,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
           <main className="w-full max-w-full pt-[calc(56px+env(safe-area-inset-top))] md:pt-[64px] pb-[calc(64px+env(safe-area-inset-bottom)+1.5rem)] md:pb-12">
             <PageContainer>
+              {contentLoading ? (
+                <div className="grid min-h-[50vh] place-items-center">
+                  <div className="flex items-center gap-3 text-xs font-semibold text-muted-foreground">
+                    <span className="size-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    Loading…
+                  </div>
+                </div>
+              ) : (
+              <>
               {active === "Overview" && (
               <Dashboard
                 data={data}
@@ -3491,6 +3620,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             {active === "Help" && (
               <HelpPage onNavigate={(sec) => goSection(sec as Section)} />
             )}
+              </>
+              )}
             </PageContainer>
           </main>
         </div>

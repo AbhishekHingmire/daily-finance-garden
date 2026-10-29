@@ -317,7 +317,9 @@ export class LocalStorageWealthRepository implements WealthRepository {
   async deleteHolding(id: string): Promise<ApiResponse<void>> {
     const state = this.readRaw();
     const investments = (state.investments || []).filter((h: any) => h.id !== id);
-    this.writeRaw({ ...state, investments });
+    // Cascade-delete the linked SIP recurring entry so it doesn't reappear after reload
+    const recurring = (state.recurring || []).filter((r: any) => r.investmentId !== id);
+    this.writeRaw({ ...state, investments, recurring });
     return { success: true };
   }
 

@@ -90,7 +90,34 @@ export function ProfilePage({
       <PageHeading
         title="Profile"
         description="Manage your identity, monthly income targets, emergency fund security, and investor risk profile."
-        isBalancePage
+        isBalancePage={!isDirty}
+        primaryAction={
+          isDirty ? (
+            <div className="flex items-center gap-2">
+              <span className="hidden items-center gap-1.5 text-xs font-semibold text-muted-foreground sm:flex">
+                <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+                Unsaved changes
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs font-semibold cursor-pointer"
+                onClick={() => setForm(currentProfile)}
+              >
+                Discard
+              </Button>
+              <Button
+                type="submit"
+                form="profile-form"
+                size="sm"
+                className="h-8 gap-1.5 px-4 text-xs font-semibold shadow-xs cursor-pointer"
+              >
+                <Save size={14} /> Save Changes
+              </Button>
+            </div>
+          ) : undefined
+        }
       />
 
       {/* Profile Header Identity Card */}
@@ -123,7 +150,7 @@ export function ProfilePage({
         </div>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <form id="profile-form" onSubmit={handleSave} className="space-y-6">
         <div className="grid gap-6 md:grid-cols-2">
           {/* Personal Information */}
           <div className="rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all space-y-4">
@@ -341,36 +368,6 @@ export function ProfilePage({
             </span>
           </div>
         </div>
-
-        {/* Sticky Footer Bar that appears only when there are unsaved changes */}
-        {isDirty && (
-          <div className="fixed bottom-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-topbar bg-card/95 backdrop-blur-xs border-t border-border/80 px-4 py-3 sm:px-6 shadow-xl flex items-center justify-between animate-in slide-in-from-bottom duration-200">
-            <div className="flex items-center gap-2">
-              <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
-              <span className="text-xs font-semibold text-foreground">
-                You have unsaved changes
-              </span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 text-xs font-semibold cursor-pointer"
-                onClick={() => setForm(currentProfile)}
-              >
-                Discard
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                className="h-8 gap-1.5 px-4 text-xs font-semibold shadow-xs cursor-pointer"
-              >
-                <Save size={14} /> Save Profile Changes
-              </Button>
-            </div>
-          </div>
-        )}
       </form>
     </div>
   );

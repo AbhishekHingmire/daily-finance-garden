@@ -90,6 +90,13 @@ export function TransactionsPage({
   const [isFilterExpanded, setIsFilterExpanded] = React.useState<boolean>(false);
   const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
 
+  // PeriodPill only tracks the shared period label; dateRange is what actually filters
+  // `rows`, so both must change together or the list silently stays on the old month.
+  const handlePeriodChange = (newPeriod: { year: number; month: number }) => {
+    setSharedPeriod(newPeriod);
+    setDateRange({ preset: "1m", year: newPeriod.year, month: newPeriod.month });
+  };
+
   const activeDropdownFiltersCount = React.useMemo(() => {
     let count = 0;
     if (txType !== "All types") count++;
@@ -179,7 +186,7 @@ export function TransactionsPage({
         description="Every financial movement, categorized and accounted for."
         periodSlot={
           <div className="flex items-center gap-2">
-            <PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />
+            <PeriodPill period={sharedPeriod} onChange={handlePeriodChange} />
             <Button
               size="sm"
               variant="outline"

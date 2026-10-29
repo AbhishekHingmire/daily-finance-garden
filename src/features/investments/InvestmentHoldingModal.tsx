@@ -26,6 +26,7 @@ import {
   getDefaultExpenseRatio,
   computeNextSipDate,
   calculateSipHistoricalProgress,
+  truncateUnits,
 } from "@/lib/investment-calculator";
 import { currencyService } from "@/lib/currency-service";
 
@@ -305,7 +306,7 @@ export function InvestmentHoldingModal({
         } else if (investmentStyle === "LumpSum" && inv > 0 && startMonthYear) {
           executeAutonomousLumpSumValuation(inv, startMonthYear, item.symbol || item.name, finalPriceInUserCurrency);
         } else if (inv > 0 && (units === "" || Number(units) <= 0)) {
-          const derivedUnits = Math.round((inv / finalPriceInUserCurrency) * 10000) / 10000;
+          const derivedUnits = truncateUnits(inv / finalPriceInUserCurrency);
           setUnits(derivedUnits);
           setPurchasePrice(finalPriceInUserCurrency);
         } else if (units !== "" && Number(units) > 0 && purchasePrice === "") {
@@ -357,7 +358,7 @@ export function InvestmentHoldingModal({
           setPurchasePrice(buyNav);
 
           // Step 1 cont.: Total units = invested capital ÷ that time NAV
-          const derivedUnits = Math.round((invAmt / buyNav) * 10000) / 10000;
+          const derivedUnits = truncateUnits(invAmt / buyNav);
           setUnits(derivedUnits);
 
           // Step 2: Current valuation = total units × today's live NAV
@@ -441,7 +442,7 @@ export function InvestmentHoldingModal({
       if (units !== "" && Number(units) > 0) {
         setPurchasePrice(Math.round((inv / Number(units)) * 100) / 100);
       } else if (purchasePrice !== "" && Number(purchasePrice) > 0) {
-        const derivedUnits = Math.round((inv / Number(purchasePrice)) * 10000) / 10000;
+        const derivedUnits = truncateUnits(inv / Number(purchasePrice));
         setUnits(derivedUnits);
         if (price > 0) {
           setCurrentAmount(Math.round(derivedUnits * price * 100) / 100);
@@ -480,7 +481,7 @@ export function InvestmentHoldingModal({
     setPurchasePrice(num);
     const inv = Number(investedAmount) || 0;
     if (inv > 0 && num > 0) {
-      const derivedUnits = Math.round((inv / num) * 10000) / 10000;
+      const derivedUnits = truncateUnits(inv / num);
       setUnits(derivedUnits);
       const price = Number(currentPrice);
       if (price > 0) {
@@ -500,7 +501,7 @@ export function InvestmentHoldingModal({
     setCurrentAmount(curNum);
     const price = Number(currentPrice);
     if (price > 0 && curNum > 0) {
-      const derivedUnits = Math.round((curNum / price) * 10000) / 10000;
+      const derivedUnits = truncateUnits(curNum / price);
       setUnits(derivedUnits);
       const inv = Number(investedAmount) || 0;
       if (inv > 0) {
@@ -605,7 +606,7 @@ export function InvestmentHoldingModal({
     const inv = Number(investedAmount) || 0;
     const price = Number(currentPrice) || 0;
     if (inv > 0 && price > 0) {
-      const derived = Math.round((inv / price) * 10000) / 10000;
+      const derived = truncateUnits(inv / price);
       setUnits(derived);
       setPurchasePrice(price);
     }

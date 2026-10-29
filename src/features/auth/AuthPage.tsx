@@ -64,6 +64,13 @@ export function AuthPage({
     return () => clearTimeout(timer);
   }, [otpSent, countdown]);
 
+  // Auto-fade the API notification banner after 20s
+  useEffect(() => {
+    if (!apiBanner) return;
+    const timer = setTimeout(() => setApiBanner(null), 20000);
+    return () => clearTimeout(timer);
+  }, [apiBanner]);
+
   // Live 5-minute OTP expiry countdown – green > 2min, yellow ≤ 2min, red ≤ 30s
   useEffect(() => {
     if (!otpSent) {
@@ -150,11 +157,6 @@ export function AuthPage({
       setApiBanner({
         type: "success",
         message: res.message || "OTP generated and dispatched successfully.",
-      });
-
-      toast.success("Verification OTP Dispatched!", {
-        description: testOtp ? `Live Test OTP: ${testOtp}` : `SMS sent to +91 ${mobile} (Valid for 5 min).`,
-        duration: 8000,
       });
     } catch (err: any) {
       const activeHost = (() => {

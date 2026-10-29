@@ -34,6 +34,16 @@ export interface ValuationResult {
 }
 
 /**
+ * AMFI/SEBI mutual fund unit allotment rule: units are TRUNCATED (not rounded) to 3
+ * decimal places. Using Math.round() here over-credits units ~50% of the time, which
+ * is the main source of small (₹10-20) drift vs real statements.
+ */
+export function truncateUnits(value: number, decimals: number = 3): number {
+  const factor = Math.pow(10, decimals);
+  return Math.floor(value * factor) / factor;
+}
+
+/**
  * Returns intelligent Total Expense Ratio (TER) default estimates based on asset class.
  */
 export function getDefaultExpenseRatio(assetType: AssetType, name: string = ""): number {
@@ -131,12 +141,12 @@ export function calculateInvestmentValuation(input: ValuationInput): ValuationRe
   }
   // 4. LIVE AUTO-VALUATION FROM PURCHASE PRICE / BUY NAV
   else if (purchasePrice > 0 && investedAmount > 0 && currentPrice > 0) {
-    units = Math.round((investedAmount / purchasePrice) * 10000) / 10000;
+    units = truncateUnits(investedAmount / purchasePrice);
     currentAmount = Math.round(units * currentPrice * 100) / 100;
   }
   // 5. IF ONLY INVESTED AMOUNT & LIVE PRICE PROVIDED (ASSUME UNITS = INVESTED / CURRENT PRICE)
   else if (investedAmount > 0 && currentPrice > 0) {
-    units = Math.round((investedAmount / currentPrice) * 10000) / 10000;
+    units = truncateUnits(investedAmount / currentPrice);
     purchasePrice = currentPrice;
     currentAmount = investedAmount;
   }
@@ -144,7 +154,7 @@ export function calculateInvestmentValuation(input: ValuationInput): ValuationRe
   else {
     currentAmount = Math.max(0, Number(input.manualCurrentAmount) || investedAmount);
     purchasePrice = currentPrice > 0 ? currentPrice : currentAmount;
-    units = purchasePrice > 0 ? Math.round((investedAmount / purchasePrice) * 10000) / 10000 : 1;
+    units = purchasePrice > 0 ? truncateUnits(investedAmount / purchasePrice) : 1;
   }
 
   // SGB (Sovereign Gold Bond) gives 2.5% p.a. simple interest on invested amount

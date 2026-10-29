@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from "./auth-api";
-import { calculateSipHistoricalProgress } from "../../lib/investment-calculator";
+import { calculateSipHistoricalProgress, truncateUnits } from "../../lib/investment-calculator";
 
 export interface SipInstallmentRecord {
   cycle: number;
@@ -688,8 +688,8 @@ export const marketApi = {
         }
       }
 
-      const allottedUnits = nav > 0 ? Math.round((sAmount / nav) * 10000) / 10000 : 0;
-      cumUnits = Math.round((cumUnits + allottedUnits) * 10000) / 10000;
+      const allottedUnits = nav > 0 ? truncateUnits(sAmount / nav) : 0;
+      cumUnits = truncateUnits(cumUnits + allottedUnits);
       cumInvested += sAmount;
 
       breakdown.push({

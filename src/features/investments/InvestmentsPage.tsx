@@ -320,7 +320,7 @@ export function InvestmentsPage({
                 {/* Header: Name, Institution, Asset Badge */}
                 <div>
                   <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-center gap-1.5">
                         <span
                           className={`inline-flex items-center rounded-md px-2 py-0.5 text-[10px] font-bold ${colors.bg} ${colors.text}`}
@@ -338,15 +338,18 @@ export function InvestmentsPage({
                             SIP: {money(h.sipAmount || 0)}/mo · {h.status === "Paused" ? "Paused" : "Active"}
                           </span>
                         )}
-                        {h.institution && (
-                          <span className="text-[11px] font-medium text-muted-foreground truncate">
-                            {h.institution}
-                          </span>
-                        )}
                       </div>
-                      <h4 className="mt-1.5 font-bold text-sm text-foreground truncate" title={h.name}>
+                      <h4
+                        className="mt-1.5 line-clamp-2 break-words text-sm font-bold leading-snug text-foreground"
+                        title={h.name}
+                      >
                         {h.name}
                       </h4>
+                      {h.institution && (
+                        <span className="mt-0.5 block truncate text-[11px] font-medium text-muted-foreground">
+                          {h.institution}
+                        </span>
+                      )}
                     </div>
 
                     <ActionMenu
@@ -410,7 +413,7 @@ export function InvestmentsPage({
                 </div>
 
                 {/* Financial Stats Matrix */}
-                <div className="mt-4 pt-3 border-t border-border/60">
+                <div className="mt-4 rounded-xl border border-border/60 bg-muted/20 p-3">
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <span className="block text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -432,7 +435,13 @@ export function InvestmentsPage({
                   </div>
 
                   {/* Earned Returns Bar */}
-                  <div className="mt-3 flex items-center justify-between rounded-lg bg-muted/40 p-2 text-xs">
+                  <div
+                    className={`mt-2.5 flex flex-wrap items-center justify-between gap-1.5 rounded-lg p-2 text-xs ${
+                      pnl >= 0
+                        ? "bg-emerald-500/10"
+                        : "bg-destructive/10"
+                    }`}
+                  >
                     <div className="flex items-center gap-1.5">
                       <span className="text-[11px] font-medium text-muted-foreground">
                         Earned Returns
@@ -461,19 +470,19 @@ export function InvestmentsPage({
                       </span>
                     </div>
                   </div>
+                </div>
 
-                  {/* Footer: Portfolio Share & Tenure */}
-                  <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
-                    <span>
-                      Portfolio share: <strong className="text-foreground">{allocationPct.toFixed(1)}%</strong>
+                {/* Footer: Portfolio Share & Tenure */}
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                  <span>
+                    Portfolio share: <strong className="text-foreground">{allocationPct.toFixed(1)}%</strong>
+                  </span>
+                  {h.startMonthYear && (
+                    <span className="font-semibold text-muted-foreground">
+                      Since {new Date(`${h.startMonthYear}-01`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+                      {h.endMonthYear && ` · Till ${new Date(`${h.endMonthYear}-01`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}`}
                     </span>
-                    {h.startMonthYear && (
-                      <span className="font-semibold text-muted-foreground">
-                        Since {new Date(`${h.startMonthYear}-01`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
-                        {h.endMonthYear && ` · Till ${new Date(`${h.endMonthYear}-01`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}`}
-                      </span>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
             );
