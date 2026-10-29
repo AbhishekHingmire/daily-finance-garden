@@ -468,17 +468,21 @@ export function OnboardingFlow({
           {/* ========================================================= */}
           {step === 1 && (
             <div className="grid gap-4 sm:grid-cols-2">
-              <SelectField
-                label="Primary Currency"
-                value={data.preferences.currency}
-                onChange={(value) => onUpdatePreferences({ currency: value as WealthPreferences["currency"] })}
-                options={[
-                  { value: "INR", label: "INR · Indian Rupee (₹)" },
-                  { value: "USD", label: "USD · US Dollar ($)" },
-                  { value: "GBP", label: "GBP · Pound Sterling (£)" },
-                  { value: "EUR", label: "EUR · Euro (€)" },
-                ]}
-              />
+              <div>
+                <SelectField
+                  label="Primary Currency"
+                  value={data.preferences.currency}
+                  onChange={(value) => onUpdatePreferences({ currency: value as WealthPreferences["currency"] })}
+                  disabled
+                  options={[
+                    { value: "INR", label: "INR · Indian Rupee (₹)" },
+                    { value: "USD", label: "USD · US Dollar ($)" },
+                    { value: "GBP", label: "GBP · Pound Sterling (£)" },
+                    { value: "EUR", label: "EUR · Euro (€)" },
+                  ]}
+                />
+                <p className="mt-1 text-[11px] text-muted-foreground">Currency is fixed to INR for now.</p>
+              </div>
               <SelectField
                 label="Date Format"
                 value={data.preferences.dateFormat}

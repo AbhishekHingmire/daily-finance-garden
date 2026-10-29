@@ -668,6 +668,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     return () => clearInterval(interval);
   }, [loaded]);
 
+  // Always fetch fresh live quotes the moment the user opens the Investments tab,
+  // bypassing the 5-minute background gate so values are never stale on arrival.
+  useEffect(() => {
+    if (!loaded) return;
+    if (active === "Wealth" && wealthSubtab === "investments") {
+      refreshInvestmentQuotes();
+    }
+  }, [loaded, active, wealthSubtab]);
+
   // Load state from repository on mount (skipped if already cached from a prior page mount)
   useEffect(() => {
     if (cachedStateLoaded) {

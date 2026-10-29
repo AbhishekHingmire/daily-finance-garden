@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bell,
   Download,
@@ -8,12 +8,14 @@ import {
   LogOut,
   Plus,
   RotateCcw,
+  Save,
   SlidersHorizontal,
   Tag,
   Trash2,
   X,
   ShieldCheck,
 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import { PageHeading } from "@/components/shared/PageHeading";
@@ -60,6 +62,7 @@ export function PreferencesPage({
   onOpenDataCheck?: () => void;
 }) {
   const [hubsV2, setLocalHubsV2] = useState(() => getFeatureFlag("hubs_v2"));
+  const [draft, setDraft] = useState<WealthPreferences>(data.preferences);
   const tabs = [
     "General & Regional",
     "Alerts & Notifications",
@@ -68,12 +71,51 @@ export function PreferencesPage({
 
   const currentTab = tabs.includes(preferencesTab) ? preferencesTab : "General & Regional";
 
+  const isDirty = useMemo(
+    () => JSON.stringify(draft) !== JSON.stringify(data.preferences),
+    [draft, data.preferences]
+  );
+
+  const handleSave = () => {
+    updatePreferences(draft);
+    toast.success("Preferences updated successfully", {
+      description: "Your preferences have been saved locally.",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <PageHeading
         title="Preferences"
         description="Configure your currency display, visual theme, default accounts, smart reminders, and offline backups."
-        isBalancePage
+        isBalancePage={!isDirty}
+        primaryAction={
+          isDirty ? (
+            <div className="flex items-center gap-2">
+              <span className="hidden items-center gap-1.5 text-xs font-semibold text-muted-foreground sm:flex">
+                <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+                Unsaved changes
+              </span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs font-semibold cursor-pointer"
+                onClick={() => setDraft(data.preferences)}
+              >
+                Discard
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="h-8 gap-1.5 px-4 text-xs font-semibold shadow-xs cursor-pointer"
+                onClick={handleSave}
+              >
+                <Save size={14} /> Save Changes
+              </Button>
+            </div>
+          ) : undefined
+        }
       />
 
       <div className="flex flex-wrap gap-1.5 sm:gap-2 border-b border-border/60 pb-3">
@@ -92,31 +134,35 @@ export function PreferencesPage({
 
       {/* Tab 1: General & Regional */}
       {currentTab === "General & Regional" && (
-        <div className="grid gap-6 md:grid-cols-2">
+        <form id="preferences-form" onSubmit={(e) => e.preventDefault()} className="grid gap-6 md:grid-cols-2">
           <div className="space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
             <div className="flex items-center gap-2 border-b border-border/50 pb-3">
               <Globe className="size-4 text-primary" />
               <h3 className="text-sm font-semibold text-foreground">Regional & Display Settings</h3>
             </div>
 
-            <SelectField
-              label="Base Currency"
-              value={data.preferences.currency}
-              onChange={(value) =>
-                updatePreferences({ currency: value as WealthPreferences["currency"] })
-              }
-              options={[
-                { value: "INR", label: "INR · Indian Rupee (₹)" },
-                { value: "USD", label: "USD · US Dollar ($)" },
-                { value: "GBP", label: "GBP · Pound Sterling (£)" },
-                { value: "EUR", label: "EUR · Euro (€)" },
-              ]}
-            />
+            <div>
+              <SelectField
+                label="Base Currency"
+                value={data.preferences.currency}
+                onChange={(value) =>
+                  updatePreferences({ currency: value as WealthPreferences["currency"] })
+                }
+                disabled
+                options={[
+                  { value: "INR", label: "INR · Indian Rupee (₹)" },
+                  { value: "USD", label: "USD · US Dollar ($)" },
+                  { value: "GBP", label: "GBP · Pound Sterling (£)" },
+                  { value: "EUR", label: "EUR · Euro (€)" },
+                ]}
+              />
+              <p className="mt-1 text-[11px] text-muted-foreground">Currency is fixed to INR for now.</p>
+            </div>
 
             <SelectField
               label="Theme Appearance"
-              value={data.preferences.theme}
-              onChange={(value) => updatePreferences({ theme: value as WealthPreferences["theme"] })}
+              value={draft.theme}
+              onChange={(value) => setDraft((d) => ({ ...d, theme: value as WealthPreferences["theme"] }))}
               options={[
                 { value: "light", label: "Light Mode (Clean crisp surfaces)" },
                 { value: "dark", label: "Dark Mode (Deep obsidian slate)" },
@@ -125,9 +171,9 @@ export function PreferencesPage({
 
             <SelectField
               label="Date Format"
-              value={data.preferences.dateFormat}
+              value={draft.dateFormat}
               onChange={(value) =>
-                updatePreferences({ dateFormat: value as WealthPreferences["dateFormat"] })
+                setDraft((d) => ({ ...d, dateFormat: value as WealthPreferences["dateFormat"] }))
               }
               options={["DD/MM/YYYY", "MM/DD/YYYY", "YYYY-MM-DD"].map((v) => ({
                 value: v,
@@ -137,9 +183,9 @@ export function PreferencesPage({
 
             <SelectField
               label="Week Starts On"
-              value={data.preferences.weekStart}
+              value={draft.weekStart}
               onChange={(value) =>
-                updatePreferences({ weekStart: value as WealthPreferences["weekStart"] })
+                setDraft((d) => ({ ...d, weekStart: value as WealthPreferences["weekStart"] }))
               }
               options={[
                 { value: "Monday", label: "Monday (Standard financial cycle)" },
@@ -160,9 +206,9 @@ export function PreferencesPage({
 
             <SelectField
               label="Default Transaction Type"
-              value={data.preferences.defaultType}
+              value={draft.defaultType}
               onChange={(value) =>
-                updatePreferences({ defaultType: value as "Expense" | "Income" })
+                setDraft((d) => ({ ...d, defaultType: value as "Expense" | "Income" }))
               }
               options={[
                 { value: "Expense", label: "Expense" },
@@ -172,8 +218,8 @@ export function PreferencesPage({
 
             <SelectField
               label="Default Primary Account"
-              value={data.preferences.defaultAccount}
-              onChange={(defaultAccount) => updatePreferences({ defaultAccount })}
+              value={draft.defaultAccount}
+              onChange={(defaultAccount) => setDraft((d) => ({ ...d, defaultAccount }))}
               options={data.accounts
                 .filter((a) => !a.archived)
                 .map((a) => ({ value: a.id, label: `${a.name} (${a.kind})` }))}
@@ -181,20 +227,24 @@ export function PreferencesPage({
 
             <SelectField
               label="Default Payment Method"
-              value={data.preferences.defaultPaymentMethod}
-              onChange={(defaultPaymentMethod) => updatePreferences({ defaultPaymentMethod })}
+              value={draft.defaultPaymentMethod}
+              onChange={(defaultPaymentMethod) => setDraft((d) => ({ ...d, defaultPaymentMethod }))}
               options={["UPI", "Card", "Cash", "Bank transfer", "Wallet", "Other"].map((m) => ({
                 value: m,
                 label: m,
               }))}
             />
           </div>
-        </div>
+        </form>
       )}
 
       {/* Tab 2: Alerts & Notifications */}
       {currentTab === "Alerts & Notifications" && (
-        <div className="max-w-xl space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
+        <form
+          id="preferences-form"
+          onSubmit={(e) => e.preventDefault()}
+          className="max-w-xl space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all"
+        >
           <div className="flex items-center gap-2 border-b border-border/50 pb-3">
             <Bell className="size-4 text-primary" />
             <h3 className="text-sm font-semibold text-foreground">Smart Reminders & Alerts</h3>
@@ -213,8 +263,8 @@ export function PreferencesPage({
               <input
                 type="checkbox"
                 className="size-4 rounded accent-primary cursor-pointer"
-                checked={data.preferences.recurringReminders}
-                onChange={(e) => updatePreferences({ recurringReminders: e.target.checked })}
+                checked={draft.recurringReminders}
+                onChange={(e) => setDraft((d) => ({ ...d, recurringReminders: e.target.checked }))}
               />
             </label>
 
@@ -230,8 +280,8 @@ export function PreferencesPage({
               <input
                 type="checkbox"
                 className="size-4 rounded accent-primary cursor-pointer"
-                checked={data.preferences.budgetReminders}
-                onChange={(e) => updatePreferences({ budgetReminders: e.target.checked })}
+                checked={draft.budgetReminders}
+                onChange={(e) => setDraft((d) => ({ ...d, budgetReminders: e.target.checked }))}
               />
             </label>
 
@@ -247,12 +297,12 @@ export function PreferencesPage({
               <input
                 type="checkbox"
                 className="size-4 rounded accent-primary cursor-pointer"
-                checked={data.preferences.otherReminders}
-                onChange={(e) => updatePreferences({ otherReminders: e.target.checked })}
+                checked={draft.otherReminders}
+                onChange={(e) => setDraft((d) => ({ ...d, otherReminders: e.target.checked }))}
               />
             </label>
           </div>
-        </div>
+        </form>
       )}
 
       {/* Tab 3: Data & Storage */}

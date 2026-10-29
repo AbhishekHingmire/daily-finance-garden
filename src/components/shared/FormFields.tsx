@@ -57,6 +57,7 @@ export function SelectField({
   required,
   compact = false,
   className = "",
+  disabled = false,
 }: {
   label: string;
   value: string;
@@ -67,6 +68,7 @@ export function SelectField({
   required?: boolean;
   compact?: boolean;
   className?: string;
+  disabled?: boolean;
 }) {
   return (
     <label className={`block min-w-0 ${className}`}>
@@ -83,11 +85,12 @@ export function SelectField({
       <select
         className={
           compact
-            ? "wt-field h-8 min-h-0 text-xs pl-2.5 pr-8 py-0 bg-background cursor-pointer"
-            : "wt-field pl-3 pr-8 cursor-pointer"
+            ? "wt-field h-8 min-h-0 text-xs pl-2.5 pr-8 py-0 bg-background cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
+            : "wt-field pl-3 pr-8 cursor-pointer disabled:cursor-not-allowed disabled:opacity-60"
         }
         value={value}
         onChange={(event) => onChange(event.target.value)}
+        disabled={disabled}
       >
         {placeholder && <option value="">{placeholder}</option>}
         {options.map((option) => (

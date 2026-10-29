@@ -82,6 +82,15 @@ const POPULAR_INSTRUMENTS: InstrumentSearchResult[] = [
   { symbol: "NIFTYBEES", name: "Nippon India ETF Nifty BeES", category: "ETF", assetType: "ETF", exchange: "NSE", currentPrice: 268.10, currency: "INR" },
 ];
 
+// <input type="date"> requires a full YYYY-MM-DD value; coerce legacy YYYY-MM
+// records (and anything else unparseable) so the field never renders blank.
+function normalizeDateInputValue(value: string | undefined): string {
+  if (!value) return "";
+  if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
+  if (/^\d{4}-\d{2}$/.test(value)) return `${value}-01`;
+  return "";
+}
+
 export function InvestmentHoldingModal({
   data,
   existing,
@@ -106,9 +115,9 @@ export function InvestmentHoldingModal({
   const [assetType, setAssetType] = useState<AssetType>(existing?.assetType ?? "Mutual fund");
   const [institution, setInstitution] = useState(existing?.institution ?? "");
   const [startMonthYear, setStartMonthYear] = useState(
-    existing?.startMonthYear ?? ""
+    normalizeDateInputValue(existing?.startMonthYear)
   );
-  const [endMonthYear, setEndMonthYear] = useState(existing?.endMonthYear ?? "");
+  const [endMonthYear, setEndMonthYear] = useState(normalizeDateInputValue(existing?.endMonthYear));
   const [investedAmount, setInvestedAmount] = useState<number | "">(
     existing?.investedAmount !== undefined ? existing.investedAmount : ""
   );
@@ -931,6 +940,7 @@ export function InvestmentHoldingModal({
                   : "border-border bg-background text-muted-foreground hover:bg-muted/60"
               }`}
               onClick={() => {
+                if (investmentStyle === "LumpSum") return; // already in this mode — don't wipe entered data
                 setInvestmentStyle("LumpSum");
                 setIsRecurring(false);
                 // Switching modes starts fresh; don't carry over the other mode's amount/valuation.
@@ -948,7 +958,7 @@ export function InvestmentHoldingModal({
                 }
               }}
             >
-              One-time (Lump Sum)
+              One-time
             </button>
             <button
               type="button"
@@ -958,6 +968,7 @@ export function InvestmentHoldingModal({
                   : "border-border bg-background text-muted-foreground hover:bg-muted/60"
               }`}
               onClick={() => {
+                if (investmentStyle === "SIP") return; // already in this mode — don't wipe entered data
                 setInvestmentStyle("SIP");
                 setIsRecurring(true);
                 // Switching modes starts fresh; don't carry over the other mode's amount/valuation.
@@ -974,7 +985,7 @@ export function InvestmentHoldingModal({
                 }
               }}
             >
-              Recurring (Monthly SIP)
+              Recurring
             </button>
           </div>
 
@@ -1393,7 +1404,7 @@ export function InvestmentHoldingModal({
               ) : (
                 /* STOCKS, MUTUAL FUNDS, ETFS, GOLD & CRYPTO LIVE CONTROLS */
                 <div className="space-y-3">
-                  {/* Calculation Basis Tabs: Shown only in SIP/custom mode — completely removed for One-time (Lump Sum) */}
+                  {/* Calculation Basis Tabs: Shown only in SIP/custom mode — completely removed for One-time*/}
                   {investmentStyle !== "LumpSum" && (
                     <div className="rounded-lg bg-background p-2.5 border border-border/70 space-y-1.5">
                       <div className="flex flex-wrap items-center justify-between gap-1.5 text-[11px]">
