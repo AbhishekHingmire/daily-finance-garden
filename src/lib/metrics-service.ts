@@ -814,7 +814,18 @@ export function getComingUpItems(
     }
   }
 
-  return items.sort((a, b) => a.date.localeCompare(b.date));
+  return dedupeComingUpItems(items).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// Collapses visually-identical entries (e.g. accidental duplicate recurring records).
+function dedupeComingUpItems(items: ComingUpItem[]): ComingUpItem[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.name}|${item.amount}|${item.date}|${item.kind}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /**

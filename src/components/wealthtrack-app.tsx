@@ -2983,8 +2983,32 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         <div className="min-w-0 flex-1 w-full md:pl-[72px] lg:pl-[248px]">
           <header className="fixed top-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-topbar flex h-[56px] md:h-[64px] pt-[env(safe-area-inset-top)] md:pt-0 items-center justify-between gap-3 border-b border-border bg-background px-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-3">
-              {["Reports", "Insights", "Recurring", "Profile", "Preferences", "Settings", "Help"].includes(active) ? (
+              {["Reports", "Insights", "Recurring"].includes(active) ? (
                 <div className="flex items-center gap-2 md:hidden">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-10"
+                    aria-label="Open navigation"
+                    onClick={() => setMobileNav(true)}
+                  >
+                    <Menu size={22} />
+                  </Button>
+                  <span className="font-bold text-sm text-foreground truncate">
+                    {active === "Reports" ? "Insights" : active}
+                  </span>
+                </div>
+              ) : ["Profile", "Preferences", "Settings", "Help"].includes(active) ? (
+                <div className="flex items-center gap-1 md:hidden">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="size-10"
+                    aria-label="Open navigation"
+                    onClick={() => setMobileNav(true)}
+                  >
+                    <Menu size={22} />
+                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -2995,7 +3019,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     <ArrowLeft size={22} />
                   </Button>
                   <span className="font-bold text-sm text-foreground truncate">
-                    {active === "Reports" ? "Insights" : active}
+                    {active}
                   </span>
                 </div>
               ) : (
@@ -3079,7 +3103,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                       onClick={() => setNotificationOpen(false)}
                       aria-label="Close notifications menu"
                     />
-                    <div className="absolute right-0 top-12 z-topbar w-[min(340px,calc(100vw-24px))] rounded-xl border border-border bg-card p-2 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
+                    <div className="fixed right-3 sm:right-6 top-[calc(56px+env(safe-area-inset-top)+8px)] md:top-[72px] z-topbar w-[min(340px,calc(100vw-24px))] rounded-xl border border-border bg-card p-2 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
                       <div className="flex items-center justify-between px-2.5 py-2">
                         <p className="font-bold text-xs text-foreground uppercase tracking-wider">
                           Notifications

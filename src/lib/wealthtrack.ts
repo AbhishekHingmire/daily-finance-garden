@@ -875,6 +875,12 @@ export function syncSystemNotifications(
     );
   };
 
+  // Guards against showing two visually-identical cards (e.g. duplicate recurring
+  // records for the same loan/SIP) even when their underlying ids differ.
+  const seenDescriptions = new Set(currentNotifications.map((n) => n.description));
+  const isDuplicateContent = (description: string) => seenDescriptions.has(description);
+  const markSeen = (description: string) => seenDescriptions.add(description);
+
   // 1. Completed Goals notifications
   const funds = state.funds || [];
   funds.forEach((fund) => {
@@ -921,11 +927,13 @@ export function syncSystemNotifications(
     if (loan.currentOutstanding > 0 && (loan.autoRecurringEmi || loan.emiAmount > 0)) {
       const loanMonth = loan.startDate ? loan.startDate.slice(0, 7) : "active";
       const noticeId = `notice-loan-emi-${loan.id}-${loanMonth}`;
-      if (!isExcluded(noticeId)) {
+      const description = `${loan.name} • ${formatMoney(loan.emiAmount, currency)} auto-debit scheduled on monthly billing cycle.`;
+      if (!isExcluded(noticeId) && !isDuplicateContent(description)) {
+        markSeen(description);
         newNotices.push({
           id: noticeId,
           title: "🏦 Loan EMI Deduction Scheduled",
-          description: `${loan.name} • ${formatMoney(loan.emiAmount, currency)} auto-debit scheduled on monthly billing cycle.`,
+          description,
           date: new Date().toISOString().slice(0, 10),
           read: false,
         });
@@ -942,15 +950,17 @@ export function syncSystemNotifications(
       const sipDateStr = sip.nextDate.slice(0, 10);
       const scheduleKey = sipDateStr.slice(0, 7);
       const noticeId = `notice-sip-${sip.id}-${scheduleKey}`;
-      if (!isExcluded(noticeId)) {
-        const formattedDate = new Intl.DateTimeFormat("en-IN", {
-          month: "short",
-          day: "numeric",
-        }).format(new Date(sipDateStr));
+      const formattedDate = new Intl.DateTimeFormat("en-IN", {
+        month: "short",
+        day: "numeric",
+      }).format(new Date(sipDateStr));
+      const description = `${sip.name} • ${formatMoney(sip.amount, currency)} scheduled for ${formattedDate}.`;
+      if (!isExcluded(noticeId) && !isDuplicateContent(description)) {
+        markSeen(description);
         newNotices.push({
           id: noticeId,
           title: "📈 SIP Investment Scheduled",
-          description: `${sip.name} • ${formatMoney(sip.amount, currency)} scheduled for ${formattedDate}.`,
+          description,
           date: sipDateStr,
           read: false,
         });

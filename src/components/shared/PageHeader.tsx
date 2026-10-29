@@ -30,9 +30,15 @@ export interface PageHeaderProps {
 }
 
 export function AsOfTodayCaption() {
+  const today = new Intl.DateTimeFormat("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date());
+
   return (
     <span className="text-xs text-muted-foreground font-medium shrink-0 tabular-nums">
-      As of today · 26 Oct 2026
+      As of today · {today}
     </span>
   );
 }

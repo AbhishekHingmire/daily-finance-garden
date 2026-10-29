@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Modal } from "@/components/shared/Modal";
 import {
   type Account,
@@ -767,12 +768,10 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
                   <option value="Yearly">Yearly</option>
                 </select>
               )}
-              <input
-                type="checkbox"
+              <Switch
                 checked={isRepeat}
-                onChange={(e) => setIsRepeat(e.target.checked)}
-                className="size-4 rounded accent-primary cursor-pointer"
-                id="repeat-checkbox"
+                onCheckedChange={setIsRepeat}
+                aria-label="Repeat this transaction"
               />
             </div>
           </div>
