@@ -11,7 +11,6 @@ import {
   Landmark,
   LayoutDashboard,
   LogOut,
-  Menu,
   MoreHorizontal,
   Plus,
   RefreshCw,
@@ -34,6 +33,7 @@ import { matchesDateRange, type DateRangeValue } from "@/components/shared/DateR
 import { AuthPage, type AuthView } from "@/features/auth/AuthPage";
 import { authApi, authStorage, marketApi, type AuthResponseData, getWealthRepository, getApiBaseUrl } from "@/services/api";
 import { currencyService } from "@/lib/currency-service";
+import { calculateInvestmentValuation } from "@/lib/investment-calculator";
 import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { Dashboard } from "@/features/dashboard/Dashboard";
 import { TransactionsPage } from "@/features/transactions/TransactionsPage";
@@ -78,6 +78,7 @@ import {
   getHoldingsSummary,
   getLoansSummary,
   getNextRecurringDate,
+  syncSalaryTransactionWithSchedule,
   makeNotification,
   processDueRecurringTransactions,
   safeAmount,
@@ -524,6 +525,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     label: string;
     amount?: number;
   } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Unified Date Range Filter State
   const [dateRange, setDateRange] = useState<DateRangeValue>({
@@ -600,7 +602,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const refreshInvestmentQuotes = async () => {
     if (isRefreshingInvestmentQuotes) return;
     const holdings = (investmentsRef.current ?? []).filter(
-      (h) => (h.symbol || h.name) && (h.units || 0) > 0 && h.assetType !== "Fixed deposit" && h.calculationMode !== "manual"
+      (h) =>
+        (h.symbol || h.name) &&
+        (h.units || 0) > 0 &&
+        h.assetType !== "Fixed deposit" &&
+        h.assetType !== "Provident Fund" &&
+        h.calculationMode !== "manual"
     );
     if (holdings.length === 0) return;
 
@@ -658,12 +665,52 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     }
   };
 
+  // Fixed Deposit / Provident Fund holdings have no live market price to fetch — their value
+  // instead grows purely as a function of elapsed time against a declared interest rate. Since
+  // that elapsed time changes every single day, recompute their accrued value against today's
+  // date on every load/tab-visit so they never show a stale, previously-saved amount.
+  const recalculateFixedRateHoldings = () => {
+    const holdings = (investmentsRef.current ?? []).filter(
+      (h) => h.assetType === "Fixed deposit" || h.assetType === "Provident Fund"
+    );
+    if (holdings.length === 0) return;
+
+    const updates = new Map<string, Partial<InvestmentHolding>>();
+    for (const h of holdings) {
+      const valuation = calculateInvestmentValuation({
+        investedAmount: h.investedAmount,
+        assetType: h.assetType,
+        calculationMode: "fixed_deposit",
+        startMonthYear: h.startMonthYear,
+        endMonthYear: h.endMonthYear,
+        fdAnnualRate: h.interestRate,
+      });
+      if (Math.abs(valuation.currentAmount - h.currentAmount) > 0.01) {
+        updates.set(h.id, { currentAmount: valuation.currentAmount });
+      }
+    }
+    if (updates.size === 0) return;
+
+    setData((current) => ({
+      ...current,
+      investments: (current.investments ?? []).map((h) =>
+        updates.has(h.id) ? { ...h, ...updates.get(h.id) } : h
+      ),
+    }));
+
+    updates.forEach((patch, id) => {
+      const holding = holdings.find((h) => h.id === id);
+      if (holding) repository.updateHolding({ ...holding, ...patch }).catch(() => {});
+    });
+  };
+
   // Run once per load (if stale) and then every 5 minutes while the app stays open.
   useEffect(() => {
     if (!loaded) return;
     if (Date.now() - lastInvestmentQuoteRefreshAt > INVESTMENT_QUOTE_REFRESH_MS) {
       refreshInvestmentQuotes();
     }
+    recalculateFixedRateHoldings();
     const interval = setInterval(refreshInvestmentQuotes, INVESTMENT_QUOTE_REFRESH_MS);
     return () => clearInterval(interval);
   }, [loaded]);
@@ -674,6 +721,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     if (!loaded) return;
     if (active === "Wealth" && wealthSubtab === "investments") {
       refreshInvestmentQuotes();
+      recalculateFixedRateHoldings();
     }
   }, [loaded, active, wealthSubtab]);
 
@@ -743,9 +791,37 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           return c;
         });
 
+        // Ensure a dedicated Transfer category exists for SIP/lumpsum contributions, kept
+        // separate from "Investment Returns (Dividends/Gains)" which is genuine Income.
+        const finalCategories = upgradedCategories.some((c) => c.id === "cat-investment-contrib")
+          ? upgradedCategories
+          : [
+              ...upgradedCategories,
+              {
+                id: "cat-investment-contrib",
+                name: "Investment Contributions (SIP/Lumpsum)",
+                kind: "Transfer" as const,
+                icon: "📥",
+                color: "teal",
+                monthlyLimit: 0,
+              },
+            ];
+
+        // Re-categorize any pre-existing Investment-type items tagged to an Income category —
+        // SIP/lumpsum is a deduction from a bank account, not income.
+        const isIncomeCategory = (id?: string) => !!id && finalCategories.find((c) => c.id === id)?.kind === "Income";
+        const correctedTransactions = res.data.transactions.map((t) =>
+          t.type === "Investment" && isIncomeCategory(t.categoryId) ? { ...t, categoryId: "cat-investment-contrib" } : t
+        );
+        const correctedRecurring = res.data.recurring.map((r) =>
+          r.type === "Investment" && isIncomeCategory(r.categoryId) ? { ...r, categoryId: "cat-investment-contrib" } : r
+        );
+
         const baseState: WealthState = syncLoansWithRecurring({
           ...res.data,
-          categories: upgradedCategories,
+          categories: finalCategories,
+          transactions: correctedTransactions,
+          recurring: correctedRecurring,
         });
         const { updatedState, processedCount, processedItems } = processAutomatedState(baseState, repository);
         const clearedNoticeIds = getClearedNotificationIds();
@@ -1019,12 +1095,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       );
 
       const catInvestments =
-        data.categories.find(
-          (c) =>
-            c.name.toLowerCase().includes("invest") ||
-            c.name.toLowerCase().includes("saving") ||
-            c.name.toLowerCase().includes("wealth")
-        )?.id ?? data.categories[0]?.id;
+        data.categories.find((c) => c.id === "cat-investment-contrib" && !c.archived)?.id ??
+        data.categories[0]?.id;
 
       const sipDay = Number(holding.sipDay) || 10;
       const { nextDate } = computeNextSipDate(sipDay);
@@ -1320,6 +1392,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     enabled?: boolean;
     startDate?: string;
   }) => {
+    let salarySync: ReturnType<typeof syncSalaryTransactionWithSchedule> | null = null;
+    let persistedSalaryItem: { item: RecurringItem; isNew: boolean } | null = null;
+
     setData((current) => {
       const salaryDay = payload.salaryDay;
       const amount = payload.amount;
@@ -1346,13 +1421,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         current.categories.find((c) => c.name.toLowerCase().includes("salary"))?.id ||
         "cat-salary";
 
+      const resolvedAccountId = payload.accountId || current.accounts[0]?.id || "";
+
       const salaryItem: RecurringItem = {
         id: salaryIdx >= 0 ? nextRecurring[salaryIdx].id : "rec-salary",
         name: payload.name || (salaryIdx >= 0 ? nextRecurring[salaryIdx].name : "Monthly salary"),
         type: "Income",
         amount,
         categoryId: targetCatId,
-        accountId: payload.accountId || current.accounts[0]?.id || "",
+        accountId: resolvedAccountId,
         frequency: "Monthly",
         intervalDays: 0,
         startDate: payload.startDate || (salaryIdx >= 0 ? nextRecurring[salaryIdx].startDate : "2026-05-19"),
@@ -1364,17 +1441,48 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
       if (salaryIdx >= 0) {
         nextRecurring[salaryIdx] = salaryItem;
+        persistedSalaryItem = { item: salaryItem, isNew: false };
       } else {
         nextRecurring = [salaryItem, ...nextRecurring];
+        persistedSalaryItem = { item: salaryItem, isNew: true };
       }
+
+      // Keep the actual transaction history in sync with the new schedule right away,
+      // instead of waiting for the next automated recurring pass.
+      salarySync = syncSalaryTransactionWithSchedule(current.transactions, {
+        salaryDay,
+        salaryAmount: amount,
+        accountId: resolvedAccountId,
+        categoryId: targetCatId,
+        merchant: current.profile?.fullName,
+      });
 
       return {
         ...current,
         preferences,
         profile,
         recurring: nextRecurring,
+        transactions: salarySync.transactions,
       };
     });
+
+    // Persist the salary day + recurring schedule to the backend so a page refresh doesn't reset them.
+    repository.updatePreferences({ salaryDay: payload.salaryDay }).catch(() => {});
+    if (persistedSalaryItem) {
+      const { item, isNew } = persistedSalaryItem as { item: RecurringItem; isNew: boolean };
+      (isNew ? repository.addRecurring(item) : repository.updateRecurring(item)).catch(() => {});
+    }
+
+    if (salarySync) {
+      const sync = salarySync as ReturnType<typeof syncSalaryTransactionWithSchedule>;
+      sync.changedTransactionIds.forEach((id) => {
+        const tx = sync.transactions.find((t) => t.id === id);
+        if (tx) repository.updateTransaction(tx).catch(() => {});
+      });
+      if (sync.createdTransaction) {
+        repository.addTransaction(sync.createdTransaction).catch(() => {});
+      }
+    }
 
     toast.success("Salary & Recurring Schedule Synchronized", {
       description: `${money(payload.amount)}/mo on the ${payload.salaryDay}th of every month.`,
@@ -1929,6 +2037,16 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   };
 
   const confirmDelete = async () => {
+    if (!pendingDelete || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      await confirmDeleteAction();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const confirmDeleteAction = async () => {
     if (!pendingDelete) return;
     const { kind, id } = pendingDelete;
     if (kind === "transaction" && id) {
@@ -2199,6 +2317,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       if (res.data) item = { ...item, ...res.data };
     }
 
+    let addRecurringSalarySync: ReturnType<typeof syncSalaryTransactionWithSchedule> | null = null;
+
     setData((current) => {
       let nextInvestments = [...(current.investments ?? [])];
       let nextLoans = current.loans ?? [];
@@ -2262,14 +2382,26 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         item.id === "rec-salary" ||
         (item.type === "Income" && item.name.toLowerCase().includes("salary"));
 
+      let nextTransactions = current.transactions;
       if (isSalaryItem) {
         const parsedDay = item.nextDate ? Number(item.nextDate.slice(8, 10)) : null;
         if (parsedDay && parsedDay >= 1 && parsedDay <= 31) {
           nextPreferences = { ...nextPreferences, salaryDay: parsedDay };
         }
         if (nextProfile) {
-          nextProfile = { ...nextProfile, monthlyIncomeTarget: item.amount };
+          nextProfile = { ...nextProfile, monthlyIncomeTarget: item.amount, salaryAccountId: item.accountId };
         }
+
+        // Keep the actual transaction history in sync with the new schedule right away,
+        // instead of waiting for the next automated recurring pass.
+        addRecurringSalarySync = syncSalaryTransactionWithSchedule(current.transactions, {
+          salaryDay: parsedDay && parsedDay >= 1 && parsedDay <= 31 ? parsedDay : current.preferences.salaryDay ?? 19,
+          salaryAmount: item.amount,
+          accountId: item.accountId,
+          categoryId: item.categoryId,
+          merchant: current.profile?.fullName,
+        });
+        nextTransactions = addRecurringSalarySync.transactions;
       }
 
       return {
@@ -2281,8 +2413,21 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           : [...current.recurring, item],
         investments: nextInvestments,
         loans: nextLoans,
+        transactions: nextTransactions,
       };
     });
+
+    if (addRecurringSalarySync) {
+      const sync = addRecurringSalarySync as ReturnType<typeof syncSalaryTransactionWithSchedule>;
+      sync.changedTransactionIds.forEach((id) => {
+        const tx = sync.transactions.find((t) => t.id === id);
+        if (tx) repository.updateTransaction(tx).catch(() => {});
+      });
+      if (sync.createdTransaction) {
+        repository.addTransaction(sync.createdTransaction).catch(() => {});
+      }
+    }
+
     setModal(null);
     toast.success(editingRecurring ? "Schedule updated" : "Recurring schedule added");
   };
@@ -2994,30 +3139,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             <div className="flex min-w-0 items-center gap-3">
               {["Reports", "Insights", "Recurring"].includes(active) ? (
                 <div className="flex items-center gap-2 md:hidden">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-10"
-                    aria-label="Open navigation"
-                    onClick={() => setMobileNav(true)}
-                  >
-                    <Menu size={22} />
-                  </Button>
                   <span className="font-bold text-sm text-foreground truncate">
                     {active === "Reports" ? "Insights" : active}
                   </span>
                 </div>
               ) : ["Profile", "Preferences", "Settings", "Help"].includes(active) ? (
                 <div className="flex items-center gap-1 md:hidden">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-10"
-                    aria-label="Open navigation"
-                    onClick={() => setMobileNav(true)}
-                  >
-                    <Menu size={22} />
-                  </Button>
                   <Button
                     variant="ghost"
                     size="icon"
@@ -3031,17 +3158,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     {active}
                   </span>
                 </div>
-              ) : (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="md:hidden size-10"
-                  aria-label="Open navigation"
-                  onClick={() => setMobileNav(true)}
-                >
-                  <Menu size={24} />
-                </Button>
-              )}
+              ) : null}
               <div className="hidden min-w-0 sm:flex items-center gap-1.5 text-xs text-muted-foreground select-none">
                 <span className="font-semibold text-muted-foreground/80">WealthTrack</span>
                 <span className="text-muted-foreground/40 font-bold">/</span>
@@ -3729,20 +3846,20 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
         <button
           type="button"
-          aria-label="Plan"
+          aria-label="More"
           className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
-            active === "Plan" || ["Categories", "Fund Planner", "Funds"].includes(active)
+            mobileNav || ["Plan", "Categories", "Fund Planner", "Funds", "Reports", "Recurring", "Preferences", "Profile", "Help", "Settings"].includes(active)
               ? "text-primary font-bold"
               : "text-muted-foreground hover:text-foreground font-medium"
           }`}
-          onClick={() => goSection("Plan")}
+          onClick={() => setMobileNav(true)}
         >
           <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-            active === "Plan" || ["Categories", "Fund Planner", "Funds"].includes(active) ? "bg-primary/10 text-primary" : ""
+            mobileNav || ["Plan", "Categories", "Fund Planner", "Funds", "Reports", "Recurring", "Preferences", "Profile", "Help", "Settings"].includes(active) ? "bg-primary/10 text-primary" : ""
           }`}>
-            <ShieldCheck size={18} className={active === "Plan" ? "stroke-[2.3]" : "stroke-[1.8]"} />
+            <MoreHorizontal size={18} className={mobileNav ? "stroke-[2.3]" : "stroke-[1.8]"} />
           </span>
-          <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Plan</span>
+          <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">More</span>
         </button>
       </nav>
 
@@ -3998,6 +4115,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               : undefined
           }
           onClose={() => {
+            if (isDeleting) return;
             setModal(null);
             setPendingDelete(null);
           }}
@@ -4016,6 +4134,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 setModal(null);
                 setPendingDelete(null);
               }}
+              disabled={isDeleting}
             >
               Cancel
             </Button>
@@ -4026,9 +4145,12 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   ? "default"
                   : "destructive"
               }
+              loading={isDeleting}
               onClick={confirmDelete}
             >
-              {pendingDelete.kind === "signout"
+              {isDeleting
+                ? "Processing…"
+                : pendingDelete.kind === "signout"
                 ? "Sign out"
                 : pendingDelete.kind === "reset"
                 ? "Reset demo"

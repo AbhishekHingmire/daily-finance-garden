@@ -23,7 +23,7 @@ export function LoanModal({
   data: WealthState;
   existing: LoanLiability | null;
   onClose: () => void;
-  onSave: (loan: LoanLiability) => void;
+  onSave: (loan: LoanLiability) => void | Promise<void>;
 }) {
   const currencySymbol =
     data.preferences.currency === "INR"
@@ -66,6 +66,7 @@ export function LoanModal({
   );
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const principalNum = Number(principalAmount) || 0;
   const outstandingNum = Number(currentOutstanding) || 0;
@@ -131,8 +132,9 @@ export function LoanModal({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const errs: Record<string, string> = {};
 
     // 1. Title validation
@@ -203,7 +205,12 @@ export function LoanModal({
       updatedAt: new Date().toISOString().slice(0, 10),
     };
 
-    onSave(loan);
+    setIsSubmitting(true);
+    try {
+      await onSave(loan);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -532,11 +539,11 @@ export function LoanModal({
 
         {/* Form Actions */}
         <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" className="text-xs font-semibold px-5">
-            {existing ? "Update Loan" : "Save Loan"}
+          <Button type="submit" loading={isSubmitting} className="text-xs font-semibold px-5">
+            {isSubmitting ? "Saving…" : existing ? "Update Loan" : "Save Loan"}
           </Button>
         </div>
       </form>

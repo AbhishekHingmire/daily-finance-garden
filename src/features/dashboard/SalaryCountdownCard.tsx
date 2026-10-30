@@ -33,7 +33,7 @@ export interface SalaryUpdatePayload {
 interface SalaryCountdownCardProps {
   data: WealthState;
   money: (amount: number) => string;
-  onUpdateSalary?: (payload: SalaryUpdatePayload) => void;
+  onUpdateSalary?: (payload: SalaryUpdatePayload) => void | Promise<void>;
 }
 
 
@@ -43,6 +43,7 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
   onUpdateSalary,
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Locate current salary recurring item
   const salaryRecurring = data.recurring.find(
@@ -102,20 +103,26 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
     setIsModalOpen(true);
   };
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const parsedAmount = Math.max(1, Number(formAmount) || currentSalaryAmount);
-    if (onUpdateSalary) {
-      onUpdateSalary({
-        name: formName.trim() || "Monthly salary",
-        amount: parsedAmount,
-        salaryDay: formSalaryDay,
-        accountId: formAccountId,
-        categoryId: formCategoryId,
-        need: formNeed,
-        enabled: formEnabled,
-        startDate: formStartDate,
-      });
+    setIsSubmitting(true);
+    try {
+      if (onUpdateSalary) {
+        await onUpdateSalary({
+          name: formName.trim() || "Monthly salary",
+          amount: parsedAmount,
+          salaryDay: formSalaryDay,
+          accountId: formAccountId,
+          categoryId: formCategoryId,
+          need: formNeed,
+          enabled: formEnabled,
+          startDate: formStartDate,
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
     setIsModalOpen(false);
   };
@@ -323,11 +330,12 @@ export const SalaryCountdownCard: React.FC<SalaryCountdownCardProps> = ({
                 size="sm"
                 onClick={() => setIsModalOpen(false)}
                 className="h-9 text-xs"
+                disabled={isSubmitting}
               >
                 Cancel
               </Button>
-              <Button type="submit" size="sm" className="h-9 text-xs font-semibold shadow-xs">
-                Save Salary Schedule
+              <Button type="submit" size="sm" loading={isSubmitting} className="h-9 text-xs font-semibold shadow-xs">
+                {isSubmitting ? "Saving…" : "Save Salary Schedule"}
               </Button>
             </div>
           </form>

@@ -365,7 +365,7 @@ export function ReportsPage({
       </div>
 
       {/* Side by Side Charts in 1 Row: Velocity Breakdown & Cumulative Net Cash Flow Trend */}
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 items-start">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 items-stretch">
         <CashFlowVelocityChart
           transactions={data.transactions}
           dateRange={dateRange}

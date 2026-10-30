@@ -18,7 +18,7 @@ export function FundModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSave: (fund: CustomFund) => void;
+  onSave: (fund: CustomFund) => void | Promise<void>;
   fund?: CustomFund | null;
   accounts: Account[];
 }) {
@@ -32,6 +32,7 @@ export function FundModal({
   const [icon, setIcon] = useState("🛡️");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setErrors({});
@@ -58,8 +59,9 @@ export function FundModal({
     }
   }, [fund, accounts, open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const newErrors: Record<string, string> = {};
 
     if (!name.trim()) {
@@ -105,7 +107,12 @@ export function FundModal({
       updatedAt: new Date().toISOString().slice(0, 10),
     };
 
-    onSave(payload);
+    setIsSubmitting(true);
+    try {
+      await onSave(payload);
+    } finally {
+      setIsSubmitting(false);
+    }
     onClose();
   };
 
@@ -233,11 +240,11 @@ export function FundModal({
         />
 
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-          <Button type="button" variant="outline" size="sm" onClick={onClose} className="text-xs">
+          <Button type="button" variant="outline" size="sm" onClick={onClose} className="text-xs" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" size="sm" className="text-xs font-semibold">
-            {fund ? "Update Fund" : "Create Fund"}
+          <Button type="submit" size="sm" loading={isSubmitting} className="text-xs font-semibold">
+            {isSubmitting ? "Saving…" : fund ? "Update Fund" : "Create Fund"}
           </Button>
         </div>
       </form>

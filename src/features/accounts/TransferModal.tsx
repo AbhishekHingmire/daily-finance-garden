@@ -29,7 +29,7 @@ export function TransferModal({
     amount: number;
     date: string;
     notes?: string;
-  }) => void;
+  }) => void | Promise<void>;
 }) {
   const activeAccounts = accounts.filter((a) => !a.archived);
 
@@ -47,6 +47,7 @@ export function TransferModal({
   const [date, setDate] = useState<string>(() => new Date().toISOString().slice(0, 16));
   const [notes, setNotes] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fromAccount = activeAccounts.find((a) => a.id === fromAccountId);
   const toAccount = activeAccounts.find((a) => a.id === toAccountId);
@@ -80,8 +81,9 @@ export function TransferModal({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     setError("");
 
     if (!fromAccountId || !toAccountId) {
@@ -101,13 +103,18 @@ export function TransferModal({
       return;
     }
 
-    onTransfer({
-      fromAccountId,
-      toAccountId,
-      amount: parsedAmount,
-      date: date || new Date().toISOString().slice(0, 16),
-      notes: notes.trim() || undefined,
-    });
+    setIsSubmitting(true);
+    try {
+      await onTransfer({
+        fromAccountId,
+        toAccountId,
+        amount: parsedAmount,
+        date: date || new Date().toISOString().slice(0, 16),
+        notes: notes.trim() || undefined,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
     onClose();
   };
 
@@ -352,16 +359,17 @@ export function TransferModal({
 
           {/* Action Buttons */}
           <div className="flex items-center justify-end gap-2.5 border-t border-border pt-4">
-            <Button type="button" variant="outline" size="sm" onClick={onClose} className="h-9 text-xs">
+            <Button type="button" variant="outline" size="sm" onClick={onClose} className="h-9 text-xs" disabled={isSubmitting}>
               Cancel
             </Button>
             <Button
               type="submit"
               size="sm"
+              loading={isSubmitting}
               disabled={!isValidAmount || fromAccountId === toAccountId}
               className="h-9 gap-1.5 text-xs font-semibold shadow-xs"
             >
-              <CheckCircle2 size={14} /> Confirm Transfer
+              {!isSubmitting && <CheckCircle2 size={14} />} {isSubmitting ? "Transferring…" : "Confirm Transfer"}
             </Button>
           </div>
         </form>

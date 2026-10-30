@@ -16,7 +16,7 @@ export function PlanModal({
 }: {
   open: boolean;
   onClose: () => void;
-  onSave: (plan: PurchasePlan) => void;
+  onSave: (plan: PurchasePlan) => void | Promise<void>;
   plan?: PurchasePlan | null;
 }) {
   const [title, setTitle] = useState("");
@@ -28,6 +28,7 @@ export function PlanModal({
   const [loanTenureYears, setLoanTenureYears] = useState("5");
   const [notes, setNotes] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     setErrors({});
@@ -52,8 +53,9 @@ export function PlanModal({
     }
   }, [plan, open]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
@@ -105,7 +107,12 @@ export function PlanModal({
       updatedAt: new Date().toISOString().slice(0, 10),
     };
 
-    onSave(payload);
+    setIsSubmitting(true);
+    try {
+      await onSave(payload);
+    } finally {
+      setIsSubmitting(false);
+    }
     onClose();
   };
 
@@ -225,11 +232,11 @@ export function PlanModal({
         />
 
         <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
-          <Button type="button" variant="outline" size="sm" onClick={onClose} className="text-xs">
+          <Button type="button" variant="outline" size="sm" onClick={onClose} className="text-xs" disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" size="sm" className="text-xs font-semibold">
-            {plan ? "Update Plan" : "Generate Simulation Plan"}
+          <Button type="submit" size="sm" loading={isSubmitting} className="text-xs font-semibold">
+            {isSubmitting ? "Saving…" : plan ? "Update Plan" : "Generate Simulation Plan"}
           </Button>
         </div>
       </form>

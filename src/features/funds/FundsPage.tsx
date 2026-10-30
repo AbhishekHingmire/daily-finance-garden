@@ -47,11 +47,11 @@ export function FundsPage({
 }: {
   data: WealthState;
   money: (amount: number) => string;
-  onSaveFund: (fund: CustomFund) => void;
+  onSaveFund: (fund: CustomFund) => void | Promise<void>;
   onDeleteFund: (fundId: string) => void;
-  onSavePlan: (plan: PurchasePlan) => void;
+  onSavePlan: (plan: PurchasePlan) => void | Promise<void>;
   onDeletePlan: (planId: string) => void;
-  onQuickDepositFund: (fundId: string, amount: number, sourceAccountId?: string) => void;
+  onQuickDepositFund: (fundId: string, amount: number, sourceAccountId?: string) => void | Promise<void>;
   onSkipFundMonth?: (fundId: string, monthStr: string) => void;
 }) {
   const [activeTab, setActiveTab] = useState<"funds" | "simulator">("funds");
@@ -66,6 +66,7 @@ export function FundsPage({
   const [depositFund, setDepositFund] = useState<CustomFund | null>(null);
   const [depositAmount, setDepositAmount] = useState("");
   const [depositSourceAccountId, setDepositSourceAccountId] = useState(data.accounts[0]?.id || "");
+  const [isDepositSubmitting, setIsDepositSubmitting] = useState(false);
 
   const funds = data.funds ?? [];
   const plans = data.plans ?? [];
@@ -115,9 +116,9 @@ export function FundsPage({
     return getEmergencyFundSummary(data.profile, liquidBalance, monthlyExpenses, funds);
   }, [data.profile, liquidBalance, monthlyExpenses, funds]);
 
-  const handleDepositSubmit = (e: React.FormEvent) => {
+  const handleDepositSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!depositFund) return;
+    if (!depositFund || isDepositSubmitting) return;
     const numDeposit = Number(depositAmount);
     if (!numDeposit || isNaN(numDeposit) || numDeposit <= 0) {
       toast.error("Please enter a valid deposit amount.");
@@ -142,7 +143,12 @@ export function FundsPage({
       });
     }
 
-    onQuickDepositFund(depositFund.id, numDeposit, depositSourceAccountId);
+    setIsDepositSubmitting(true);
+    try {
+      await onQuickDepositFund(depositFund.id, numDeposit, depositSourceAccountId);
+    } finally {
+      setIsDepositSubmitting(false);
+    }
     setDepositFund(null);
     setDepositAmount("");
   };
@@ -855,11 +861,12 @@ export function FundsPage({
                   size="sm"
                   onClick={() => setDepositFund(null)}
                   className="text-xs"
+                  disabled={isDepositSubmitting}
                 >
                   Cancel
                 </Button>
-                <Button type="submit" size="sm" className="text-xs font-semibold">
-                  Confirm Deposit
+                <Button type="submit" size="sm" loading={isDepositSubmitting} className="text-xs font-semibold">
+                  {isDepositSubmitting ? "Depositing…" : "Confirm Deposit"}
                 </Button>
               </div>
             </form>

@@ -65,9 +65,10 @@ export function AccountModal({
   account: Account | null;
   currency?: string;
   onClose: () => void;
-  onSave: (form: Partial<Account>) => void;
+  onSave: (form: Partial<Account>) => void | Promise<void>;
 }) {
   const [kind, setKind] = useState<AccountKind>(() => account?.kind ?? "Bank account");
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [popularBanks, setPopularBanks] = useState<string[]>(POPULAR_BANKS);
   const [popularWallets, setPopularWallets] = useState<string[]>(POPULAR_WALLETS);
   const [popularCards, setPopularCards] = useState<string[]>(POPULAR_CARDS);
@@ -119,7 +120,7 @@ export function AccountModal({
   const [name, setName] = useState<string>(() => account?.name ?? "");
   const [nameManuallyEdited, setNameManuallyEdited] = useState<boolean>(() => Boolean(account?.name));
   const [identifier, setIdentifier] = useState<string>(() => account?.identifier ?? "");
-  const [openingBalance, setOpeningBalance] = useState<string | number>(() => account?.openingBalance ?? 0);
+  const [openingBalance, setOpeningBalance] = useState<string | number>(() => account?.openingBalance ?? "");
   const [notes, setNotes] = useState<string>(() => account?.notes ?? "");
   const [showNotes, setShowNotes] = useState<boolean>(() => Boolean(account?.notes));
   const [nameError, setNameError] = useState<string>("");
@@ -182,8 +183,9 @@ export function AccountModal({
     }
   };
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isSubmitting) return;
     setNameError("");
     setBalanceError("");
 
@@ -209,14 +211,19 @@ export function AccountModal({
       finalInstitution = customInstitution.trim() || name.trim();
     }
 
-    onSave({
-      name: name.trim(),
-      kind,
-      institution: finalInstitution,
-      identifier: kind === "Cash" ? "" : identifier.trim(),
-      openingBalance: Number(openingBalance) || 0,
-      notes: notes.trim(),
-    });
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        name: name.trim(),
+        kind,
+        institution: finalInstitution,
+        identifier: kind === "Cash" ? "" : identifier.trim(),
+        openingBalance: Number(openingBalance) || 0,
+        notes: notes.trim(),
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const currencySymbol =
@@ -458,10 +465,12 @@ export function AccountModal({
 
         {/* Action Buttons */}
         <div className="flex justify-end gap-2 border-t border-border pt-3">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit">{account ? "Save Changes" : "Add Account"}</Button>
+          <Button type="submit" loading={isSubmitting}>
+            {isSubmitting ? "Saving…" : account ? "Save Changes" : "Add Account"}
+          </Button>
         </div>
       </form>
     </Modal>

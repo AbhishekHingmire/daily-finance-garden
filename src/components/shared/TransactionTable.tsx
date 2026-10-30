@@ -215,16 +215,18 @@ export function TransactionTable({
         continue;
       }
 
+      // Classification is driven by the transaction's own explicit `type` (a closed,
+      // unambiguous enum) — category kind is intentionally NOT used as an income/expense
+      // fallback here, since a category's kind (e.g. an "Investment Returns" income category)
+      // must never override an explicit Expense/Investment transaction type.
       const isIncome =
         tx.type === "Income" ||
         tx.type === "Refund" ||
-        cat?.kind === "Income" ||
         (tx.type === "Adjustment" && tx.amount > 0);
 
       const isExpense =
         tx.type === "Expense" ||
         tx.type === "EMI / Loan Payment" ||
-        cat?.kind === "Expense" ||
         (tx.type === "Adjustment" && tx.amount < 0);
 
       if (isIncome) {

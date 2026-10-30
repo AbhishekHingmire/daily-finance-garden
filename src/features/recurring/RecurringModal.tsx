@@ -18,7 +18,7 @@ export function RecurringModal({
   item: RecurringItem | null;
   data: WealthState;
   onClose: () => void;
-  onSave: (form: Partial<RecurringItem>) => void;
+  onSave: (form: Partial<RecurringItem>) => void | Promise<void>;
   onAddCategory?: (category: Category) => void;
 }) {
   const currencySymbol =
@@ -63,6 +63,7 @@ export function RecurringModal({
     item?.loanId ?? ""
   );
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const totalNum = Number(totalInstallments) || 0;
   const paidNum = Number(paidInstallments) || 0;
@@ -81,7 +82,7 @@ export function RecurringModal({
     const newCat: Category = {
       id: `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       name: catForm.name.trim(),
-      kind: catForm.kind ?? (form.type === "Investment" ? "Expense" : (form.type ?? "Expense")),
+      kind: catForm.kind ?? (form.type === "Investment" ? "Transfer" : (form.type ?? "Expense")),
       icon: catForm.icon ?? matchCategoryIcon(catForm.name.trim(), "📁"),
       color: catForm.color ?? "blue",
       monthlyLimit: Number(catForm.monthlyLimit) || 0,
@@ -118,7 +119,8 @@ export function RecurringModal({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSubmitting) return;
     const errs: Record<string, string> = {};
 
     if (!form.name?.trim()) {
@@ -156,12 +158,17 @@ export function RecurringModal({
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
 
-    onSave({
-      ...form,
-      loanId: selectedLoanId || undefined,
-      totalInstallments: isInstallmentPlan ? (totalNum || undefined) : undefined,
-      paidInstallments: isInstallmentPlan ? paidNum : undefined,
-    });
+    setIsSubmitting(true);
+    try {
+      await onSave({
+        ...form,
+        loanId: selectedLoanId || undefined,
+        totalInstallments: isInstallmentPlan ? (totalNum || undefined) : undefined,
+        paidInstallments: isInstallmentPlan ? paidNum : undefined,
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -533,17 +540,19 @@ export function RecurringModal({
         </div>
 
         <div className="flex justify-end gap-2 pt-2 border-t border-border">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>{item ? "Save Changes" : "Add Schedule"}</Button>
+          <Button onClick={handleSave} loading={isSubmitting}>
+            {isSubmitting ? "Saving…" : item ? "Save Changes" : "Add Schedule"}
+          </Button>
         </div>
       </div>
 
       {isCreatingCategory && (
         <CategoryModal
           category={null}
-          kind={form.type === "Investment" ? "Expense" : (form.type ?? "Expense")}
+          kind={form.type === "Investment" ? "Transfer" : (form.type ?? "Expense")}
           onClose={() => setIsCreatingCategory(false)}
           onSave={handleQuickCreateCategory}
         />

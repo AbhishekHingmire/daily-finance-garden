@@ -78,9 +78,9 @@ export const NAV_ITEMS: NavItem[] = [
   {
     id: "plan",
     section: "Plan",
-    label: "Plan",
-    h1: "Plan",
-    breadcrumb: "Plan",
+    label: "Planner",
+    h1: "Planner",
+    breadcrumb: "Planner",
     path: "/plan",
     icon: ShieldCheck,
     inBottomNav: true,

@@ -122,6 +122,20 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  // Browsers increment/decrement a focused <input type="number"> on mouse-wheel scroll,
+  // which silently corrupts amount fields while the page itself is being scrolled. Blur
+  // any focused number input the instant a wheel event fires, app-wide.
+  useEffect(() => {
+    const handleWheel = () => {
+      const active = document.activeElement;
+      if (active instanceof HTMLInputElement && active.type === "number") {
+        active.blur();
+      }
+    };
+    document.addEventListener("wheel", handleWheel, { passive: true });
+    return () => document.removeEventListener("wheel", handleWheel);
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}

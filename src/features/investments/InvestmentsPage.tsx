@@ -33,6 +33,7 @@ const ASSET_COLORS: Record<AssetType, { bg: string; text: string; fill: string }
   ETF: { bg: "bg-violet-500/10", text: "text-violet-600 dark:text-violet-400", fill: "#8b5cf6" },
   "Gold & Commodities": { bg: "bg-amber-500/10", text: "text-amber-600 dark:text-amber-400", fill: "#f59e0b" },
   "Fixed deposit": { bg: "bg-teal-500/10", text: "text-teal-600 dark:text-teal-400", fill: "#14b8a6" },
+  "Provident Fund": { bg: "bg-cyan-500/10", text: "text-cyan-600 dark:text-cyan-400", fill: "#06b6d4" },
   Crypto: { bg: "bg-rose-500/10", text: "text-rose-600 dark:text-rose-400", fill: "#f43f5e" },
   Other: { bg: "bg-muted", text: "text-muted-foreground", fill: "#64748b" },
 };

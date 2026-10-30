@@ -51,7 +51,7 @@ export interface GlobalAddSheetProps {
   loans: Loan[];
   entries?: Entry[];
   defaultAccount?: string;
-  onSaveEntry: (entry: Entry, newSchedule?: Schedule) => void;
+  onSaveEntry: (entry: Entry, newSchedule?: Schedule) => void | Promise<void>;
   initialPreset?: Partial<Entry>;
   onOpenBulkImport?: () => void;
 }
@@ -93,6 +93,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
   const [isRepeat, setIsRepeat] = useState<boolean>(false);
   const [repeatFrequency, setRepeatFrequency] = useState<"Weekly" | "Monthly" | "Yearly">("Monthly");
   const [showMoreActions, setShowMoreActions] = useState<boolean>(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize or reset form when modal opens or preset changes
   useEffect(() => {
@@ -245,8 +246,9 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isSubmitting) return;
     const numAmt = parseFloat(amount);
     if (!amount || isNaN(numAmt) || numAmt <= 0) {
       toast.error("Please enter a valid amount");
@@ -344,10 +346,14 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
       };
     }
 
-    onSaveEntry(newEntry, newSchedule);
-    toast.success(`${activeTab === "expense" ? "Expense" : activeTab === "income" ? "Income" : "Transfer"} recorded`, {
-      description: `₹${numAmt.toLocaleString("en-IN")} on ${date}`,
-    });
+    // Note: the success/error toast for this save is shown by the parent handler once the
+    // underlying repository call actually completes — showing one here too would duplicate it.
+    setIsSubmitting(true);
+    try {
+      await onSaveEntry(newEntry, newSchedule);
+    } finally {
+      setIsSubmitting(false);
+    }
     onClose();
   };
 
@@ -780,9 +786,11 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
           <div className="pt-2">
             <Button
               type="submit"
+              loading={isSubmitting}
               className="w-full h-11 text-xs font-bold shadow-md gap-2"
             >
-              <Check size={16} /> Save {activeTab === "expense" ? "Expense" : activeTab === "income" ? "Income" : "Transfer"}
+              {!isSubmitting && <Check size={16} />}
+              {isSubmitting ? "Saving…" : `Save ${activeTab === "expense" ? "Expense" : activeTab === "income" ? "Income" : "Transfer"}`}
             </Button>
           </div>
         </form>

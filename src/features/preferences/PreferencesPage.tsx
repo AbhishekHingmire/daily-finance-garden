@@ -63,6 +63,7 @@ export function PreferencesPage({
 }) {
   const [hubsV2, setLocalHubsV2] = useState(() => getFeatureFlag("hubs_v2"));
   const [draft, setDraft] = useState<WealthPreferences>(data.preferences);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const tabs = [
     "General & Regional",
     "Alerts & Notifications",
@@ -76,8 +77,14 @@ export function PreferencesPage({
     [draft, data.preferences]
   );
 
-  const handleSave = () => {
-    updatePreferences(draft);
+  const handleSave = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await updatePreferences(draft);
+    } finally {
+      setIsSubmitting(false);
+    }
     toast.success("Preferences updated successfully", {
       description: "Your preferences have been saved locally.",
     });
@@ -102,16 +109,18 @@ export function PreferencesPage({
                 size="sm"
                 className="h-8 text-xs font-semibold cursor-pointer"
                 onClick={() => setDraft(data.preferences)}
+                disabled={isSubmitting}
               >
                 Discard
               </Button>
               <Button
                 type="button"
                 size="sm"
+                loading={isSubmitting}
                 className="h-8 gap-1.5 px-4 text-xs font-semibold shadow-xs cursor-pointer"
                 onClick={handleSave}
               >
-                <Save size={14} /> Save Changes
+                {!isSubmitting && <Save size={14} />} {isSubmitting ? "Saving…" : "Save Changes"}
               </Button>
             </div>
           ) : undefined

@@ -64,6 +64,7 @@ export function getDefaultExpenseRatio(assetType: AssetType, name: string = ""):
       return 0.00; // SGB / Physical Gold have 0 TER
     case "Stocks & Equity":
     case "Fixed deposit":
+    case "Provident Fund":
     case "Crypto":
     case "Other":
     default:
@@ -104,8 +105,15 @@ export function calculateInvestmentValuation(input: ValuationInput): ValuationRe
   let fdMaturityAmount: number | undefined;
   let sgbBonusInterest: number | undefined;
 
-  // 1. FIXED DEPOSIT COMPOUNDING FORMULA: A = P * (1 + r/n)^(n*t)
-  if (input.assetType === "Fixed deposit" || input.calculationMode === "fixed_deposit") {
+  // 1. FIXED DEPOSIT / PROVIDENT FUND COMPOUNDING FORMULA: A = P * (1 + r/n)^(n*t)
+  // EPF/PPF/VPF balances have no public live-fetch API (personal, authenticated data) —
+  // they are modeled the same way as a Fixed Deposit, compounding on the user-entered
+  // government-declared annual rate.
+  if (
+    input.assetType === "Fixed deposit" ||
+    input.assetType === "Provident Fund" ||
+    input.calculationMode === "fixed_deposit"
+  ) {
     const rate = Math.max(0, Number(input.fdAnnualRate) || 7.0) / 100;
     const n = input.fdCompounding === "Monthly" ? 12 : input.fdCompounding === "Annual" ? 1 : 4; // Default Quarterly
 

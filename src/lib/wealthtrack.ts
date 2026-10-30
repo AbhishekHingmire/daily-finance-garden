@@ -64,6 +64,7 @@ export type AssetType =
   | "ETF"
   | "Gold & Commodities"
   | "Fixed deposit"
+  | "Provident Fund"
   | "Crypto"
   | "Other";
 
@@ -367,12 +368,14 @@ export function createInitialState(): WealthState {
     { id: "cat-entertainment", name: "Entertainment", kind: "Expense", icon: "🎬", color: "pink", monthlyLimit: 4000 },
     { id: "cat-salary", name: "Salary", kind: "Income", icon: "💼", color: "green", monthlyLimit: 0 },
     { id: "cat-freelance", name: "Freelance", kind: "Income", icon: "💻", color: "blue", monthlyLimit: 0 },
-    { id: "cat-investments", name: "Investments", kind: "Income", icon: "📈", color: "teal", monthlyLimit: 0 },
+    { id: "cat-investments", name: "Investment Returns (Dividends/Gains)", kind: "Income", icon: "📈", color: "teal", monthlyLimit: 0 },
     { id: "cat-other-income", name: "Other income", kind: "Income", icon: "💰", color: "violet", monthlyLimit: 0 },
     { id: "cat-loan-emi", name: "Loan EMI & Debt", kind: "Expense", icon: "💳", color: "rose", monthlyLimit: 45000 },
     { id: "cat-borrow", name: "Loans & Borrowings", kind: "Transfer", icon: "🏦", color: "amber", monthlyLimit: 0 },
     { id: "cat-lend", name: "Money Lent / Advances", kind: "Transfer", icon: "🤝", color: "violet", monthlyLimit: 0 },
     { id: "cat-debt-recovery", name: "Debt Recovery", kind: "Transfer", icon: "💵", color: "emerald", monthlyLimit: 0 },
+    // Money moving OUT to SIP/lumpsum investments is a deduction, not income — kept separate from "Investment Returns" above.
+    { id: "cat-investment-contrib", name: "Investment Contributions (SIP/Lumpsum)", kind: "Transfer", icon: "📥", color: "teal", monthlyLimit: 0 },
   ];
   const tx = (
     id: string, date: string, description: string, type: TransactionType, amount: number,
@@ -1324,3 +1327,85 @@ export function calculateNextSalaryInfo(
 export function formatDisplayDate(dateStr: string): string {
   return formatDate(dateStr);
 }
+
+export interface SalarySyncResult {
+  transactions: Transaction[];
+  changedTransactionIds: string[];
+  createdTransaction: Transaction | null;
+}
+
+// Keeps the actual transaction history in lockstep with the salary schedule: any time the
+// salary amount/day/account is edited, this month's credited transaction (if any) is moved to
+// the new date/amount immediately, or a catch-up entry is created if the new day has already
+// arrived and nothing was credited yet. If the new day is still in the future, no entry is
+// created until it is actually due (handled by the automated recurring processor).
+export function syncSalaryTransactionWithSchedule(
+  transactions: Transaction[],
+  params: {
+    salaryDay: number;
+    salaryAmount: number;
+    accountId: string;
+    categoryId: string;
+    merchant?: string;
+  },
+  todayStr: string = new Date().toISOString().slice(0, 10)
+): SalarySyncResult {
+  const [y, m, d] = todayStr.slice(0, 10).split("-").map(Number);
+  const daysInMonth = new Date(y, m, 0).getDate();
+  const safeDay = Math.max(1, Math.min(params.salaryDay, daysInMonth));
+  const monthPrefix = `${y}-${String(m).padStart(2, "0")}`;
+  const targetDate = `${monthPrefix}-${String(safeDay).padStart(2, "0")}`;
+  const dayHasArrived = d >= safeDay;
+
+  const isSalaryTx = (t: Transaction) =>
+    t.type === "Income" &&
+    t.date.startsWith(monthPrefix) &&
+    (t.notes?.includes("salary credit") ||
+      t.tags?.includes("Salary") ||
+      t.description?.toLowerCase().includes("salary"));
+
+  const changedTransactionIds: string[] = [];
+  let found = false;
+  const nextTransactions = transactions.map((t) => {
+    if (!isSalaryTx(t)) return t;
+    found = true;
+    const needsChange = t.date !== targetDate || t.amount !== params.salaryAmount || t.accountId !== params.accountId;
+    if (!needsChange) return t;
+    changedTransactionIds.push(t.id);
+    return {
+      ...t,
+      date: targetDate,
+      amount: params.salaryAmount,
+      accountId: params.accountId,
+      categoryId: params.categoryId || t.categoryId,
+    };
+  });
+
+  let createdTransaction: Transaction | null = null;
+  if (!found && dayHasArrived && params.salaryAmount > 0 && params.accountId) {
+    createdTransaction = {
+      id: `tx-sal-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      date: targetDate,
+      description: "Monthly Salary Credit",
+      type: "Income",
+      amount: params.salaryAmount,
+      categoryId: params.categoryId,
+      accountId: params.accountId,
+      destinationAccountId: "",
+      paymentMethod: "Bank Transfer",
+      need: "Need",
+      merchant: params.merchant || "Employer",
+      tags: ["Salary", "Income", "Auto-credit"],
+      notes: "Autonomous monthly salary credit based on profile salary preferences.",
+      recurring: true,
+      customValues: {},
+    };
+  }
+
+  return {
+    transactions: createdTransaction ? [createdTransaction, ...nextTransactions] : nextTransactions,
+    changedTransactionIds,
+    createdTransaction,
+  };
+}
+

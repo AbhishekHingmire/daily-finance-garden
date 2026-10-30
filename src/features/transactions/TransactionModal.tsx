@@ -31,13 +31,14 @@ export function TransactionModal({
   errors: Record<string, string>;
   edit: boolean;
   onClose: () => void;
-  onSave: (keepOpen?: boolean) => void;
+  onSave: (keepOpen?: boolean) => void | Promise<void>;
   onAddCategory?: (category: Category) => void;
   onOpenBulkImport?: () => void;
 }) {
   const type = (form.type ?? "Expense") as TransactionType;
   const isDebtType = DEBT_TRANSACTION_TYPES.includes(type);
   const [isCreatingCategory, setIsCreatingCategory] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const currencySymbol =
     data.preferences.currency === "INR"
       ? "₹"
@@ -111,7 +112,17 @@ export function TransactionModal({
     if (e.key === "Enter" && !e.shiftKey) {
       if ((e.target as HTMLElement).tagName.toLowerCase() === "textarea") return;
       e.preventDefault();
-      onSave(false);
+      void triggerSave(false);
+    }
+  };
+
+  const triggerSave = async (keepOpen?: boolean) => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      await onSave(keepOpen);
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -121,7 +132,7 @@ export function TransactionModal({
       description="Enter amount and category. Everything else is optional."
       onClose={onClose}
     >
-      <form onSubmit={(e) => { e.preventDefault(); onSave(false); }} onKeyDown={handleKeyDown} className="space-y-4">
+      <form onSubmit={(e) => { e.preventDefault(); void triggerSave(false); }} onKeyDown={handleKeyDown} className="space-y-4">
         {/* Bulk Upload Option */}
         {!edit && onOpenBulkImport && (
           <div className="flex items-center justify-between gap-2.5 rounded-xl border border-primary/25 bg-primary/5 px-3 py-2 text-xs">
@@ -497,7 +508,7 @@ export function TransactionModal({
 
         {/* Footer Actions */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
           <div className="flex items-center gap-2">
@@ -505,14 +516,15 @@ export function TransactionModal({
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => onSave(true)}
+                onClick={() => void triggerSave(true)}
+                disabled={isSubmitting}
                 className="gap-1.5 text-xs font-semibold"
               >
                 <Plus size={14} /> Save & Add Another
               </Button>
             )}
-            <Button type="submit" className="text-xs font-semibold px-5">
-              {edit ? "Save Changes" : "Save Transaction"}
+            <Button type="submit" loading={isSubmitting} className="text-xs font-semibold px-5">
+              {isSubmitting ? "Saving…" : edit ? "Save Changes" : "Save Transaction"}
             </Button>
           </div>
         </div>

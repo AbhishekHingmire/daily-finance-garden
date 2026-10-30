@@ -6,6 +6,11 @@ const Toaster = ({ ...props }: ToasterProps) => {
   return (
     <Sonner
       className="toaster group z-toast"
+      // Cap stacked toasts and give each one a close button so a burst of actions
+      // (e.g. several saves in a row) never piles up into an ambiguous wall of messages.
+      visibleToasts={3}
+      duration={3500}
+      closeButton
       toastOptions={{
         classNames: {
           toast:

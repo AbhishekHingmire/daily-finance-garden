@@ -36,6 +36,7 @@ const ASSET_TYPES: AssetType[] = [
   "ETF",
   "Gold & Commodities",
   "Fixed deposit",
+  "Provident Fund",
   "Crypto",
   "Other",
 ];
@@ -100,7 +101,7 @@ export function InvestmentHoldingModal({
   data: WealthState;
   existing: InvestmentHolding | null;
   onClose: () => void;
-  onSave: (holding: InvestmentHolding) => void;
+  onSave: (holding: InvestmentHolding) => void | Promise<void>;
 }) {
   const currencySymbol =
     data.preferences.currency === "INR"
@@ -145,7 +146,7 @@ export function InvestmentHoldingModal({
       : getDefaultExpenseRatio(existing?.assetType ?? "Mutual fund", existing?.name ?? "")
   );
   const [fdAnnualRate, setFdAnnualRate] = useState<number | "">(
-    existing?.interestRate !== undefined ? existing.interestRate : 7.1
+    existing?.interestRate !== undefined ? existing.interestRate : existing?.assetType === "Provident Fund" ? 8.25 : 7.1
   );
   const [fdCompounding, setFdCompounding] = useState<"Quarterly" | "Monthly" | "Annual">("Quarterly");
 
@@ -165,10 +166,12 @@ export function InvestmentHoldingModal({
   // Debounce the market-quote API calls triggered while the user is still typing an amount.
   const investedAmountDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sipAmountDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const amountFieldDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     return () => {
       if (investedAmountDebounceRef.current) clearTimeout(investedAmountDebounceRef.current);
       if (sipAmountDebounceRef.current) clearTimeout(sipAmountDebounceRef.current);
+      if (amountFieldDebounceRef.current) clearTimeout(amountFieldDebounceRef.current);
     };
   }, []);
 
@@ -182,6 +185,7 @@ export function InvestmentHoldingModal({
   }, [startMonthYear, sipAmount, sipDay]);
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Market Asset Search State
   const [searchQuery, setSearchQuery] = useState("");
@@ -445,6 +449,33 @@ export function InvestmentHoldingModal({
     [currentPrice, selectedSymbol, selectedQuote?.symbol, name]
   );
 
+  // Re-fetches the live market price for the currently selected instrument and recomputes
+  // current valuation/PnL from it. Triggered (debounced) whenever units or purchase price are
+  // edited directly, so an edit to any amount-related field always reflects a fresh live quote
+  // rather than a possibly-stale one fetched earlier in the session.
+  const refreshLivePriceAndRecalculate = useCallback(
+    async (nextUnits?: number) => {
+      if (assetType === "Fixed deposit" || assetType === "Provident Fund") return;
+      const targetId = selectedSymbol || selectedQuote?.symbol || name;
+      if (!targetId || !targetId.trim()) return;
+
+      try {
+        const { quote } = await marketApi.getLiveQuoteWithFallbacks(targetId, selectedQuote?.category);
+        const livePrice = quote?.currentPrice;
+        if (!livePrice || livePrice <= 0) return;
+
+        setCurrentPrice(livePrice);
+        const u = nextUnits !== undefined ? nextUnits : Number(units) || 0;
+        if (u > 0) {
+          setCurrentAmount(Math.round(u * livePrice * 100) / 100);
+        }
+      } catch {
+        // Keep the last-known price if the live refresh fails silently.
+      }
+    },
+    [assetType, selectedSymbol, selectedQuote?.symbol, selectedQuote?.category, name, units]
+  );
+
   // Invested amount change handler (synchronizes units or buy price)
   const handleInvestedAmountChange = (val: string) => {
     if (val === "") {
@@ -491,6 +522,12 @@ export function InvestmentHoldingModal({
     if (inv > 0 && num > 0) {
       setPurchasePrice(Math.round((inv / num) * 10000) / 10000);
     }
+    if (num > 0 && valuationMode === "auto") {
+      if (amountFieldDebounceRef.current) clearTimeout(amountFieldDebounceRef.current);
+      amountFieldDebounceRef.current = setTimeout(() => {
+        refreshLivePriceAndRecalculate(num);
+      }, 1500);
+    }
   };
 
   // Purchase Price change handler (synchronizes units & valuation)
@@ -503,13 +540,21 @@ export function InvestmentHoldingModal({
     const num = Number(val);
     setPurchasePrice(num);
     const inv = Number(investedAmount) || 0;
+    let derivedUnitsForRefresh: number | undefined;
     if (inv > 0 && num > 0) {
       const derivedUnits = truncateUnits(inv / num);
+      derivedUnitsForRefresh = derivedUnits;
       setUnits(derivedUnits);
       const price = Number(currentPrice);
       if (price > 0) {
         setCurrentAmount(Math.round(derivedUnits * price * 100) / 100);
       }
+    }
+    if (num > 0 && valuationMode === "auto") {
+      if (amountFieldDebounceRef.current) clearTimeout(amountFieldDebounceRef.current);
+      amountFieldDebounceRef.current = setTimeout(() => {
+        refreshLivePriceAndRecalculate(derivedUnitsForRefresh);
+      }, 1500);
     }
   };
 
@@ -595,13 +640,13 @@ export function InvestmentHoldingModal({
       calculationMode:
         valuationMode === "manual"
           ? "manual"
-          : assetType === "Fixed deposit"
+          : assetType === "Fixed deposit" || assetType === "Provident Fund"
           ? "fixed_deposit"
           : "auto_units",
       startMonthYear,
       endMonthYear,
       expenseRatio: expenseRatio === "" ? 0 : Number(expenseRatio),
-      fdAnnualRate: fdAnnualRate === "" ? 7.1 : Number(fdAnnualRate),
+      fdAnnualRate: fdAnnualRate === "" ? (assetType === "Provident Fund" ? 8.25 : 7.1) : Number(fdAnnualRate),
       fdCompounding,
       manualCurrentAmount: currentAmount === "" ? undefined : Number(currentAmount),
     });
@@ -641,8 +686,9 @@ export function InvestmentHoldingModal({
   const investedNum = Number(investedAmount) || 0;
   const currentNum = valuationMode === "auto" ? valuation.currentAmount : Number(currentAmount) || 0;
 
-  const handleSubmit = (e?: React.FormEvent) => {
+  const handleSubmit = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if (isSubmitting) return;
     const errs: Record<string, string> = {};
     if (!name.trim()) errs.name = "Enter the name of the holding.";
     if (investedAmount === "" || investedNum < 0) errs.investedAmount = "Enter a valid invested amount.";
@@ -701,7 +747,12 @@ export function InvestmentHoldingModal({
       exchangeRate: exchangeRateInfo?.rate ?? 1.0,
     };
 
-    onSave(holding);
+    setIsSubmitting(true);
+    try {
+      await onSave(holding);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -881,7 +932,11 @@ export function InvestmentHoldingModal({
             label="Asset Type"
             value={assetType}
             onChange={(v) => handleAssetTypeChange(v as AssetType)}
-            options={ASSET_TYPES.map((t) => ({ value: t, label: t }))}
+            options={ASSET_TYPES.map((t) => ({
+              value: t,
+              label: t === "Provident Fund" ? "Provident Fund (Coming Soon)" : t,
+              disabled: t === "Provident Fund",
+            }))}
           />
           <InputField
             label="Broker / Platform"
@@ -1350,17 +1405,19 @@ export function InvestmentHoldingModal({
           {/* AUTO-CALCULATE CONTROLS */}
           {valuationMode === "auto" ? (
             <div className="space-y-3 pt-2 border-t border-border/60">
-              {assetType === "Fixed deposit" ? (
-                /* FIXED DEPOSIT ACCRUED INTEREST CONTROLS */
+              {assetType === "Fixed deposit" || assetType === "Provident Fund" ? (
+                /* FIXED DEPOSIT / PROVIDENT FUND ACCRUED INTEREST CONTROLS */
                 <div className="space-y-2.5">
                   <div className="grid gap-3 sm:grid-cols-2">
                     <div>
-                      <span className="wt-label">Annual Interest Rate (% p.a.) *</span>
+                      <span className="wt-label">
+                        {assetType === "Provident Fund" ? "PF Declared Annual Rate (% p.a.) *" : "Annual Interest Rate (% p.a.) *"}
+                      </span>
                       <input
                         type="number"
                         min="0"
                         step="0.05"
-                        placeholder="e.g. 7.10"
+                        placeholder={assetType === "Provident Fund" ? "e.g. 8.25" : "e.g. 7.10"}
                         className="wt-field font-semibold text-xs"
                         value={fdAnnualRate}
                         onChange={(e) => setFdAnnualRate(e.target.value === "" ? "" : Number(e.target.value))}
@@ -1556,7 +1613,7 @@ export function InvestmentHoldingModal({
                     Auto-Calculated Current Valuation
                   </span>
                   <p className="text-xs text-muted-foreground">
-                    {assetType === "Fixed deposit"
+                    {assetType === "Fixed deposit" || assetType === "Provident Fund"
                       ? `Principal + ${valuation.elapsedMonths}m Accrued Compound Interest`
                       : valuation.units > 0 && valuation.currentPrice > 0
                       ? `${valuation.units.toLocaleString("en-IN", { maximumFractionDigits: 3 })} units × ${currencySymbol}${valuation.currentPrice}`
@@ -1762,11 +1819,11 @@ export function InvestmentHoldingModal({
         </label>
 
         <div className="flex items-center justify-end gap-2 border-t border-border pt-4">
-          <Button type="button" variant="ghost" onClick={onClose}>
+          <Button type="button" variant="ghost" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button type="submit" className="text-xs font-semibold">
-            {existing ? "Update Holding" : "Save Holding"}
+          <Button type="submit" loading={isSubmitting} className="text-xs font-semibold">
+            {isSubmitting ? "Saving…" : existing ? "Update Holding" : "Save Holding"}
           </Button>
         </div>
       </form>

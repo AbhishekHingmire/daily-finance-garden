@@ -14,11 +14,12 @@ export function CategoryModal({
   category: Category | null;
   kind: CategoryKind;
   onClose: () => void;
-  onSave: (form: Partial<Category>) => void;
+  onSave: (form: Partial<Category>) => void | Promise<void>;
 }) {
   const [form, setForm] = useState<Partial<Category>>(() =>
-    category ? { ...category } : { name: "", kind, icon: "📁", color: "blue", monthlyLimit: 0, defaultNeed: "Need" }
+    category ? { ...category } : { name: "", kind, icon: "📁", color: "blue", defaultNeed: "Need" }
   );
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [iconManuallyPicked, setIconManuallyPicked] = useState(Boolean(category?.icon));
   const [nameError, setNameError] = useState("");
   const [limitError, setLimitError] = useState("");
@@ -32,7 +33,8 @@ export function CategoryModal({
     });
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSubmitting) return;
     let hasError = false;
     if (!form.name?.trim()) {
       setNameError("Category name is required.");
@@ -44,7 +46,12 @@ export function CategoryModal({
       hasError = true;
     }
     if (hasError) return;
-    onSave(form);
+    setIsSubmitting(true);
+    try {
+      await onSave(form);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -138,21 +145,21 @@ export function CategoryModal({
           <InputField
             label="Monthly Budget Limit"
             type="number"
-            value={form.monthlyLimit ?? 0}
+            value={form.monthlyLimit ?? ""}
             onChange={(val) => {
               if (limitError) setLimitError("");
-              setForm((f) => ({ ...f, monthlyLimit: Number(val) || 0 }));
+              setForm((f) => ({ ...f, monthlyLimit: val === "" ? undefined : Number(val) || 0 }));
             }}
             error={limitError}
             placeholder="0 = No limit"
           />
         )}
         <div className="flex justify-end gap-2 pt-2 border-t border-border">
-          <Button variant="outline" onClick={onClose}>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
-          <Button onClick={handleSave}>
-            {category ? "Save Changes" : "Add Category"}
+          <Button onClick={handleSave} loading={isSubmitting}>
+            {isSubmitting ? "Saving…" : category ? "Save Changes" : "Add Category"}
           </Button>
         </div>
       </div>

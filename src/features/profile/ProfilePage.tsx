@@ -9,7 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { InputField, SelectField } from "@/components/shared/FormFields";
-import { toast } from "sonner";
 import {
   safeAmount,
   type UserProfile,
@@ -23,7 +22,7 @@ export function ProfilePage({
 }: {
   data: WealthState;
   money: (val: number) => string;
-  onSaveProfile: (profile: UserProfile) => void;
+  onSaveProfile: (profile: UserProfile) => void | Promise<void>;
 }) {
   const defaultSalaryAccount = data.accounts.find((a) => !a.archived && a.kind !== "Credit card")?.id || "";
   const currentProfile: UserProfile = {
@@ -41,6 +40,7 @@ export function ProfilePage({
   };
 
   const [form, setForm] = useState<UserProfile>(currentProfile);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isDirty = useMemo(() => {
     return (
@@ -66,12 +66,17 @@ export function ProfilePage({
   const emergencyFundPercent =
     form.emergencyFundTarget > 0 ? (liquidBalance / form.emergencyFundTarget) * 100 : 0;
 
-  const handleSave = (e: React.FormEvent) => {
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSaveProfile(form);
-    toast.success("Profile updated successfully", {
-      description: "Your financial targets and profile preferences have been saved locally.",
-    });
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      // The success/error toast is shown by the parent handler once the save actually
+      // completes — showing one here too would duplicate it.
+      await onSaveProfile(form);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const getInitials = (name: string) => {
@@ -111,9 +116,10 @@ export function ProfilePage({
                 type="submit"
                 form="profile-form"
                 size="sm"
+                loading={isSubmitting}
                 className="h-8 gap-1.5 px-4 text-xs font-semibold shadow-xs cursor-pointer"
               >
-                <Save size={14} /> Save Changes
+                {!isSubmitting && <Save size={14} />} {isSubmitting ? "Saving…" : "Save Changes"}
               </Button>
             </div>
           ) : undefined
