@@ -272,15 +272,15 @@ export function RecurringPage({
                             },
                           ]
                         : []),
-                      ...(item.loanId && onNavigateToLoans
-                        ? [
-                            {
-                              label: "View in Loans",
-                              icon: <Landmark size={13} />,
-                              onClick: onNavigateToLoans,
-                            },
-                          ]
-                        : []),
+                      // ...(item.loanId && onNavigateToLoans
+                      //   ? [
+                      //       {
+                      //         label: "View in Loans",
+                      //         icon: <Landmark size={13} />,
+                      //         onClick: onNavigateToLoans,
+                      //       },
+                      //     ]
+                      //   : []),
                       {
                         label: "Edit",
                         icon: <Pencil size={13} />,
