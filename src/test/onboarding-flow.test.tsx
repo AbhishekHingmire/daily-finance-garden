@@ -1,9 +1,13 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { createInitialState } from "@/lib/wealthtrack";
+import { LocalStorageWealthRepository, setWealthRepository } from "@/services/api";
 
 describe("OnboardingFlow", () => {
+  beforeEach(() => {
+    setWealthRepository(new LocalStorageWealthRepository());
+  });
   it("renders welcome screen at step 0", () => {
     const data = createInitialState();
     render(

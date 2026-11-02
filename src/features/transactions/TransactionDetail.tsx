@@ -100,6 +100,8 @@ export function TransactionDetail({
             <p className="font-bold text-foreground mt-0.5">{formatDate(transaction.date)}</p>
           </div>
 
+          {/* Account commented out per pure expense tracking requirements */}
+          {/*
           <div>
             <span className="text-muted-foreground font-medium block text-[11px]">Account</span>
             <p className="font-bold text-foreground mt-0.5 flex items-center gap-1.5 truncate">
@@ -107,6 +109,7 @@ export function TransactionDetail({
               <span className="truncate">{acc?.name ?? "—"}</span>
             </p>
           </div>
+          */}
 
           {transaction.type === "Transfer" && (
             <div>

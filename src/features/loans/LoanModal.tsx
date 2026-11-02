@@ -179,13 +179,15 @@ export function LoanModal({
       errs.interestRate = "Interest rate must be between 0% and 100% p.a.";
     }
 
-    // 8. Repayment Account validation
-    if (!repaymentAccountId) {
-      errs.repaymentAccountId = "Select the repayment bank account.";
-    }
+    // 8. Repayment Account validation - commented down per pure expense tracking requirements
+    // if (!repaymentAccountId) {
+    //   errs.repaymentAccountId = "Select the repayment bank account.";
+    // }
 
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
+
+    const effectiveRepaymentAccountId = repaymentAccountId || data.accounts[0]?.id || "acc-default";
 
     const loan: LoanLiability = {
       id: existing?.id ?? `loan-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
@@ -196,7 +198,7 @@ export function LoanModal({
       currentOutstanding: outstandingNum,
       interestRate: rateNum,
       emiAmount: emiNum,
-      repaymentAccountId,
+      repaymentAccountId: effectiveRepaymentAccountId,
       startDate,
       tenureMonths: tenureNum,
       paidEmisCount: paidCount,
@@ -462,8 +464,9 @@ export function LoanModal({
           />
         </div>
 
-        {/* Bank Account Selection for EMI Auto-debit */}
+        {/* Bank Account Selection for EMI Auto-debit - commented down per pure expense tracking requirements */}
         <div className="rounded-xl border border-border/80 bg-muted/20 p-3.5 space-y-3">
+          {/*
           <SelectField
             label="Repayment Bank Account (Auto-Debit Source) *"
             value={repaymentAccountId}
@@ -507,6 +510,7 @@ export function LoanModal({
               </div>
             );
           })()}
+          */}
 
           <label className="flex items-start gap-2.5 cursor-pointer">
             <input

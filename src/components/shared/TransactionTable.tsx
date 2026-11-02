@@ -113,7 +113,7 @@ export function TransactionTable({
   onBulkDelete,
   selectedIds: propSelectedIds,
   onSelectedIdsChange,
-  showAccountColumn = true,
+  showAccountColumn = false,
   searchPlaceholder = "Search description, merchant, notes…",
   headerActions,
 }: {

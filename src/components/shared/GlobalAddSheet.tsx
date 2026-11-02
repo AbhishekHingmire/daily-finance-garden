@@ -261,7 +261,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
       return;
     }
 
-    const effectiveAccountId = accountId || (accounts.length > 0 ? accounts[0].id : "");
+    const effectiveAccountId = accountId || (accounts.length > 0 ? accounts[0].id : "acc-default");
     const selectedAcc = accounts.find((a) => a.id === effectiveAccountId);
 
 
@@ -585,140 +585,21 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
             </div>
           </div>
 
-          {/* Account Selection */}
-          {(() => {
-            const selectedAcc = accounts.find((a) => a.id === accountId);
-            const numAmt = parseFloat(amount) || 0;
-            const isDebit = activeTab === "expense" || activeTab === "transfer";
-            const isBankOrCash = selectedAcc && !["credit", "credit card", "loan"].includes(selectedAcc.type?.toLowerCase() || "");
-            const currentBal = selectedAcc ? getAccBal(selectedAcc.id) : 0;
-            const isInsufficient = isDebit && isBankOrCash && numAmt > currentBal;
-            const isLowBalance = isDebit && isBankOrCash && !isInsufficient && currentBal - numAmt < 2000 && numAmt > 0;
-            return (
-              accounts.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="wt-label">{activeTab === "transfer" ? "From Account *" : "Account *"}</label>
-                  <select
-                    value={accountId}
-                    onChange={(e) => setAccountId(e.target.value)}
-                    className="wt-field cursor-pointer"
-                    required
-                  >
-                    <option value="">-- Select Account --</option>
-                    {accounts.filter((a) => !a.archived).map((a) => {
-                      const bal = getAccBal(a.id);
-                      return (
-                        <option key={a.id} value={a.id}>
-                          {a.name} ({a.institution || a.type}) · ₹{bal.toLocaleString("en-IN")}
-                        </option>
-                      );
-                    })}
-                  </select>
-                  {selectedAcc && (
-                    <div className="mt-1 text-[11px]">
-                      {isInsufficient ? (
-                        <p className="text-destructive font-semibold flex items-center gap-1">
-                          <AlertCircle size={12} className="shrink-0" />
-                          Insufficient balance: Available ₹{currentBal.toLocaleString("en-IN")}
-                        </p>
-                      ) : isLowBalance ? (
-                        <p className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-                          <AlertTriangle size={12} className="shrink-0" />
-                          Low balance alert: Balance will drop to ₹{(currentBal - numAmt).toLocaleString("en-IN")}
-                        </p>
-                      ) : (
-                        <p className="text-muted-foreground">
-                          Available balance: ₹{currentBal.toLocaleString("en-IN")}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {activeTab === "transfer" ? (
-                  <div>
-                    <label className="wt-label">To Destination *</label>
-                    {toRefKind === "holding" ? (
-                      <select
-                        value={toRefId}
-                        onChange={(e) => {
-                          setToRefId(e.target.value);
-                          const h = holdings.find((x) => x.id === e.target.value);
-                          setToRefName(h?.name || "");
-                        }}
-                        className="wt-field cursor-pointer"
-                      >
-                        {holdings.map((h) => (
-                          <option key={h.id} value={h.id}>
-                            {h.name} ({h.broker})
-                          </option>
-                        ))}
-                      </select>
-                    ) : toRefKind === "person" ? (
-                      <input
-                        type="text"
-                        value={toRefName}
-                        onChange={(e) => setToRefName(e.target.value)}
-                        placeholder="Contact name (e.g. Rohan)"
-                        className="wt-field"
-                      />
-                    ) : (
-                      <select
-                        value={toRefId}
-                        onChange={(e) => {
-                          setToRefId(e.target.value);
-                          const a = accounts.find((x) => x.id === e.target.value);
-                          setToRefName(a?.name || "");
-                        }}
-                        className="wt-field cursor-pointer"
-                      >
-                        <option value="">Select destination account</option>
-                        {accounts.filter((a) => a.id !== accountId && !a.archived).map((a) => {
-                          const bal = getAccBal(a.id);
-                          return (
-                            <option key={a.id} value={a.id}>
-                              {a.name} ({a.institution || a.type}) · ₹{bal.toLocaleString("en-IN")}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    )}
-                  </div>
-                ) : (
-                  <div>
-                    <label className="wt-label">Category *</label>
-                    <select
-                      value={categoryId}
-                      onChange={(e) => handleCategoryChange(e.target.value)}
-                      className="wt-field cursor-pointer"
-                    >
-                      {categories.filter((c) => !c.archived && c.kind === activeTab).map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.icon} {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                <label className="wt-label">Category *</label>
-                <select
-                  value={categoryId}
-                  onChange={(e) => handleCategoryChange(e.target.value)}
-                  className="wt-field cursor-pointer"
-                >
-                  {categories.filter((c) => !c.archived && c.kind === activeTab).map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.icon} {c.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ));
-          })()}
+          {/* Category Selection (Account selection omitted for pure expense tracking) */}
+          <div>
+            <label className="wt-label">Category *</label>
+            <select
+              value={categoryId}
+              onChange={(e) => handleCategoryChange(e.target.value)}
+              className="wt-field cursor-pointer"
+            >
+              {categories.filter((c) => !c.archived && (activeTab === "transfer" ? true : c.kind === activeTab)).map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.icon} {c.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
           {/* Date & Need/Want Row */}
           <div className="grid gap-3 sm:grid-cols-2 items-center">

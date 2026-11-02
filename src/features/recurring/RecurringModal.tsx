@@ -131,8 +131,8 @@ export function RecurringModal({
       errs.amount = "Enter an amount greater than 0.";
     }
 
-    if (!form.accountId && data.accounts.length > 0) {
-      form.accountId = data.accounts[0].id;
+    if (!form.accountId) {
+      form.accountId = data.accounts[0]?.id || "acc-default";
     }
 
     if (isInstallmentPlan) {
@@ -429,6 +429,8 @@ export function RecurringModal({
               ]}
             />
           </div>
+          {/* Payment Account commented out per pure expense tracking requirements */}
+          {/*
           {data.accounts.length > 0 && (
             <div>
               <SelectField
@@ -461,6 +463,7 @@ export function RecurringModal({
               )}
             </div>
           )}
+          */}
         </div>
 
         <div

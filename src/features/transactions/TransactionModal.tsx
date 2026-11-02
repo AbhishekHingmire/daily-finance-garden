@@ -308,7 +308,8 @@ export function TransactionModal({
           </div>
         )}
 
-        {/* 3. Account Selection */}
+        {/* 3. Account Selection - commented down per pure expense tracking requirements */}
+        {/*
         {(() => {
           const selectedAcc = data.accounts.find((a) => a.id === form.accountId);
           const selectedAccBalance = selectedAcc ? getAccountBalance(selectedAcc, data.transactions) : 0;
@@ -414,6 +415,7 @@ export function TransactionModal({
             </div>
           );
         })()}
+        */}
 
         {/* 4. Collapsible Accordion: More options (optional) */}
         <div className="border-t border-border pt-2">

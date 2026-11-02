@@ -319,20 +319,14 @@ export function LoansPage({
                     </div>
                   </div>
 
-                  {/* Auto-Debit Linked Bank Badge */}
-                  <div className="flex items-center justify-between rounded-lg bg-muted/40 p-2 text-xs">
-                    <div className="flex items-center gap-1.5 truncate">
-                      <Wallet size={13} className="text-primary shrink-0" />
-                      <span className="truncate text-[11px] font-semibold text-foreground">
-                        {accountName}
+                  {/* Auto-Debit Linked Bank Badge - commented down per pure expense tracking requirements */}
+                  {loan.autoRecurringEmi && (
+                    <div className="flex items-center justify-between rounded-lg bg-muted/40 p-2 text-xs">
+                      <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                        Auto-EMI Sync Active
                       </span>
                     </div>
-                    {loan.autoRecurringEmi && (
-                      <span className="shrink-0 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
-                        Auto-EMI Sync
-                      </span>
-                    )}
-                  </div>
+                  )}
 
                   {/* Quick Action: Pay EMI */}
                   <div className="flex items-center justify-between text-[11px] pt-1">
