@@ -24,10 +24,27 @@ const STORAGE_KEYS = {
 };
 
 /**
- * Plays a soft, crystal-clear, non-irritating fintech chime using Web Audio API.
- * Uses two gentle harmonic sine frequencies with smooth exponential decay.
+ * Plays a pleasant, non-irritating notification bell chime.
+ * Tries HTML5 Audio element with /sounds/bell.wav first, and falls back
+ * to Web Audio API synthesized harmonic frequencies.
  */
 export function playNotificationChime(): void {
+  try {
+    if (typeof window !== "undefined" && typeof Audio !== "undefined") {
+      const audio = new Audio("/sounds/bell.wav");
+      audio.volume = 0.45;
+      audio.play().catch(() => {
+        playWebAudioChime();
+      });
+      return;
+    }
+  } catch {
+    // Fall through to synthesizer
+  }
+  playWebAudioChime();
+}
+
+function playWebAudioChime(): void {
   try {
     const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
     if (!AudioContextClass) return;

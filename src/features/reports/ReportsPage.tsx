@@ -141,12 +141,47 @@ export function ReportsPage({
     return Math.round(((totalExpenses - prevMonthSpend) / prevMonthSpend) * 100);
   }, [totalExpenses, prevMonthSpend]);
 
-  // Needs vs Wants metrics
-  const needsSpend = periodMetrics.needs;
-  const wantsSpend = periodMetrics.wants;
-  const needsPct = periodMetrics.split503020.needsPct;
-  const wantsPct = periodMetrics.split503020.wantsPct;
-  const bufferPct = Math.max(0, 100 - (needsPct + wantsPct));
+  // Ongoing month expenses
+  const prefix = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
+  const monthExpenseTransactions = useMemo(() => {
+    return data.transactions.filter(
+      (t) => t.date.startsWith(prefix) && (t.type === "Expense" || t.amount < 0)
+    );
+  }, [data.transactions, prefix]);
+
+  // Needs vs Wants metrics calculated with respect to ongoing month and total transaction amounts
+  const { needsSpend, wantsSpend, totalPeriodSpend, needsPct, wantsPct, bufferPct } = useMemo(() => {
+    let nSpend = 0;
+    let wSpend = 0;
+
+    for (const t of monthExpenseTransactions) {
+      const amt = Math.abs(t.amount);
+      if ((t.need || "").toLowerCase() === "want") {
+        wSpend += amt;
+      } else {
+        nSpend += amt;
+      }
+    }
+
+    const total = nSpend + wSpend;
+    // Percentage calculated with respect to ongoing month and total transaction amounts
+    const nPct = total > 0 ? Math.round((nSpend / total) * 100) : 0;
+    const wPct = total > 0 ? Math.round((wSpend / total) * 100) : 0;
+
+    // Headroom capacity percentage relative to monthly budget cap
+    const capPct = budgetMetrics.totalCap > 0
+      ? Math.max(0, Math.round((remainingBudget / budgetMetrics.totalCap) * 100))
+      : 100;
+
+    return {
+      needsSpend: nSpend,
+      wantsSpend: wSpend,
+      totalPeriodSpend: total,
+      needsPct: nPct,
+      wantsPct: wPct,
+      bufferPct: capPct,
+    };
+  }, [monthExpenseTransactions, budgetMetrics.totalCap, remainingBudget]);
 
   const periodLabel = `${new Date(sharedPeriod.year, sharedPeriod.month - 1, 1).toLocaleDateString("en-IN", {
     month: "short",
@@ -350,7 +385,7 @@ export function ReportsPage({
     <div className="space-y-6">
       {/* 1. Page Header (No icons before title, clean and consistent) */}
       <PageHeading
-        title="Insights"
+        title="Reports"
         description="Get a complete view of your outgoings, category spending, and budget performance."
         periodSlot={<PeriodPill period={sharedPeriod} onChange={handlePeriodChange} />}
         actions={
@@ -656,50 +691,68 @@ export function ReportsPage({
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2.5 text-center pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
               {/* Needs */}
-              <div className="space-y-1.5 rounded-xl bg-muted/20 p-3 border border-border/50">
-                <div className="flex items-center justify-center gap-1">
-                  <span className="text-[11px] font-bold text-muted-foreground">Needs</span>
-                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-extrabold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+              <div className="space-y-1 sm:space-y-1.5 rounded-xl bg-muted/20 p-3 sm:p-3.5 border border-border/50 flex sm:flex-col items-center sm:items-center justify-between sm:justify-center text-left sm:text-center">
+                <div className="flex sm:flex-col items-center gap-2 sm:gap-1">
+                  <span className="text-xs sm:text-[11px] font-bold text-muted-foreground">Needs</span>
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] sm:text-[9.5px] font-extrabold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900 shrink-0">
                     Essential
                   </span>
                 </div>
-                <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
-                  {needsPct}%
-                </p>
-                <p className="text-xs font-bold text-foreground tabular-nums">{money(needsSpend)}</p>
-                <p className="text-[10px] text-muted-foreground font-medium">Target &lt; 50%</p>
+                <div className="flex sm:flex-col items-baseline sm:items-center gap-2 sm:gap-0.5 text-right sm:text-center">
+                  <span className="text-xl sm:text-3xl font-black text-foreground tabular-nums">
+                    {needsPct}%
+                  </span>
+                  <span className="text-xs font-bold text-foreground tabular-nums">
+                    {money(needsSpend)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium hidden sm:block">
+                    Target &lt; 50%
+                  </span>
+                </div>
               </div>
 
               {/* Wants */}
-              <div className="space-y-1.5 rounded-xl bg-muted/20 p-3 border border-border/50">
-                <div className="flex items-center justify-center gap-1">
-                  <span className="text-[11px] font-bold text-muted-foreground">Wants</span>
-                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-extrabold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+              <div className="space-y-1 sm:space-y-1.5 rounded-xl bg-muted/20 p-3 sm:p-3.5 border border-border/50 flex sm:flex-col items-center sm:items-center justify-between sm:justify-center text-left sm:text-center">
+                <div className="flex sm:flex-col items-center gap-2 sm:gap-1">
+                  <span className="text-xs sm:text-[11px] font-bold text-muted-foreground">Wants</span>
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] sm:text-[9.5px] font-extrabold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900 shrink-0">
                     Discretionary
                   </span>
                 </div>
-                <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
-                  {wantsPct}%
-                </p>
-                <p className="text-xs font-bold text-foreground tabular-nums">{money(wantsSpend)}</p>
-                <p className="text-[10px] text-muted-foreground font-medium">Target &lt; 30%</p>
+                <div className="flex sm:flex-col items-baseline sm:items-center gap-2 sm:gap-0.5 text-right sm:text-center">
+                  <span className="text-xl sm:text-3xl font-black text-foreground tabular-nums">
+                    {wantsPct}%
+                  </span>
+                  <span className="text-xs font-bold text-foreground tabular-nums">
+                    {money(wantsSpend)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium hidden sm:block">
+                    Target &lt; 30%
+                  </span>
+                </div>
               </div>
 
               {/* Headroom / Buffer */}
-              <div className="space-y-1.5 rounded-xl bg-muted/20 p-3 border border-border/50">
-                <div className="flex items-center justify-center gap-1">
-                  <span className="text-[11px] font-bold text-muted-foreground">Capacity</span>
-                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-extrabold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900">
+              <div className="space-y-1 sm:space-y-1.5 rounded-xl bg-muted/20 p-3 sm:p-3.5 border border-border/50 flex sm:flex-col items-center sm:items-center justify-between sm:justify-center text-left sm:text-center">
+                <div className="flex sm:flex-col items-center gap-2 sm:gap-1">
+                  <span className="text-xs sm:text-[11px] font-bold text-muted-foreground">Capacity</span>
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[10px] sm:text-[9.5px] font-extrabold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900 shrink-0">
                     Headroom
                   </span>
                 </div>
-                <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
-                  {bufferPct}%
-                </p>
-                <p className="text-xs font-bold text-foreground tabular-nums">{money(remainingBudget)}</p>
-                <p className="text-[10px] text-muted-foreground font-medium">Available</p>
+                <div className="flex sm:flex-col items-baseline sm:items-center gap-2 sm:gap-0.5 text-right sm:text-center">
+                  <span className="text-xl sm:text-3xl font-black text-foreground tabular-nums">
+                    {bufferPct}%
+                  </span>
+                  <span className="text-xs font-bold text-foreground tabular-nums">
+                    {money(remainingBudget)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-medium hidden sm:block">
+                    Available
+                  </span>
+                </div>
               </div>
             </div>
           </div>

@@ -33,7 +33,7 @@ import { matchesDateRange, type DateRangeValue } from "@/components/shared/DateR
 import { AuthPage, type AuthView } from "@/features/auth/AuthPage";
 import { authApi, authStorage, marketApi, type AuthResponseData, getWealthRepository, getApiBaseUrl } from "@/services/api";
 import { currencyService } from "@/lib/currency-service";
-import { notificationService } from "@/lib/notification-service";
+import { notificationService, playNotificationChime } from "@/lib/notification-service";
 import { calculateInvestmentValuation } from "@/lib/investment-calculator";
 import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { Dashboard } from "@/features/dashboard/Dashboard";
@@ -1687,6 +1687,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   };
 
   const notify = (title: string, description: string) => {
+    playNotificationChime();
     setData((current) => ({
       ...current,
       notifications: [makeNotification(title, description), ...current.notifications],
@@ -3209,7 +3210,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     : active === "Recurring"
                     ? "Recurring"
                     : active === "Reports"
-                    ? "Insights"
+                    ? "Reports"
                     : active}
                 </span>
               </div>
