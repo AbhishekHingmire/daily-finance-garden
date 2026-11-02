@@ -129,37 +129,71 @@ export function Dashboard({
   const remainingBudget = Math.max(0, budgetMetrics.totalCap - budgetMetrics.budgetedSpend);
   const isOverBudget = budgetMetrics.budgetUsedPct > 100;
 
-  // Filtered period transactions (Recent Expenses limited to top 4)
+  // Filtered period transactions (Strict guard rail: strictly limited to active month)
   const periodPrefix = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
   const allPeriodExpenses = useMemo(() => {
-    const periodMatches = data.transactions.filter(
-      (t) => t.date.startsWith(periodPrefix) && (t.type === "Expense" || t.amount < 0)
-    );
-    const source = periodMatches.length > 0
-      ? periodMatches
-      : data.transactions.filter((t) => t.type === "Expense" || t.amount < 0);
-    return source.slice().sort((a, b) => b.date.localeCompare(a.date));
+    return data.transactions
+      .filter((t) => t.date.startsWith(periodPrefix) && (t.type === "Expense" || t.amount < 0))
+      .slice()
+      .sort((a, b) => b.date.localeCompare(a.date));
   }, [data.transactions, periodPrefix]);
 
   const recentExpenses = useMemo(() => allPeriodExpenses.slice(0, 4), [allPeriodExpenses]);
 
-  // Top spending categories dynamically filtered by Day | Week | Month
-  const topCategories = useMemo(() => {
-    let filteredTxs = data.transactions.filter((t) => t.type === "Expense" || t.amount < 0);
+  // Top spending categories dynamically filtered with AIRTIGHT guard rails:
+  // Whatever filter is selected (Day, Week, Month), it CANNOT leak or cross outside the active month!
+  const { topCategories, timeframeLabel, timeframeEmptyLabel } = useMemo(() => {
+    // Guard Rail 1: Base set strictly restricted to the currently active month
+    const monthExpenses = data.transactions.filter(
+      (t) => t.date.startsWith(periodPrefix) && (t.type === "Expense" || t.amount < 0)
+    );
+
+    const daysInMonth = new Date(sharedPeriod.year, sharedPeriod.month, 0).getDate();
+    const now = new Date();
+    const isCurrentCalendarMonth =
+      now.getFullYear() === sharedPeriod.year && now.getMonth() + 1 === sharedPeriod.month;
+
+    // Active anchor day within the selected month (guarded so it cannot exceed daysInMonth)
+    const anchorDay = isCurrentCalendarMonth
+      ? Math.min(now.getDate(), daysInMonth)
+      : daysInMonth;
+
+    let filteredTxs = monthExpenses;
+    let label = `Category breakdown for ${periodLabel}`;
+    let emptyLabel = periodLabel;
 
     if (categoryTimeframe === "Day") {
-      filteredTxs = filteredTxs.filter((t) => t.date.slice(0, 10) === todayStr);
+      const dayStr = `${periodPrefix}-${String(anchorDay).padStart(2, "0")}`;
+      filteredTxs = monthExpenses.filter((t) => t.date.slice(0, 10) === dayStr);
+      const shortDate = formatShortDate(dayStr);
+      label = isCurrentCalendarMonth
+        ? `Category breakdown (Today · ${shortDate.full})`
+        : `Category breakdown (${shortDate.full})`;
+      emptyLabel = isCurrentCalendarMonth ? `today (${shortDate.full})` : shortDate.full;
     } else if (categoryTimeframe === "Week") {
-      const d = new Date();
-      d.setDate(d.getDate() - 6);
-      const weekStartStr = d.toISOString().slice(0, 10);
-      filteredTxs = filteredTxs.filter((t) => {
+      // Guard Rail 2: Week start CANNOT reach before Day 1 of the active month
+      const startDay = Math.max(1, anchorDay - 6);
+      const startDateStr = `${periodPrefix}-${String(startDay).padStart(2, "0")}`;
+      const endDateStr = `${periodPrefix}-${String(anchorDay).padStart(2, "0")}`;
+
+      filteredTxs = monthExpenses.filter((t) => {
         const dStr = t.date.slice(0, 10);
-        return dStr >= weekStartStr && dStr <= todayStr;
+        return dStr >= startDateStr && dStr <= endDateStr;
       });
+
+      const startShort = formatShortDate(startDateStr);
+      const endShort = formatShortDate(endDateStr);
+      const daysCount = anchorDay - startDay + 1;
+
+      label =
+        daysCount < 7
+          ? `Category breakdown (This Month · ${startShort.full} – ${endShort.full})`
+          : `Category breakdown (Last 7 Days · ${startShort.full} – ${endShort.full})`;
+      emptyLabel = `this week (${startShort.full} – ${endShort.full})`;
     } else {
       // Month
-      filteredTxs = filteredTxs.filter((t) => t.date.startsWith(periodPrefix));
+      label = `Category breakdown for ${periodLabel}`;
+      emptyLabel = periodLabel;
     }
 
     const spendMap: Record<string, number> = {};
@@ -190,8 +224,12 @@ export function Dashboard({
       };
     });
 
-    return rows.sort((a, b) => b.spent - a.spent);
-  }, [data.transactions, data.categories, categoryTimeframe, todayStr, periodPrefix]);
+    return {
+      topCategories: rows.sort((a, b) => b.spent - a.spent),
+      timeframeLabel: label,
+      timeframeEmptyLabel: emptyLabel,
+    };
+  }, [data.transactions, data.categories, categoryTimeframe, periodPrefix, sharedPeriod, periodLabel]);
 
   const displayedTopCategories = useMemo(() => topCategories.slice(0, 4), [topCategories]);
 
@@ -439,7 +477,7 @@ export function Dashboard({
                 <div className="min-w-0">
                   <h3 className="text-sm font-bold text-foreground">Top Spending Categories</h3>
                   <p className="text-xs text-muted-foreground truncate">
-                    Category breakdown ({categoryTimeframe === "Day" ? "Today" : categoryTimeframe === "Week" ? "Last 7 Days" : periodLabel})
+                    {timeframeLabel}
                   </p>
                 </div>
               </div>
@@ -466,8 +504,7 @@ export function Dashboard({
             {displayedTopCategories.length === 0 ? (
               <div className="py-8 text-center text-xs text-muted-foreground space-y-2">
                 <p>
-                  No category spending recorded for{" "}
-                  {categoryTimeframe === "Day" ? "today" : categoryTimeframe === "Week" ? "this week" : periodLabel}.
+                  No category spending recorded for {timeframeEmptyLabel}.
                 </p>
                 <Button
                   size="sm"
