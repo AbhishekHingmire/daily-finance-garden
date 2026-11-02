@@ -28,6 +28,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Modal } from "@/components/shared/Modal";
+import { getTodayDateString } from "@/lib/formatters";
 import {
   type Account,
   type Category,
@@ -88,7 +89,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
   const [toRefKind, setToRefKind] = useState<"account" | "holding" | "loan" | "person">("account");
   const [toRefId, setToRefId] = useState<string>("");
   const [toRefName, setToRefName] = useState<string>("");
-  const [date, setDate] = useState<string>("2026-10-26");
+  const [date, setDate] = useState<string>(getTodayDateString);
   const [needWant, setNeedWant] = useState<NeedWant>("Need");
   const [isRepeat, setIsRepeat] = useState<boolean>(false);
   const [repeatFrequency, setRepeatFrequency] = useState<"Weekly" | "Monthly" | "Yearly">("Monthly");
@@ -118,7 +119,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
       const firstExp = categories.find((c) => c.kind === "expense");
       setCategoryId(firstExp?.id || "");
       setAccountId(defaultAccount || accounts[0]?.id || "");
-      setDate("2026-10-26");
+      setDate(getTodayDateString());
       setNeedWant("Need");
       setIsRepeat(false);
       setShowMoreActions(false);

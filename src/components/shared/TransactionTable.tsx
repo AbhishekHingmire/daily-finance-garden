@@ -48,7 +48,11 @@ function formatDateGroupHeader(dateStr: string): string {
 function renderTransactionChips(tx: Transaction) {
   return (
     <span className="inline-flex items-center gap-1 shrink-0">
-      {tx.type === "Expense" ? (
+      {tx.type === "Investment" || tx.categoryId === "cat-investments" ? (
+        <span className="inline-flex shrink-0 items-center rounded-md border border-teal-500/20 bg-teal-500/10 px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">
+          SIP / Invest
+        </span>
+      ) : tx.type === "Expense" ? (
         <span
           className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-0.2 text-[9px] font-semibold uppercase tracking-wider ${
             tx.need === "Want"

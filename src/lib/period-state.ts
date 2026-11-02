@@ -9,13 +9,18 @@ import { type PeriodSelector } from "./metrics-service";
 
 const STORAGE_KEY = "wt_selected_period";
 
-export const DEFAULT_PERIOD: PeriodSelector = {
-  year: 2026,
-  month: 10,
-};
+export function getCurrentPeriod(): PeriodSelector {
+  const now = new Date();
+  return {
+    year: now.getFullYear(),
+    month: now.getMonth() + 1,
+  };
+}
+
+export const DEFAULT_PERIOD: PeriodSelector = getCurrentPeriod();
 
 export function getPersistedPeriod(): PeriodSelector {
-  if (typeof window === "undefined") return DEFAULT_PERIOD;
+  if (typeof window === "undefined") return getCurrentPeriod();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
@@ -25,7 +30,7 @@ export function getPersistedPeriod(): PeriodSelector {
       }
     }
   } catch {}
-  return DEFAULT_PERIOD;
+  return getCurrentPeriod();
 }
 
 export function setPersistedPeriod(period: PeriodSelector): void {

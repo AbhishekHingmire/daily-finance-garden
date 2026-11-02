@@ -74,6 +74,8 @@ import {
   createInitialState,
   createTransactionId,
   formatMoney,
+  getTodayDateString,
+  getTodayDateTimeString,
   getAccountBalance,
   getHoldingsSummary,
   getLoansSummary,
@@ -530,6 +532,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   // Unified Date Range Filter State
   const [dateRange, setDateRange] = useState<DateRangeValue>({
     preset: "1m",
+    year: new Date().getFullYear(),
+    month: new Date().getMonth() + 1,
   });
 
   // Transactions Page Specific Filters
@@ -1819,7 +1823,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     const form: Partial<Transaction> = existing
       ? { ...existing }
       : {
-          date: new Date().toISOString().slice(0, 16),
+          date: getTodayDateTimeString(),
           description: "",
           type: preset?.type ?? data.preferences.defaultType,
           amount: undefined,

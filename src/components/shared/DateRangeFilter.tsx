@@ -29,7 +29,7 @@ export const FULL_MONTH_NAMES = [
 export function matchesDateRange(
   dateString: string,
   range: DateRangeValue,
-  referenceDate = new Date(2026, 9, 22)
+  referenceDate = new Date()
 ): boolean {
   if (!dateString) return false;
   const itemDate = dateString.slice(0, 10);
@@ -41,7 +41,7 @@ export function matchesDateRange(
     return true;
   }
 
-  // Specific single month of a year (e.g., Oct 2026, May 2026)
+  // Specific single month of a year (defaults to current ongoing month)
   if (range.preset === "month" || range.preset === "1m") {
     const targetYear = range.year ?? referenceDate.getFullYear();
     const targetMonth = range.month ?? (referenceDate.getMonth() + 1);
@@ -55,7 +55,7 @@ export function matchesDateRange(
     return itemDate.startsWith(`${targetYear}-`);
   }
 
-  // Legacy relative presets (6m, 12m) for test compatibility
+  // Legacy relative presets (6m, 12m)
   const monthsBack = range.preset === "6m" ? 6 : 12;
   const start = new Date(referenceDate.getFullYear(), referenceDate.getMonth() - (monthsBack - 1), 1);
   const startIso = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, "0")}-01`;
@@ -74,15 +74,15 @@ export function DateRangeFilter({
   className?: string;
 }) {
   const now = new Date();
-  const maxYear = now.getFullYear() >= 2026 ? now.getFullYear() : 2026;
-  const maxMonth = now.getFullYear() >= 2026 && now.getMonth() >= 9 ? now.getMonth() + 1 : 10;
+  const maxYear = now.getFullYear();
+  const maxMonth = now.getMonth() + 1;
 
-  const currentYear = Math.min(maxYear, value.year ?? 2026);
-  const activeMonth = value.month ?? (value.preset === "1m" || value.preset === "month" ? 10 : undefined);
+  const currentYear = value.year ?? maxYear;
+  const activeMonth = value.month ?? (value.preset === "1m" || value.preset === "month" ? maxMonth : undefined);
 
   const handleMonthSelect = (monthIndex: number) => {
     const m = monthIndex + 1;
-    if (currentYear === maxYear && m > maxMonth) return; // Prevent selecting future months
+    if (currentYear > maxYear || (currentYear === maxYear && m > maxMonth)) return; // Prevent selecting future months
     onChange({
       preset: "month",
       year: currentYear,

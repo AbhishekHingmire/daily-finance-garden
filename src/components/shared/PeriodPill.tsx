@@ -6,6 +6,7 @@ import {
 } from "@/lib/metrics-service";
 import {
   formatPeriodLabel,
+  getCurrentPeriod,
   MONTH_SHORT_NAMES,
   MONTH_FULL_NAMES,
 } from "@/lib/period-state";
@@ -155,12 +156,12 @@ export const PeriodPill: React.FC<PeriodPillProps> = ({
             <button
               type="button"
               onClick={() => {
-                onChange({ year: 2026, month: 10 });
+                onChange(getCurrentPeriod());
                 setIsOpen(false);
               }}
               className="text-[11px] font-bold text-primary hover:underline cursor-pointer"
             >
-              Reset to Oct 2026
+              Reset to current month
             </button>
           </div>
         </div>

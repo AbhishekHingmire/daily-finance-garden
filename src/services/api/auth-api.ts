@@ -119,8 +119,9 @@ export const authStorage = {
     try {
       localStorage.setItem(STORAGE_KEYS.ACCESS_TOKEN, data.accessToken);
       localStorage.setItem(STORAGE_KEYS.REFRESH_TOKEN, data.refreshToken);
-      // Ensure 72-hour session duration is recorded
-      const expiresAt = data.expiresAt || new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
+      // Ensure 1-month (30-day) session duration is recorded
+      const ONE_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
+      const expiresAt = data.expiresAt || new Date(Date.now() + ONE_MONTH_MS).toISOString();
       localStorage.setItem(STORAGE_KEYS.EXPIRES_AT, expiresAt);
       if (data.user) {
         localStorage.setItem(STORAGE_KEYS.AUTH_USER, JSON.stringify(data.user));

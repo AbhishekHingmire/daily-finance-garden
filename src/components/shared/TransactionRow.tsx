@@ -68,7 +68,11 @@ export function TransactionRow({
             <span className="truncate text-sm font-semibold text-foreground">
               {transaction.description}
             </span>
-            {transaction.type === "Expense" ? (
+            {transaction.type === "Investment" || transaction.categoryId === "cat-investments" ? (
+              <span className="inline-flex shrink-0 items-center rounded-full border border-teal-500/25 bg-teal-500/15 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider text-teal-700 dark:text-teal-300">
+                SIP / Invest
+              </span>
+            ) : transaction.type === "Expense" ? (
               <span
                 className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
                   transaction.need === "Want"

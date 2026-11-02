@@ -86,10 +86,11 @@ export function Dashboard({
   const periodLabel = `${new Date(sharedPeriod.year, sharedPeriod.month - 1, 1).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}`;
 
   const recentTransactions = useMemo(() => {
-    return [...data.transactions]
+    const periodMatches = data.transactions.filter((t) => t.date.startsWith(periodDatePrefix));
+    return (periodMatches.length > 0 ? periodMatches : data.transactions)
       .sort((a, b) => b.date.localeCompare(a.date))
       .slice(0, 5);
-  }, [data.transactions]);
+  }, [data.transactions, periodDatePrefix]);
 
   // Top spending categories in current period
   const topCategories = useMemo(() => {

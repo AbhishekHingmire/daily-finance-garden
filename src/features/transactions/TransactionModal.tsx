@@ -8,6 +8,7 @@ import { matchCategoryIcon } from "@/lib/icon-matcher";
 import {
   DEBT_TRANSACTION_TYPES,
   getAccountBalance,
+  getTodayDateTimeString,
   type Category,
   type Transaction,
   type TransactionType,
@@ -443,7 +444,7 @@ export function TransactionModal({
                 <InputField
                   label="Date & Time"
                   type="datetime-local"
-                  value={(form.date ?? new Date().toISOString()).slice(0, 16)}
+                  value={(form.date ?? getTodayDateTimeString()).slice(0, 16)}
                   onChange={(v) => set("date", v)}
                   error={errors.date}
                 />

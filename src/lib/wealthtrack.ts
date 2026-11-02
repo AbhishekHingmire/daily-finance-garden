@@ -1,4 +1,5 @@
-import { formatDate } from "./formatters";
+import { formatDate, getTodayDateString, getTodayDateTimeString } from "./formatters";
+export { getTodayDateString, getTodayDateTimeString };
 
 export type TransactionType =
   | "Expense"
@@ -374,7 +375,8 @@ export function createInitialState(): WealthState {
     { id: "cat-lend", name: "Money Lent / Advances", kind: "Transfer", icon: "🤝", color: "violet", monthlyLimit: 0 },
     { id: "cat-debt-recovery", name: "Debt Recovery", kind: "Transfer", icon: "💵", color: "emerald", monthlyLimit: 0 },
     // Money moving OUT to SIP/lumpsum investments is a deduction, not income — kept separate from "Investment Returns" above.
-    { id: "cat-investment-contrib", name: "Investment Contributions (SIP/Lumpsum)", kind: "Transfer", icon: "📥", color: "teal", monthlyLimit: 0 },
+    // Monthly SIP & investment outgoing commitments for wealth building
+    { id: "cat-investments", name: "Investments & SIPs", kind: "Expense", icon: "📈", color: "teal", monthlyLimit: 15000, defaultNeed: "Need" },
   ];
   const tx = (
     id: string, date: string, description: string, type: TransactionType, amount: number,

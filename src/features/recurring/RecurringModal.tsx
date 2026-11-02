@@ -82,7 +82,7 @@ export function RecurringModal({
     const newCat: Category = {
       id: `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       name: catForm.name.trim(),
-      kind: catForm.kind ?? (form.type === "Investment" ? "Transfer" : (form.type ?? "Expense")),
+      kind: (catForm.kind ?? "Expense") as Category["kind"],
       icon: catForm.icon ?? matchCategoryIcon(catForm.name.trim(), "📁"),
       color: catForm.color ?? "blue",
       monthlyLimit: Number(catForm.monthlyLimit) || 0,
@@ -532,7 +532,7 @@ export function RecurringModal({
       {isCreatingCategory && (
         <CategoryModal
           category={null}
-          kind={form.type === "Investment" ? "Transfer" : (form.type ?? "Expense")}
+          kind={form.type === "Investment" ? "Expense" : (form.type ?? "Expense")}
           onClose={() => setIsCreatingCategory(false)}
           onSave={handleQuickCreateCategory}
         />

@@ -112,7 +112,7 @@ export function TransactionsPage({
     setTxPriority("All priorities");
     setTxCategory("All categories");
     setTxAccount("All accounts");
-    setDateRange({ preset: "1m" });
+    setDateRange({ preset: "1m", year: sharedPeriod.year, month: sharedPeriod.month });
   };
 
   const hasFilter = Boolean(

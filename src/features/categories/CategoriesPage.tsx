@@ -5,7 +5,7 @@ import { ActionMenu } from "@/components/shared/ActionMenu";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { PeriodPill } from "@/components/shared/PeriodPill";
 import { Metric } from "@/components/shared/Metric";
-import { useSharedPeriod } from "@/lib/period-state";
+import { formatPeriodLabel, useSharedPeriod } from "@/lib/period-state";
 import { migrateLegacyState } from "@/lib/migration";
 import { getBudgetMetrics } from "@/lib/metrics-service";
 import {
@@ -82,7 +82,7 @@ export function CategoriesPage({
                 Overall Budget Performance
               </span>
               <span className="rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-bold shrink-0">
-                {sharedPeriod.month === 10 ? "October 2026" : `${sharedPeriod.month}/${sharedPeriod.year}`}
+                {formatPeriodLabel(sharedPeriod)}
               </span>
             </div>
             <div className="flex items-baseline gap-2 mt-1 flex-wrap">
