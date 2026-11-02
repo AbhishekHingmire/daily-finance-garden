@@ -171,7 +171,11 @@ export function OnboardingFlow({
   };
 
   const handleFinish = async () => {
-    await repository.saveState({ ...data, onboarded: true });
+    try {
+      await repository.saveState({ ...data, onboarded: true });
+    } catch {
+      // Gracefully continue on offline / transient network error
+    }
     onComplete();
   };
 

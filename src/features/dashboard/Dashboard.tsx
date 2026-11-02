@@ -143,11 +143,10 @@ export function Dashboard({
 
   return (
     <div className="space-y-6">
-      {/* 1. Header with Breadcrumb-style icon & Shared PeriodPill */}
+      {/* 1. Header with Shared PeriodPill */}
       <PageHeading
         title="Home"
         description="Daily expense tracker: review outgoings, category budgets, and recurring bills."
-        icon={<Home size={22} className="text-primary" />}
         periodSlot={<PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />}
       />
 

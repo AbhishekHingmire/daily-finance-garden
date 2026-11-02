@@ -17,23 +17,19 @@ import {
 
 export function CategoriesPage({
   data,
-  kind,
-  setKind,
   onAdd,
   onEdit,
   onDelete,
   money,
 }: {
   data: WealthState;
-  kind: CategoryKind;
-  setKind: (kind: CategoryKind) => void;
+  kind?: CategoryKind;
+  setKind?: (kind: CategoryKind) => void;
   onAdd: () => void;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
   money: (amount: number) => string;
 }) {
-  const [priorityFilter, setPriorityFilter] = useState("All");
-  const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
   const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
 
   const unified = useMemo(() => migrateLegacyState(data), [data]);
@@ -42,29 +38,16 @@ export function CategoriesPage({
     [unified, sharedPeriod]
   );
 
-  const periodKey = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
-  const periodTransactions = useMemo(
-    () => data.transactions.filter((t) => t.date.slice(0, 7) === periodKey),
-    [data.transactions, periodKey]
+  const categories = useMemo(
+    () => data.categories.filter((c) => !c.archived && c.kind === "Expense"),
+    [data.categories]
   );
-
-  const expenseCategories = data.categories.filter((c) => !c.archived && c.kind === "Expense");
-  const transferCategories = data.categories.filter((c) => !c.archived && c.kind === "Transfer");
-
-  const categories = data.categories.filter((c) => {
-    if (c.archived) return false;
-    if (c.kind !== kind) return false;
-    if (priorityFilter !== "All" && c.kind === "Expense" && (c.defaultNeed || "Need") !== priorityFilter)
-      return false;
-    return true;
-  });
 
   return (
     <div className="space-y-6">
       <PageHeading
         title="Budgets & Categories"
         description="Organize your spending into smart need or want classifications with monthly budget caps. Tap any category to edit, or use ⋯ to delete."
-        icon={<Tag size={22} className="text-primary" />}
         periodSlot={<PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />}
         primaryAction={
           <Button size="sm" onClick={onAdd} className="h-8 sm:h-9 px-2.5 sm:px-3 gap-1.5 text-xs font-semibold shadow-xs shrink-0">
@@ -118,74 +101,15 @@ export function CategoriesPage({
         </div>
       </div>
 
-      {/* Filter and Switcher Toolbar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-border/60 pb-3 sm:pb-4 min-w-0">
-        <div className="flex items-center justify-between gap-2 w-full sm:w-auto min-w-0">
-          <div className="flex items-center gap-1 sm:gap-2 flex-wrap">
-            <Button
-              variant={kind === "Expense" ? "default" : "outline"}
-              size="sm"
-              className="h-7.5 sm:h-8 px-2.5 sm:px-3 text-xs font-medium"
-              onClick={() => setKind("Expense")}
-            >
-              Expense <span className="hidden sm:inline">({expenseCategories.length})</span>
-            </Button>
-            <Button
-              variant={kind === "Transfer" ? "default" : "outline"}
-              size="sm"
-              className="h-7.5 sm:h-8 px-2.5 sm:px-3 text-xs font-medium"
-              onClick={() => setKind("Transfer")}
-            >
-              Transfers <span className="hidden sm:inline">({transferCategories.length})</span>
-            </Button>
-          </div>
-
-          {/* Filter Toggle (Consistent across Desktop and Mobile) */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setIsFilterExpanded((prev) => !prev)}
-            className={`h-8 gap-1.5 px-2.5 text-xs font-bold transition-all cursor-pointer ${
-              priorityFilter !== "All"
-                ? "border-primary/40 bg-primary/10 text-primary shadow-2xs"
-                : "text-muted-foreground hover:text-foreground border-border/80"
-            }`}
-            aria-expanded={isFilterExpanded}
-            aria-label="Toggle classification filter"
-          >
-            <SlidersHorizontal size={12} className={priorityFilter !== "All" ? "text-primary" : "text-muted-foreground"} />
-            <span>Filter</span>
-            {priorityFilter !== "All" && (
-              <span className="grid size-4 place-items-center rounded-full bg-primary text-[9.5px] font-bold text-primary-foreground leading-none">
-                1
-              </span>
-            )}
-            <ChevronDown
-              size={13}
-              className={`transition-transform duration-200 ${isFilterExpanded ? "rotate-180" : ""}`}
-            />
-          </Button>
-        </div>
-
-        {/* Priority Filter: Collapsible across all screen sizes */}
-        <div
-          className={`${
-            isFilterExpanded ? "flex" : "hidden"
-          } items-center gap-2 pt-2 border-t border-border/50 animate-in fade-in-50 duration-150`}
-        >
-          <span className="text-[11px] font-medium text-muted-foreground shrink-0">
-            Classification:
+      {/* Header bar for categories list without filters */}
+      <div className="flex items-center justify-between border-b border-border/60 pb-2.5">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+            Expense Categories
           </span>
-          <select
-            className="wt-field h-8 w-auto min-w-[145px] text-xs py-0 pl-2.5 pr-8 bg-background cursor-pointer"
-            value={priorityFilter}
-            onChange={(e) => setPriorityFilter(e.target.value)}
-            aria-label="Priority Classification Filter"
-          >
-            <option value="All">All Priorities</option>
-            <option value="Need">Need (50%)</option>
-            <option value="Want">Want (30%)</option>
-          </select>
+          <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
+            {categories.length}
+          </span>
         </div>
       </div>
 

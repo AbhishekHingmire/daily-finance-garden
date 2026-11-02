@@ -185,7 +185,6 @@ export function TransactionsPage({
       <PageHeading
         title="Transactions"
         description="Every financial movement, categorized and accounted for."
-        icon={<ArrowLeftRight size={22} className="text-primary" />}
         periodSlot={
           <div className="flex items-center gap-2">
             <PeriodPill period={sharedPeriod} onChange={handlePeriodChange} />
@@ -397,44 +396,6 @@ export function TransactionsPage({
         )}
       </div>
 
-      {/* Dedicated Section for EMIs & Loan Obligations */}
-      {activeLoans.length > 0 && (
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-amber-500/20 bg-amber-500/[0.04] p-3 sm:px-4 sm:py-3 text-xs wt-shadow">
-          <div className="flex items-start sm:items-center gap-2.5 min-w-0">
-            <span className="grid size-7.5 place-items-center rounded-lg bg-amber-500/15 text-amber-700 dark:text-amber-300 shrink-0 mt-0.5 sm:mt-0">
-              <Landmark size={15} />
-            </span>
-            <div className="min-w-0">
-              <button
-                type="button"
-                onClick={() => onNavigate?.("Loans")}
-                className="group text-left cursor-pointer hover:opacity-90 transition-opacity"
-              >
-                <p className="font-bold text-foreground flex items-center gap-1.5 flex-wrap">
-                  <span className="hover:underline">
-                    {activeLoans.length} loans · {money(periodEmi)} EMIs paid this month ›
-                  </span>
-                </p>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Monthly EMI: <strong className="text-foreground tabular-nums">{money(loansSummary.totalMonthlyEmi)}/mo</strong> · {periodEmiCount} {periodEmiCount === 1 ? "payment" : "payments"}
-                </p>
-              </button>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-            <Button
-              variant={txType === "EMI / Loan Payment" ? "secondary" : "outline"}
-              size="sm"
-              className="h-7.5 text-xs font-semibold gap-1.5 border-amber-500/30 text-amber-800 dark:text-amber-200 hover:bg-amber-500/10"
-              onClick={() => setTxType(txType === "EMI / Loan Payment" ? "All types" : "EMI / Loan Payment")}
-            >
-              <Landmark size={12} />
-              {txType === "EMI / Loan Payment" ? "Show All Types" : "View EMI Transactions"}
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Sleek Minimalist Filtered Summary Strip */}
       <div className="flex flex-wrap items-center justify-between gap-2.5 rounded-xl border border-border/70 bg-card/80 px-3.5 py-2 wt-shadow text-xs">
         <div className="flex items-center gap-2">
@@ -443,33 +404,11 @@ export function TransactionsPage({
             {rows.length} {rows.length === 1 ? "record" : "records"}
           </span>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5 sm:gap-4 font-bold tabular-nums text-xs">
-          <span className="text-muted-foreground text-[11px]">
-            Inflows:{" "}
-            <strong className="text-emerald-600 dark:text-emerald-400 font-extrabold">
-              +{money(filteredInflow)}
-            </strong>
-          </span>
-          <span className="text-border select-none">·</span>
+        <div className="flex items-center gap-2 font-bold tabular-nums text-xs">
           <span className="text-muted-foreground text-[11px]">
             Outflows:{" "}
             <strong className="text-rose-600 dark:text-rose-400 font-extrabold">
               −{money(filteredOutflow)}
-            </strong>
-          </span>
-          <span className="text-border select-none">·</span>
-          <span className="text-muted-foreground text-[11px]">
-            Net:{" "}
-            <strong
-              className={`font-extrabold ${
-                filteredNet >= 0
-                  ? "text-emerald-600 dark:text-emerald-400"
-                  : "text-rose-600 dark:text-rose-400"
-              }`}
-            >
-              {filteredNet >= 0
-                ? `+${money(filteredNet)}`
-                : `−${money(Math.abs(filteredNet))}`}
             </strong>
           </span>
         </div>

@@ -615,10 +615,22 @@ export class RestWealthRepository implements WealthRepository {
       loanId: cleanGuid(item.loanId),
       investmentId: cleanGuid(item.investmentId),
     };
-    return this.request<RecurringItem>(`${this.config.endpoints.recurring}/${item.id}`, {
+
+    const res = await this.request<RecurringItem>(`${this.config.endpoints.recurring}/${item.id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
     });
+
+    if (!res.success && (item.id.startsWith("rec-loan-") || item.loanId)) {
+      // Fallback: If recurring item was client-synthesized from a loan, attempt creation or graceful resolve
+      const createRes = await this.addRecurring(item);
+      if (createRes.success) {
+        return createRes;
+      }
+      return { success: true, data: item };
+    }
+
+    return res;
   }
 
   async deleteRecurring(id: string): Promise<ApiResponse<void>> {

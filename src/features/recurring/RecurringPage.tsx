@@ -60,7 +60,6 @@ export function RecurringPage({
       <PageHeading
         title="Recurring"
         description="Scheduled bills, loan EMIs, and automated SIP investments."
-        icon={<CalendarDays size={22} className="text-primary" />}
         isBalancePage
         primaryAction={
           <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-xs">
@@ -217,43 +216,25 @@ export function RecurringPage({
                     )}
                   </span>
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5 flex-wrap">
                       <h3 className="font-semibold text-foreground text-sm truncate">
                         {item.name}
                       </h3>
-                      {isInv && (
-                        <span className="rounded-md bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold text-blue-700 dark:text-blue-300 uppercase tracking-wider">
-                          SIP · {item.instrumentType || "Investment"}
-                        </span>
-                      )}
                       {item.loanId && (
-                        <span className="rounded-md bg-rose-500/10 px-1.5 py-0.5 text-[9px] font-bold text-rose-700 dark:text-rose-300">
-                          Loan EMI
+                        <span className="rounded-md bg-rose-500/10 border border-rose-200/50 dark:border-rose-900/50 px-1.5 py-0.5 text-[10px] font-bold text-rose-700 dark:text-rose-300 shrink-0">
+                          EMI{item.totalInstallments ? ` · ${item.paidInstallments || 0}/${item.totalInstallments}` : ""}
                         </span>
                       )}
-                      {Boolean(item.totalInstallments) && (
-                        <span className="rounded-md bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-bold text-amber-700 dark:text-amber-300 tabular-nums">
-                          {item.paidInstallments || 0}/{item.totalInstallments} paid ({Math.max(0, (item.totalInstallments || 0) - (item.paidInstallments || 0))} left)
-                        </span>
-                      )}
-                      {item.need && !isIncome && !isInv && (
-                        <span
-                          className={`rounded-md px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wider ${
-                            item.need === "Want"
-                              ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                              : "bg-muted text-muted-foreground"
-                          }`}
-                        >
-                          {item.need}
+                      {isInv && (
+                        <span className="rounded-md bg-blue-500/10 border border-blue-200/50 dark:border-blue-900/50 px-1.5 py-0.5 text-[10px] font-bold text-blue-700 dark:text-blue-300 uppercase shrink-0">
+                          SIP
                         </span>
                       )}
                     </div>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">
-                      {isInv && linkedHolding
-                        ? `Portfolio Asset: ${linkedHolding.name} · ${acc?.name ?? "Account"}`
-                        : item.loanId && linkedLoan
-                        ? `Linked to ${linkedLoan.name} (${linkedLoan.lenderInstitution}) · ${acc?.name ?? "Account"} · Outstanding ${money(linkedLoan.currentOutstanding)}`
-                        : `${cat?.name ?? item.type} · ${acc?.name ?? "Account"}`}
+                      {item.loanId && linkedLoan
+                        ? `${linkedLoan.name} · Outstanding ${money(linkedLoan.currentOutstanding)}`
+                        : `${cat?.name ?? item.type}`}
                     </p>
                   </div>
                 </div>
