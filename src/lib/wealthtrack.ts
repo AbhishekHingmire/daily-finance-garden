@@ -26,7 +26,7 @@ export const OUTFLOW_TYPES: TransactionType[] = [
 ];
 
 export const INFLOW_TYPES: TransactionType[] = [
-  "Income",
+  // "Income",  // Removed: app is now expense-only
   "Borrow / Loan Taken",
   "Debt Recovery",
   "Refund",
@@ -104,9 +104,9 @@ export interface UserProfile {
   email: string;
   phone: string;
   occupation: string;
-  monthlyIncomeTarget: number;
-  emergencyFundTarget: number;
-  savingsRateTarget: number;
+  monthlyIncomeTarget?: number;  // Removed: expense-only app
+  emergencyFundTarget?: number;  // Removed: expense-only app
+  savingsRateTarget?: number;  // Removed: expense-only app
   riskProfile: "Conservative" | "Balanced" | "Aggressive";
   bio?: string;
   salaryCreditDay?: number; // 1-31 (Day of month when monthly salary is credited)
@@ -259,8 +259,8 @@ export interface WealthPreferences {
   language: "English" | "हिन्दी";
   weekStart: "Monday" | "Sunday";
   theme: "light" | "dark";
-  salaryDay: number | null;
-  defaultType: "Expense" | "Income";
+  salaryDay?: number | null;  // Removed: expense-only app
+  defaultType?: "Expense" | "Income";
   defaultAccount: string;
   defaultPaymentMethod: string;
   confirmTransactions: boolean;
@@ -318,8 +318,6 @@ export function createEmptyWorkspaceState(): WealthState {
       language: "English",
       weekStart: "Monday",
       theme: "light",
-      salaryDay: 1,
-      defaultType: "Expense",
       defaultAccount: "",
       defaultPaymentMethod: "UPI",
       confirmTransactions: false,
@@ -332,9 +330,9 @@ export function createEmptyWorkspaceState(): WealthState {
       email: "",
       phone: "",
       occupation: "Professional",
-      monthlyIncomeTarget: 100000,
-      emergencyFundTarget: 180000,
-      savingsRateTarget: 30,
+      monthlyIncomeTarget: 100000,  // Removed: expense-only app
+      // emergencyFundTarget: 180000,  // Removed: expense-only app
+      // savingsRateTarget: 30,  // Removed: expense-only app
       riskProfile: "Balanced",
     },
     accounts: [],
@@ -366,10 +364,11 @@ export function createInitialState(): WealthState {
     { id: "cat-bills", name: "Bills & utilities", kind: "Expense", icon: "💡", color: "amber", monthlyLimit: 7000 },
     { id: "cat-health", name: "Health", kind: "Expense", icon: "🏥", color: "green", monthlyLimit: 5000 },
     { id: "cat-entertainment", name: "Entertainment", kind: "Expense", icon: "🎬", color: "pink", monthlyLimit: 4000 },
-    { id: "cat-salary", name: "Salary", kind: "Income", icon: "💼", color: "green", monthlyLimit: 0 },
-    { id: "cat-freelance", name: "Freelance", kind: "Income", icon: "💻", color: "blue", monthlyLimit: 0 },
-    { id: "cat-investments", name: "Investment Returns (Dividends/Gains)", kind: "Income", icon: "📈", color: "teal", monthlyLimit: 0 },
-    { id: "cat-other-income", name: "Other income", kind: "Income", icon: "💰", color: "violet", monthlyLimit: 0 },
+    // Income categories removed: app is now expense-only
+    // { id: "cat-salary", name: "Salary", kind: "Income", ... },
+    // { id: "cat-freelance", name: "Freelance", kind: "Income", ... },
+    // { id: "cat-investments", name: "Investment Returns", kind: "Income", ... },
+    // { id: "cat-other-income", name: "Other income", kind: "Income", ... },
     { id: "cat-loan-emi", name: "Loan EMI & Debt", kind: "Expense", icon: "💳", color: "rose", monthlyLimit: 45000 },
     { id: "cat-borrow", name: "Loans & Borrowings", kind: "Transfer", icon: "🏦", color: "amber", monthlyLimit: 0 },
     { id: "cat-lend", name: "Money Lent / Advances", kind: "Transfer", icon: "🤝", color: "violet", monthlyLimit: 0 },
@@ -387,28 +386,28 @@ export function createInitialState(): WealthState {
   });
   const transactions = [
     tx("tx-01", "2026-10-20T08:45", "Fresh groceries", "Expense", 1842, "cat-food", "acc-hdfc", { merchant: "Nature's Basket", tags: ["weekly"] }),
-    tx("tx-02", "2026-10-19T09:00", "October salary", "Income", 85000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }),
+    // tx("tx-02", "2026-10-19T09:00", "October salary", "Income", 85000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }), // Removed: Income tx
     tx("tx-03", "2026-10-18T18:24", "Metro card recharge", "Expense", 800, "cat-travel", "acc-paytm", { merchant: "Delhi Metro", paymentMethod: "Wallet" }),
     tx("tx-04", "2026-10-17T20:12", "Dinner with friends", "Expense", 2150, "cat-food", "acc-hdfc", { merchant: "The Table", need: "Want", paymentMethod: "Card" }),
     tx("tx-05", "2026-10-15T11:15", "Internet bill", "Expense", 999, "cat-bills", "acc-hdfc", { merchant: "Airtel", recurring: true }),
-    tx("tx-06", "2026-10-12T14:30", "Design project", "Income", 14500, "cat-freelance", "acc-sbi", { paymentMethod: "Bank transfer", merchant: "Studio North" }),
+    // tx("tx-06", "2026-10-12T14:30", "Design project", "Income", 14500, "cat-freelance", "acc-sbi", { paymentMethod: "Bank transfer", merchant: "Studio North" }), // Removed: Income tx
     tx("tx-07", "2026-10-10T19:05", "Running shoes", "Expense", 3899, "cat-shopping", "acc-hdfc", { merchant: "Decathlon", need: "Want", paymentMethod: "Card" }),
     tx("tx-08", "2026-10-08T10:00", "Rent · October", "Expense", 22000, "cat-housing", "acc-hdfc", { merchant: "Home rent", paymentMethod: "Bank transfer", recurring: true }),
     tx("tx-09", "2026-10-06T09:42", "Pharmacy", "Expense", 640, "cat-health", "acc-cash", { merchant: "Apollo Pharmacy", paymentMethod: "Cash" }),
     tx("tx-10", "2026-10-03T16:20", "Cab home", "Expense", 512, "cat-travel", "acc-paytm", { merchant: "Uber", paymentMethod: "Wallet", need: "Want" }),
     tx("tx-11", "2026-10-02T12:10", "Bookshop refund", "Refund", 650, "cat-shopping", "acc-hdfc", { merchant: "Crossword", notes: "Returned a duplicate book" }),
-    tx("tx-12", "2026-09-19T09:00", "September salary", "Income", 85000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }),
-    tx("tx-13", "2026-09-12T14:00", "Website refresh", "Income", 9800, "cat-freelance", "acc-sbi", { paymentMethod: "Bank transfer", merchant: "Mango Studio" }),
+    // tx("tx-12", "2026-09-19T09:00", "September salary", "Income", 85000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }), // Removed: Income tx
+    // tx("tx-13", "2026-09-12T14:00", "Website refresh", "Income", 9800, "cat-freelance", "acc-sbi", { paymentMethod: "Bank transfer", merchant: "Mango Studio" }), // Removed: Income tx
     tx("tx-14", "2026-09-08T10:00", "Rent · September", "Expense", 22000, "cat-housing", "acc-hdfc", { merchant: "Home rent", paymentMethod: "Bank transfer", recurring: true }),
     tx("tx-15", "2026-09-04T19:40", "Mobile plan", "Expense", 599, "cat-bills", "acc-hdfc", { merchant: "Jio", recurring: true }),
-    tx("tx-16", "2026-08-19T09:00", "August salary", "Income", 85000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }),
+    // tx("tx-16", "2026-08-19T09:00", "August salary", "Income", 85000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }), // Removed: Income tx
     tx("tx-17", "2026-08-08T10:00", "Rent · August", "Expense", 22000, "cat-housing", "acc-hdfc", { merchant: "Home rent", paymentMethod: "Bank transfer", recurring: true }),
     tx("tx-18", "2026-08-03T18:30", "Groceries", "Expense", 3120, "cat-food", "acc-hdfc", { merchant: "BigBasket", tags: ["weekly"] }),
-    tx("tx-19", "2026-07-19T09:00", "July salary", "Income", 82000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }),
+    // tx("tx-19", "2026-07-19T09:00", "July salary", "Income", 82000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }), // Removed: Income tx
     tx("tx-20", "2026-07-08T10:00", "Rent · July", "Expense", 22000, "cat-housing", "acc-hdfc", { merchant: "Home rent", paymentMethod: "Bank transfer", recurring: true }),
-    tx("tx-21", "2026-06-19T09:00", "June salary", "Income", 82000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }),
+    // tx("tx-21", "2026-06-19T09:00", "June salary", "Income", 82000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }), // Removed: Income tx
     tx("tx-22", "2026-06-08T10:00", "Rent · June", "Expense", 22000, "cat-housing", "acc-hdfc", { merchant: "Home rent", paymentMethod: "Bank transfer", recurring: true }),
-    tx("tx-23", "2026-05-19T09:00", "May salary", "Income", 82000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }),
+    // tx("tx-23", "2026-05-19T09:00", "May salary", "Income", 82000, "cat-salary", "acc-hdfc", { paymentMethod: "Bank transfer", merchant: "Acme Technologies", recurring: true }), // Removed: Income tx
     tx("tx-24", "2026-05-08T10:00", "Rent · May", "Expense", 22000, "cat-housing", "acc-hdfc", { merchant: "Home rent", paymentMethod: "Bank transfer", recurring: true }),
     tx("tx-25", "2026-10-10T10:00", "Home Loan EMI · October", "EMI / Loan Payment", 30850, "cat-loan-emi", "acc-hdfc", {
       paymentMethod: "Auto-debit",
@@ -490,7 +489,7 @@ export function createInitialState(): WealthState {
     ],
     notifications: [
       { id: "notice-rent", title: "Rent is coming up", description: "Monthly rent · ₹22,000 · Nov 8", date: "2026-10-20", read: false },
-      { id: "notice-salary", title: "Salary expected soon", description: "Monthly salary · ₹85,000 · Nov 19", date: "2026-10-20", read: false },
+      // { id: "notice-salary", title: "Salary expected soon", description: "Monthly salary · ₹85,000 · Nov 19", date: "2026-10-20", read: false },
     ],
     tags: ["weekly", "work", "travel", "subscription"],
     customFields: [],
@@ -902,7 +901,7 @@ export function syncSystemNotifications(
   });
 
   // 2. Scheduled Salary Credit notifications
-  const salaryItem = (state.recurring || []).find(
+  const salaryItem: any = null; if (false) (state.recurring || []).find(
     (r) => r.enabled && (r.name.toLowerCase().includes("salary") || r.type === "Income")
   );
   if (salaryItem && salaryItem.nextDate) {

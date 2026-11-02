@@ -12,6 +12,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Sparkles,
+  Tag,
   TrendingUp,
   Wallet,
   X,
@@ -303,63 +304,63 @@ export function ReportsPage({
 
       {/* Hero Financial Performance Metric Cards */}
       <div className="rounded-2xl border border-border/80 bg-card p-3 sm:p-6 wt-shadow transition-all divide-y divide-border/60 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
-        {/* Net Surplus */}
+        {/* Total Outflow */}
         <div className="pb-2.5 sm:pb-0 flex items-center justify-between gap-3 sm:block">
           <div className="min-w-0">
             <div className="flex items-center gap-2">
               <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Saved
+                Total Expenses
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300">
-                <Sparkles size={10} /> <Metric id="savings_rate" value={savingsRate} format="percent" /> Saved
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              {netSavings >= 0 ? "Surplus capital retained" : "Net spending deficit"}
-            </p>
-          </div>
-          <p className="wt-display text-base sm:text-3xl font-extrabold text-foreground tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
-            <Metric id="saved" value={netSavings} />
-          </p>
-        </div>
-
-        {/* Total Inflow */}
-        <div className="py-2.5 sm:py-0 sm:border-l sm:border-border/60 sm:pl-5 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <div className="flex items-center justify-between sm:w-full">
-              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Money In
-              </span>
-              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <ArrowDownLeft size={15} />
+              <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-rose-600 dark:text-rose-400">
+                Outflow
               </span>
             </div>
             <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              Salary, freelance & other income
-            </p>
-          </div>
-          <p className="wt-display text-base sm:text-3xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
-            <Metric id="money_in" value={totalIncome} signed />
-          </p>
-        </div>
-
-        {/* Total Outflow */}
-        <div className="pt-2.5 sm:pt-0 sm:border-l sm:border-border/60 sm:pl-5 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <div className="flex items-center justify-between sm:w-full">
-              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Money Out
-              </span>
-              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400">
-                <ArrowUpRight size={15} />
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              All expenses, EMIs & outflows
+              All expenses & loan repayments
             </p>
           </div>
           <p className="wt-display text-base sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
             <Metric id="money_out" value={totalExpenses} />
+          </p>
+        </div>
+
+        {/* Total Budget Cap */}
+        <div className="py-2.5 sm:py-0 sm:border-l sm:border-border/60 sm:pl-5 flex items-center justify-between gap-3 sm:block">
+          <div className="min-w-0">
+            <div className="flex items-center justify-between sm:w-full">
+              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Monthly Budget
+              </span>
+              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-primary/10 text-primary">
+                <Tag size={15} />
+              </span>
+            </div>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+              Total allocated budget limits
+            </p>
+          </div>
+          <p className="wt-display text-base sm:text-3xl font-extrabold text-foreground tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
+            {money(budgetMetrics.totalCap)}
+          </p>
+        </div>
+
+        {/* Budget Headroom */}
+        <div className="pt-2.5 sm:pt-0 sm:border-l sm:border-border/60 sm:pl-5 flex items-center justify-between gap-3 sm:block">
+          <div className="min-w-0">
+            <div className="flex items-center justify-between sm:w-full">
+              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Budget Remaining
+              </span>
+              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                <Sparkles size={15} />
+              </span>
+            </div>
+            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
+              {budgetMetrics.totalCap >= totalExpenses ? "Under monthly limit" : "Budget exceeded"}
+            </p>
+          </div>
+          <p className="wt-display text-base sm:text-3xl font-extrabold text-primary tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
+            {money(Math.max(0, budgetMetrics.totalCap - totalExpenses))}
           </p>
         </div>
       </div>

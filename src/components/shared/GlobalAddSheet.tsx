@@ -260,32 +260,10 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
       return;
     }
 
-    if (!accountId) {
-      toast.error("Please select an account");
-      return;
-    }
+    const effectiveAccountId = accountId || (accounts.length > 0 ? accounts[0].id : "");
+    const selectedAcc = accounts.find((a) => a.id === effectiveAccountId);
 
-    const selectedAcc = accounts.find((a) => a.id === accountId);
-    if (!selectedAcc) {
-      toast.error("Please select a valid account");
-      return;
-    }
 
-    const isDebit = activeTab === "expense" || activeTab === "transfer";
-    const isBankOrCash = !["credit", "credit card", "loan"].includes(selectedAcc.type?.toLowerCase() || "");
-    const accBal = getAccBal(selectedAcc.id);
-    if (isDebit && isBankOrCash && numAmt > accBal) {
-      toast.error(`Insufficient balance in ${selectedAcc.name}`, {
-        description: `Available: ₹${accBal.toLocaleString("en-IN")}, Required: ₹${numAmt.toLocaleString("en-IN")}`,
-      });
-      return;
-    }
-
-    if (isDebit && isBankOrCash && (accBal - numAmt < 2000)) {
-      toast.warning(`Low balance alert on ${selectedAcc.name}`, {
-        description: `Remaining balance will drop to ₹${(accBal - numAmt).toLocaleString("en-IN")}`,
-      });
-    }
 
     if (activeTab !== "transfer" && !categoryId) {
       toast.error("Please select a category");
@@ -311,7 +289,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
       kind: activeTab,
       amount: numAmt,
       category_id: activeTab === "transfer" ? undefined : categoryId,
-      account_id: accountId,
+      account_id: effectiveAccountId,
       to_ref:
         activeTab === "transfer" || subtype === "emi"
           ? {
@@ -372,7 +350,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
         <div className="flex items-center justify-between pb-3 border-b border-border/70">
           {/* Segmented Control */}
           <div className="inline-flex rounded-xl bg-muted/60 p-1 border border-border/60">
-            {(["expense", "income", "transfer"] as EntryKind[]).map((tab) => {
+            {(["expense", "transfer"] as EntryKind[]).map((tab) => {
               const isSelected = activeTab === tab;
               const label = tab === "expense" ? "Expense" : tab === "income" ? "Income" : "Transfer";
               return (
@@ -616,6 +594,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
             const isInsufficient = isDebit && isBankOrCash && numAmt > currentBal;
             const isLowBalance = isDebit && isBankOrCash && !isInsufficient && currentBal - numAmt < 2000 && numAmt > 0;
             return (
+              accounts.length > 0 ? (
               <div className="grid gap-3 sm:grid-cols-2">
                 <div>
                   <label className="wt-label">{activeTab === "transfer" ? "From Account *" : "Account *"}</label>
@@ -722,7 +701,22 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
                   </div>
                 )}
               </div>
-            );
+            ) : (
+              <div>
+                <label className="wt-label">Category *</label>
+                <select
+                  value={categoryId}
+                  onChange={(e) => handleCategoryChange(e.target.value)}
+                  className="wt-field cursor-pointer"
+                >
+                  {categories.filter((c) => !c.archived && c.kind === activeTab).map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.icon} {c.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ));
           })()}
 
           {/* Date & Need/Want Row */}

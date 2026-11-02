@@ -57,7 +57,7 @@ export function CategoryModal({
   return (
     <Modal
       title={category ? "Edit Category" : "Add Category"}
-      description="Organize your income and expenses clearly with budget limits."
+      description="Organize your expenses clearly with budget limits."
       onClose={onClose}
     >
       <div className="space-y-4">
@@ -75,7 +75,7 @@ export function CategoryModal({
           onChange={(k) => setForm((f) => ({ ...f, kind: k as CategoryKind }))}
           options={[
             { value: "Expense", label: "Expense Category" },
-            { value: "Income", label: "Income Category" },
+
             { value: "Transfer", label: "Transfer Category" },
           ]}
           required

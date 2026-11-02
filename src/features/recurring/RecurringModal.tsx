@@ -72,7 +72,7 @@ export function RecurringModal({
   const selectedAcc = data.accounts.find((a) => a.id === form.accountId);
   const selectedAccBalance = selectedAcc ? getAccountBalance(selectedAcc, data.transactions) : 0;
   const numAmt = Number(form.amount) || 0;
-  const isDebit = form.type !== "Income";
+  const isDebit = true; // Expense-only app: all recurring items are outflows
   const isBankOrCash = selectedAcc && !["Credit Card", "Loan"].includes(selectedAcc.kind);
   const isInsufficient = isDebit && isBankOrCash && numAmt > selectedAccBalance;
   const isLowBalance = isDebit && isBankOrCash && !isInsufficient && selectedAccBalance - numAmt < 2000 && numAmt > 0;
@@ -131,17 +131,8 @@ export function RecurringModal({
       errs.amount = "Enter an amount greater than 0.";
     }
 
-    if (!form.accountId) {
-      errs.accountId = "Please select an account for this schedule.";
-    } else {
-      const selectedAcc = data.accounts.find((a) => a.id === form.accountId);
-      const accBal = selectedAcc ? getAccountBalance(selectedAcc, data.transactions) : 0;
-      const numAmt = Number(form.amount) || 0;
-      if (selectedAcc && !["Credit Card", "Loan"].includes(selectedAcc.kind)) {
-        if (form.type !== "Income" && numAmt > accBal) {
-          errs.accountId = `Insufficient balance in ${selectedAcc.name}. Available: ${currencySymbol}${accBal.toLocaleString("en-IN")}, Required: ${currencySymbol}${numAmt.toLocaleString("en-IN")}`;
-        }
-      }
+    if (!form.accountId && data.accounts.length > 0) {
+      form.accountId = data.accounts[0].id;
     }
 
     if (isInstallmentPlan) {
@@ -174,7 +165,7 @@ export function RecurringModal({
   return (
     <Modal
       title={item ? "Edit Recurring Schedule" : "Add Recurring Schedule"}
-      description="Automate reminders for repeating bills, loan EMIs, subscriptions, or paychecks."
+      description="Automate reminders for repeating bills, loan EMIs, and subscriptions."
       onClose={onClose}
       wide
     >
@@ -186,7 +177,7 @@ export function RecurringModal({
             setForm((f) => ({ ...f, name }));
             if (errors.name) setErrors((prev) => ({ ...prev, name: "" }));
           }}
-          placeholder="e.g. Netflix Subscription, Apartment Rent, Car Loan EMI, Monthly Salary"
+          placeholder="e.g. Netflix Subscription, Apartment Rent, Car Loan EMI"
           error={errors.name}
           required
         />
@@ -205,7 +196,7 @@ export function RecurringModal({
             }}
             options={[
               { value: "Expense", label: "Expense (Outflow / Bill / EMI)" },
-              { value: "Income", label: "Income (Inflow / Salary)" },
+
               { value: "Investment", label: "Investment (SIP / Recurring)" },
             ]}
           />
@@ -438,49 +429,38 @@ export function RecurringModal({
               ]}
             />
           </div>
-          <div>
-            <SelectField
-              label={form.type === "Income" ? "Deposit into Account *" : "Debit from Account *"}
-              value={form.accountId ?? ""}
-              onChange={(accountId) => {
-                setForm((f) => ({ ...f, accountId }));
-                if (errors.accountId) setErrors((prev) => ({ ...prev, accountId: "" }));
-              }}
-              options={[
-                { value: "", label: "-- Choose Account --" },
-                ...data.accounts
-                  .filter((a) => !a.archived)
-                  .map((a) => {
-                    const bal = getAccountBalance(a, data.transactions);
-                    return {
-                      value: a.id,
-                      label: `${a.name} (${a.institution || a.kind}) · ${currencySymbol}${bal.toLocaleString("en-IN")}`,
-                    };
-                  }),
-              ]}
-              error={errors.accountId}
-              required
-            />
-            {selectedAcc && (
-              <div className="mt-1 text-[11px]">
-                {isInsufficient ? (
-                  <p className="text-destructive font-semibold flex items-center gap-1">
-                    <AlertCircle size={12} className="shrink-0" />
-                    Insufficient balance: Available {currencySymbol}{selectedAccBalance.toLocaleString("en-IN")}
-                  </p>
-                ) : isLowBalance ? (
-                  <p className="text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1">
-                    <AlertTriangle size={12} className="shrink-0" />
-                    Low balance alert: Balance will drop to {currencySymbol}{(selectedAccBalance - numAmt).toLocaleString("en-IN")}
-                  </p>
-                ) : (
+          {data.accounts.length > 0 && (
+            <div>
+              <SelectField
+                label="Payment Account (Optional)"
+                value={form.accountId ?? ""}
+                onChange={(accountId) => {
+                  setForm((f) => ({ ...f, accountId }));
+                  if (errors.accountId) setErrors((prev) => ({ ...prev, accountId: "" }));
+                }}
+                options={[
+                  { value: "", label: "-- None / Not linked --" },
+                  ...data.accounts
+                    .filter((a) => !a.archived)
+                    .map((a) => {
+                      const bal = getAccountBalance(a, data.transactions);
+                      return {
+                        value: a.id,
+                        label: `${a.name} (${a.institution || a.kind}) · ${currencySymbol}${bal.toLocaleString("en-IN")}`,
+                      };
+                    }),
+                ]}
+                error={errors.accountId}
+              />
+              {selectedAcc && (
+                <div className="mt-1 text-[11px]">
                   <p className="text-muted-foreground">
                     Available balance: {currencySymbol}{selectedAccBalance.toLocaleString("en-IN")}
                   </p>
-                )}
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         <div

@@ -111,11 +111,10 @@ export function SettingsPage({
           />
           <SelectField
             label="Default Transaction Type"
-            value={data.preferences.defaultType}
+            value={data.preferences.defaultType || "Expense"}
             onChange={(value) => updatePreferences({ defaultType: value as "Expense" | "Income" })}
             options={[
               { value: "Expense", label: "Expense" },
-              { value: "Income", label: "Income" },
             ]}
           />
           <SelectField

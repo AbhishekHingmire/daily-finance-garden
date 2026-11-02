@@ -213,26 +213,16 @@ export function PreferencesPage({
               transactions in just 2 clicks.
             </p>
 
-            <SelectField
-              label="Default Transaction Type"
-              value={draft.defaultType}
-              onChange={(value) =>
-                setDraft((d) => ({ ...d, defaultType: value as "Expense" | "Income" }))
-              }
-              options={[
-                { value: "Expense", label: "Expense" },
-                { value: "Income", label: "Income" },
-              ]}
-            />
-
-            <SelectField
-              label="Default Primary Account"
-              value={draft.defaultAccount}
-              onChange={(defaultAccount) => setDraft((d) => ({ ...d, defaultAccount }))}
-              options={data.accounts
-                .filter((a) => !a.archived)
-                .map((a) => ({ value: a.id, label: `${a.name} (${a.kind})` }))}
-            />
+            {data.accounts.length > 0 && (
+              <SelectField
+                label="Default Primary Account"
+                value={draft.defaultAccount}
+                onChange={(defaultAccount) => setDraft((d) => ({ ...d, defaultAccount }))}
+                options={data.accounts
+                  .filter((a) => !a.archived)
+                  .map((a) => ({ value: a.id, label: `${a.name} (${a.kind})` }))}
+              />
+            )}
 
             <SelectField
               label="Default Payment Method"
@@ -297,10 +287,10 @@ export function PreferencesPage({
             <label className="flex items-center justify-between rounded-lg border border-border/60 p-3 hover:bg-muted/30 transition-colors cursor-pointer">
               <div>
                 <span className="block text-xs font-semibold text-foreground">
-                  Salary Credit Expectation
+                  Budget Overrun Alerts
                 </span>
                 <span className="block text-[11px] text-muted-foreground">
-                  Highlight expected income around day {data.preferences.salaryDay ?? 19} of the month.
+                  Highlight warnings when spending in any category approaches its monthly limit.
                 </span>
               </div>
               <input

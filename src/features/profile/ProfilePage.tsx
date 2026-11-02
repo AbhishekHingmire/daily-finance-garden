@@ -1,7 +1,5 @@
 import { useState, useMemo } from "react";
 import {
-  Banknote,
-  PiggyBank,
   Save,
   Target,
   User,
@@ -10,7 +8,6 @@ import { Button } from "@/components/ui/button";
 import { PageHeading } from "@/components/shared/PageHeading";
 import { InputField, SelectField } from "@/components/shared/FormFields";
 import {
-  safeAmount,
   type UserProfile,
   type WealthState,
 } from "@/lib/wealthtrack";
@@ -24,19 +21,13 @@ export function ProfilePage({
   money: (val: number) => string;
   onSaveProfile: (profile: UserProfile) => void | Promise<void>;
 }) {
-  const defaultSalaryAccount = data.accounts.find((a) => !a.archived && a.kind !== "Credit card")?.id || "";
   const currentProfile: UserProfile = {
     fullName: data.profile?.fullName || "",
     email: data.profile?.email || "",
     phone: data.profile?.phone || "",
     occupation: data.profile?.occupation || "Professional",
-    monthlyIncomeTarget: data.profile?.monthlyIncomeTarget || 100000,
-    emergencyFundTarget: data.profile?.emergencyFundTarget || 180000,
-    savingsRateTarget: data.profile?.savingsRateTarget || 30,
     riskProfile: data.profile?.riskProfile || "Balanced",
     bio: data.profile?.bio || "",
-    salaryCreditDay: data.profile?.salaryCreditDay || data.preferences.salaryDay || 1,
-    salaryAccountId: data.profile?.salaryAccountId || defaultSalaryAccount,
   };
 
   const [form, setForm] = useState<UserProfile>(currentProfile);
@@ -49,30 +40,15 @@ export function ProfilePage({
       form.phone !== currentProfile.phone ||
       form.occupation !== currentProfile.occupation ||
       (form.bio ?? "") !== (currentProfile.bio ?? "") ||
-      form.monthlyIncomeTarget !== currentProfile.monthlyIncomeTarget ||
-      form.emergencyFundTarget !== currentProfile.emergencyFundTarget ||
-      form.savingsRateTarget !== currentProfile.savingsRateTarget ||
-      form.riskProfile !== currentProfile.riskProfile ||
-      form.salaryCreditDay !== currentProfile.salaryCreditDay ||
-      form.salaryAccountId !== currentProfile.salaryAccountId
+      form.riskProfile !== currentProfile.riskProfile
     );
   }, [form, currentProfile]);
-
-  // Compute liquid balance for emergency fund comparison
-  const liquidBalance = data.accounts
-    .filter((a) => !a.archived && a.kind !== "Credit card")
-    .reduce((sum, a) => sum + safeAmount(a.openingBalance), 0);
-
-  const emergencyFundPercent =
-    form.emergencyFundTarget > 0 ? (liquidBalance / form.emergencyFundTarget) * 100 : 0;
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      // The success/error toast is shown by the parent handler once the save actually
-      // completes — showing one here too would duplicate it.
       await onSaveProfile(form);
     } finally {
       setIsSubmitting(false);
@@ -94,7 +70,7 @@ export function ProfilePage({
     <div className="space-y-6">
       <PageHeading
         title="Profile"
-        description="Manage your identity, monthly income targets, emergency fund security, and investor risk profile."
+        description="Manage your identity, personal details, and investment risk profile."
         isBalancePage={!isDirty}
         primaryAction={
           isDirty ? (
@@ -149,9 +125,6 @@ export function ProfilePage({
             <span className="rounded-md border border-border/60 bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground">
               Risk: <strong className="font-semibold text-primary">{form.riskProfile}</strong>
             </span>
-            <span className="rounded-md border border-border/60 bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground">
-              Savings Target: <strong className="font-semibold text-primary">{form.savingsRateTarget}%</strong>
-            </span>
           </div>
         </div>
       </div>
@@ -198,72 +171,21 @@ export function ProfilePage({
             </div>
 
             <label className="block">
-              <span className="wt-label">Financial Philosophy / Bio</span>
+              <span className="wt-label">Personal Note / Bio</span>
               <textarea
                 className="wt-field min-h-20 resize-y text-xs leading-relaxed"
-                placeholder="Share your personal philosophy on savings, investments, or goals…"
+                placeholder="Share your personal philosophy on budgeting or financial goals…"
                 value={form.bio ?? ""}
                 onChange={(e) => setForm({ ...form, bio: e.target.value })}
               />
             </label>
           </div>
 
-          {/* Financial Targets & Risk Profile */}
+          {/* Investor Risk Profile */}
           <div className="rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all space-y-4">
             <div className="flex items-center gap-2 border-b border-border/50 pb-3">
               <Target className="size-4 text-primary" />
-              <h3 className="text-sm font-semibold text-foreground">Financial Targets & Risk</h3>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <InputField
-                label="Monthly Income Target (₹)"
-                type="number"
-                min="0"
-                value={form.monthlyIncomeTarget}
-                onChange={(v) => setForm({ ...form, monthlyIncomeTarget: Number(v) || 0 })}
-                placeholder="100000"
-              />
-              <InputField
-                label="Target Savings Rate (%)"
-                type="number"
-                min="0"
-                max="100"
-                value={form.savingsRateTarget}
-                onChange={(v) => setForm({ ...form, savingsRateTarget: Number(v) || 0 })}
-                placeholder="30"
-              />
-            </div>
-
-            <InputField
-              label="Emergency Fund Goal (₹)"
-              type="number"
-              min="0"
-              value={form.emergencyFundTarget}
-              onChange={(v) => setForm({ ...form, emergencyFundTarget: Number(v) || 0 })}
-              placeholder="150000"
-            />
-
-            {/* Emergency Fund Progress Visual */}
-            <div className="rounded-xl border border-border/60 bg-muted/20 p-3.5 space-y-2">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-semibold text-foreground flex items-center gap-1.5">
-                  <PiggyBank className="size-3.5 text-primary" /> Emergency Fund Readiness
-                </span>
-                <span className="font-bold text-foreground">
-                  {emergencyFundPercent.toFixed(0)}%
-                </span>
-              </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted/60">
-                <div
-                  className="h-full rounded-full bg-emerald-500 transition-all duration-500"
-                  style={{ width: `${Math.min(emergencyFundPercent, 100)}%` }}
-                />
-              </div>
-              <p className="text-[11px] text-muted-foreground flex items-center justify-between">
-                <span>Current Liquid: {money(liquidBalance)}</span>
-                <span>Goal: {money(form.emergencyFundTarget)}</span>
-              </p>
+              <h3 className="text-sm font-semibold text-foreground">Risk Profile</h3>
             </div>
 
             <SelectField
@@ -278,81 +200,14 @@ export function ProfilePage({
                 { value: "Aggressive", label: "Aggressive (Direct Equity, Small Cap, High Growth)" },
               ]}
             />
-          </div>
-
-          {/* Monthly Salary & Autonomous Income Credit Schedule */}
-          <div className="rounded-xl border border-primary/25 bg-primary/5 p-5 sm:p-6 hover:border-primary/40 hover:shadow-xs transition-all space-y-4">
-            <div className="flex items-center justify-between border-b border-primary/20 pb-3">
-              <div className="flex items-center gap-2">
-                <Banknote className="size-4 text-primary" />
-                <h3 className="text-sm font-semibold text-foreground">Monthly Salary &amp; Income Schedule</h3>
-              </div>
-              <span className="text-[11px] font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
-                ⚡ Auto-credit Active
-              </span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-3">
-              <InputField
-                label="Monthly Salary / Income (₹) *"
-                type="number"
-                min="0"
-                value={form.monthlyIncomeTarget}
-                onChange={(v) => setForm({ ...form, monthlyIncomeTarget: Number(v) || 0 })}
-                placeholder="100000"
-              />
-
-              <label className="block">
-                <span className="wt-label">Salary Credit Day of Month *</span>
-                <select
-                  aria-label="Salary credit day of month"
-                  className="wt-field text-xs font-semibold cursor-pointer bg-background"
-                  value={form.salaryCreditDay || 1}
-                  onChange={(e) => setForm({ ...form, salaryCreditDay: Number(e.target.value) })}
-                >
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                    <option key={day} value={day}>
-                      {day}{day === 1 ? "st" : day === 2 ? "nd" : day === 3 ? "rd" : "th"} of every month
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label className="block">
-                <span className="wt-label">Salary Credit Bank Account *</span>
-                <select
-                  aria-label="Salary credit bank account"
-                  className="wt-field text-xs font-semibold cursor-pointer bg-background"
-                  value={form.salaryAccountId || ""}
-                  onChange={(e) => setForm({ ...form, salaryAccountId: e.target.value })}
-                >
-                  <option value="">-- Select Bank Account --</option>
-                  {data.accounts
-                    .filter((a) => !a.archived && a.kind !== "Credit card")
-                    .map((a) => (
-                      <option key={a.id} value={a.id}>
-                        {a.name} ({a.institution || a.kind})
-                      </option>
-                    ))}
-                </select>
-              </label>
-            </div>
-
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              💡 <strong>Autonomous Income Processing:</strong> On the {form.salaryCreditDay || 1}
-              {form.salaryCreditDay === 1 ? "st" : form.salaryCreditDay === 2 ? "nd" : form.salaryCreditDay === 3 ? "rd" : "th"} of every month, WealthTrack automatically logs a salary deposit of {money(form.monthlyIncomeTarget)} into your designated bank account, seamlessly refreshing your Cash Flow, Savings Rate, and Health Metrics.
+              Your risk profile helps guide your investment decisions and asset allocation preferences.
             </p>
           </div>
         </div>
 
-        {/* Portfolio Stats */}
-        <div className="grid gap-3 sm:grid-cols-4">
-          <div className="rounded-xl border border-border/70 bg-card p-4 text-center hover:border-border transition-all">
-            <span className="block text-2xl font-bold text-foreground">{data.accounts.length}</span>
-            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              Linked Accounts
-            </span>
-          </div>
+        {/* Expense Tracker Stats */}
+        <div className="grid gap-3 sm:grid-cols-3">
           <div className="rounded-xl border border-border/70 bg-card p-4 text-center hover:border-border transition-all">
             <span className="block text-2xl font-bold text-foreground">{data.transactions.length}</span>
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">

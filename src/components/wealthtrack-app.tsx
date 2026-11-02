@@ -109,7 +109,7 @@ import { computeNextSipDate } from "@/lib/investment-calculator";
 const legacyNavItems: { label: Section; path: string; icon: typeof LayoutDashboard }[] = [
   { label: "Overview", path: "/", icon: LayoutDashboard },
   { label: "Transactions", path: "/transactions", icon: ArrowLeftRight },
-  { label: "Accounts", path: "/accounts", icon: Wallet },
+  // { label: "Accounts", path: "/accounts", icon: Wallet },
   { label: "Investments", path: "/investments", icon: TrendingUp },
   { label: "Loans", path: "/loans", icon: Landmark },
   { label: "Fund Planner", path: "/funds", icon: ShieldCheck },
@@ -121,7 +121,7 @@ const legacyNavItems: { label: Section; path: string; icon: typeof LayoutDashboa
 const v2NavItems: { label: Section; title: string; path: string; icon: typeof LayoutDashboard }[] = [
   { label: "Overview", title: "Overview", path: "/", icon: LayoutDashboard },
   { label: "Transactions", title: "Transactions", path: "/transactions", icon: ArrowLeftRight },
-  { label: "Wealth", title: "Wealth Hub", path: "/wealth", icon: Wallet },
+  // { label: "Wealth", title: "Wealth Hub", path: "/wealth", icon: Wallet },
   { label: "Plan", title: "Plan Hub", path: "/plan", icon: ShieldCheck },
   { label: "Reports", title: "Reports & Insights", path: "/reports", icon: Activity },
 ];
@@ -178,7 +178,7 @@ function processAutomatedState(
     const salaryAmount = updatedState.profile?.monthlyIncomeTarget || 0;
     const salaryAccId = updatedState.profile?.salaryAccountId || updatedState.accounts.find((a) => !a.archived && a.kind !== "Credit card")?.id;
 
-    if (salaryDay && salaryAmount > 0 && salaryAccId) {
+    if (false as boolean && salaryDay && salaryAmount > 0 && salaryAccId) {
       const currentYear = today.getFullYear();
       const currentMonth = today.getMonth() + 1;
       const currentDay = today.getDate();
@@ -1371,9 +1371,9 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     setFullName(profile.fullName);
 
     // Synchronize salary in preferences and recurring schedules if configured
-    if (profile.monthlyIncomeTarget > 0 || profile.salaryCreditDay || profile.salaryAccountId) {
+    if (false as boolean && ((profile.monthlyIncomeTarget || 0) > 0 || profile.salaryCreditDay || profile.salaryAccountId)) {
       handleUpdateSalary({
-        amount: profile.monthlyIncomeTarget,
+        amount: profile.monthlyIncomeTarget || 0,
         salaryDay: profile.salaryCreditDay || data.preferences.salaryDay || 1,
         accountId: profile.salaryAccountId || data.accounts.find((a) => !a.archived && a.kind !== "Credit card")?.id || "",
       });
@@ -3518,7 +3518,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
             )}
 
             {/* When hubsV2 is active, render WealthHub */}
-            {hubsV2 && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active)) && (
+            {false && hubsV2 && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active)) && (
               <WealthHub
                 initialSubtab={wealthSubtab}
                 data={data}
@@ -3576,7 +3576,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               />
             )}
 
-            {!hubsV2 && active === "Accounts" && (
+            {false && !hubsV2 && active === "Accounts" && (
               <AccountsPage
                 data={data}
                 money={money}
@@ -3828,20 +3828,20 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
         <button
           type="button"
-          aria-label="Wealth"
+          aria-label="Budgets"
           className={`flex flex-col items-center justify-center gap-1 py-1 rounded-xl transition-all w-full min-w-0 overflow-hidden ${
-            active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active)
+            active === "Categories" || active === "Plan"
               ? "text-primary font-bold"
               : "text-muted-foreground hover:text-foreground font-medium"
           }`}
-          onClick={() => goSection("Wealth")}
+          onClick={() => goSection("Categories")}
         >
           <span className={`grid size-7 place-items-center rounded-lg transition-colors ${
-            active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active) ? "bg-primary/10 text-primary" : ""
+            active === "Categories" || active === "Plan" ? "bg-primary/10 text-primary" : ""
           }`}>
-            <Wallet size={18} className={active === "Wealth" ? "stroke-[2.3]" : "stroke-[1.8]"} />
+            <Tag size={18} className={active === "Categories" || active === "Plan" ? "stroke-[2.3]" : "stroke-[1.8]"} />
           </span>
-          <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Wealth</span>
+          <span className="text-[9.5px] sm:text-[10px] leading-none tracking-tight truncate max-w-full px-0.5">Budgets</span>
         </button>
 
         <button

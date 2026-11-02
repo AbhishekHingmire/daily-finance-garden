@@ -6,5 +6,5 @@ export const Route = createFileRoute("/accounts")({
 });
 
 function AccountsRoute() {
-  return <WealthTrackApp initialSection="Accounts" />;
+  return <WealthTrackApp initialSection="Overview" />;
 }

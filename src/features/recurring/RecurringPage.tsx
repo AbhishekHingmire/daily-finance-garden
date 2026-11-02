@@ -59,7 +59,7 @@ export function RecurringPage({
     <div className="space-y-6">
       <PageHeading
         title="Recurring"
-        description="Scheduled bills, loan EMIs, automated SIP investments, and income schedules."
+        description="Scheduled bills, loan EMIs, and automated SIP investments."
         isBalancePage
         primaryAction={
           <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-xs">
@@ -69,7 +69,7 @@ export function RecurringPage({
       />
 
       {/* Standardized Summary Metric Cards */}
-      <div className="grid gap-2.5 sm:gap-4 sm:grid-cols-4 items-start">
+      <div className="grid gap-2.5 sm:gap-4 sm:grid-cols-3 items-start">
         {/* Card 1: Monthly Expenses & EMIs */}
         <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
           <div className="flex items-center justify-between sm:mb-2">
@@ -104,39 +104,16 @@ export function RecurringPage({
           </div>
         </div>
 
-        {/* Card 3: Monthly Inflows */}
-        <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
-          <div className="flex items-center justify-between sm:mb-2">
-            <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Monthly Inflows
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
-            <span className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
-              Salary & guaranteed inflows
-            </span>
-            <span className="wt-display text-base sm:text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums whitespace-nowrap shrink-0 sm:order-1">
-              +{money(totalMonthlyInflow)}
-            </span>
-          </div>
-        </div>
-
-        {/* Card 4: Active Schedules */}
+        {/* Card 3: Active Schedules */}
         <div className="rounded-xl sm:rounded-2xl border border-border/70 bg-card p-2.5 sm:p-5 wt-shadow hover:border-border transition-all">
           <div className="flex items-center justify-between sm:mb-2">
             <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
               Active Schedules
             </span>
-            <span className="inline-flex sm:hidden items-center text-[10px] font-bold text-emerald-600 dark:text-emerald-400 whitespace-nowrap">
-              +{money(Math.max(0, totalMonthlyInflow - (totalMonthlyOutflow + totalMonthlySip)))}
-            </span>
           </div>
           <div className="flex items-center justify-between gap-3 sm:flex sm:flex-col sm:items-start">
-            <span className="hidden sm:block text-xs font-semibold text-emerald-600 dark:text-emerald-400 sm:order-2 sm:mt-1 truncate">
-              Net Surplus: +{money(Math.max(0, totalMonthlyInflow - (totalMonthlyOutflow + totalMonthlySip)))}
-            </span>
-            <span className="sm:hidden text-[11px] text-muted-foreground truncate">
-              Net monthly surplus
+            <span className="text-[11px] sm:text-xs text-muted-foreground sm:order-2 sm:mt-1 truncate">
+              Repeating commitments
             </span>
             <span className="wt-display text-base sm:text-2xl font-extrabold text-foreground tabular-nums whitespace-nowrap shrink-0 sm:order-1">
               {activeSchedules.length} of {data.recurring.length}

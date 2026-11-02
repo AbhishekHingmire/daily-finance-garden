@@ -48,15 +48,14 @@ export function TransactionModal({
       ? "€"
       : "£";
 
-  const isInflowType =
-    type === "Income" || type === "Borrow / Loan Taken" || type === "Debt Recovery";
+  const isInflowType = false; // Expense-only app: no inflow types shown
 
   // Available categories for current type
   const categories = useMemo(() => {
     return data.categories.filter(
-      (c) => !c.archived && (isInflowType ? c.kind === "Income" : c.kind === "Expense")
+      (c) => !c.archived && c.kind !== "Income"
     );
-  }, [data.categories, isInflowType]);
+  }, [data.categories]);
 
   // Always collapsed by default across all scenarios per user specification
   const [showMore, setShowMore] = useState<boolean>(false);
@@ -89,7 +88,7 @@ export function TransactionModal({
     const newCat: Category = {
       id: `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
       name: catForm.name.trim(),
-      kind: catForm.kind ?? (isInflowType ? "Income" : "Expense"),
+      kind: catForm.kind ?? "Expense",
       icon: catForm.icon ?? matchCategoryIcon(catForm.name.trim(), "📁"),
       color: catForm.color ?? "blue",
       monthlyLimit: Number(catForm.monthlyLimit) || 0,
@@ -140,7 +139,7 @@ export function TransactionModal({
               <FileSpreadsheet className="size-4 shrink-0 text-primary" />
               <div className="min-w-0 truncate">
                 <span className="font-bold text-foreground">Need bulk entry?</span>
-                <span className="text-muted-foreground ml-1 hidden sm:inline">Upload multiple expenses & income via Excel.</span>
+                <span className="text-muted-foreground ml-1 hidden sm:inline">Upload multiple expenses via Excel.</span>
               </div>
             </div>
             <Button
@@ -226,12 +225,8 @@ export function TransactionModal({
                 }}
               >
                 <option value="Expense">Expense (Money spent / Outflow)</option>
-                <option value="Income">Income (Earnings / Salary / Inflow)</option>
                 <option value="EMI / Loan Payment">EMI / Loan Repayment (Outflow to debt)</option>
-                <option value="Borrow / Loan Taken">Borrow / Loan Taken (Inflow borrowed)</option>
                 <option value="Lend / Loan Given">Lend / Loan Given (Outflow advance to someone)</option>
-                <option value="Debt Recovery">Debt Recovery (Inflow lent money returned)</option>
-                <option value="Transfer">Transfer between Accounts</option>
               </select>
             </label>
           </div>
@@ -533,7 +528,7 @@ export function TransactionModal({
       {isCreatingCategory && (
         <CategoryModal
           category={null}
-          kind={isInflowType ? "Income" : "Expense"}
+          kind="Expense"
           onClose={() => setIsCreatingCategory(false)}
           onSave={handleQuickCreateCategory}
         />

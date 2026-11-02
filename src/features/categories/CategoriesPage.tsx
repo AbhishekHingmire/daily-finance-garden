@@ -11,6 +11,7 @@ import { getBudgetMetrics } from "@/lib/metrics-service";
 import {
   getCategorySpend,
   type Category,
+  type CategoryKind,
   type WealthState,
 } from "@/lib/wealthtrack";
 
@@ -24,8 +25,8 @@ export function CategoriesPage({
   money,
 }: {
   data: WealthState;
-  kind: "Expense" | "Income" | "Transfer";
-  setKind: (kind: "Expense" | "Income" | "Transfer") => void;
+  kind: CategoryKind;
+  setKind: (kind: CategoryKind) => void;
   onAdd: () => void;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
@@ -48,7 +49,6 @@ export function CategoriesPage({
   );
 
   const expenseCategories = data.categories.filter((c) => !c.archived && c.kind === "Expense");
-  const incomeCategories = data.categories.filter((c) => !c.archived && c.kind === "Income");
   const transferCategories = data.categories.filter((c) => !c.archived && c.kind === "Transfer");
 
   const categories = data.categories.filter((c) => {
@@ -128,14 +128,6 @@ export function CategoriesPage({
               onClick={() => setKind("Expense")}
             >
               Expense <span className="hidden sm:inline">({expenseCategories.length})</span>
-            </Button>
-            <Button
-              variant={kind === "Income" ? "default" : "outline"}
-              size="sm"
-              className="h-7.5 sm:h-8 px-2.5 sm:px-3 text-xs font-medium"
-              onClick={() => setKind("Income")}
-            >
-              Income <span className="hidden sm:inline">({incomeCategories.length})</span>
             </Button>
             <Button
               variant={kind === "Transfer" ? "default" : "outline"}

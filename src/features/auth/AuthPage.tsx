@@ -513,12 +513,12 @@ export function AuthPage({
               </div>
 
               {/* Real SMS Mode Information Banner */}
-              {!generatedTestOtp && (
+              {/* {!generatedTestOtp && (
                 <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 text-xs text-muted-foreground flex items-center gap-2.5">
                   <ShieldCheck size={18} className="text-primary shrink-0" />
                   <span>Enter the 6-digit verification code received via SMS on <strong>+91 {mobile}</strong> (valid for 5 minutes).</span>
                 </div>
-              )}
+              )} */}
 
               {/* Live OTP Expiry Countdown */}
               {otpSecondsLeft > 0 ? (

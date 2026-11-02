@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { createInitialState } from "@/lib/wealthtrack";
 
@@ -16,67 +16,10 @@ describe("OnboardingFlow", () => {
     );
 
     expect(screen.getByText("Welcome to your financial space")).toBeInTheDocument();
-    expect(screen.getByText("Step 1 of 8")).toBeInTheDocument();
+    expect(screen.getByText("Step 1 of 4")).toBeInTheDocument();
   });
 
-  it("allows navigating to accounts step and deleting pre-added accounts", () => {
-    const data = createInitialState();
-    const handleUpdateState = vi.fn();
-
-    render(
-      <OnboardingFlow
-        data={data}
-        onComplete={vi.fn()}
-        onUpdatePreferences={vi.fn()}
-        onUpdateState={handleUpdateState}
-      />
-    );
-
-    // Click Continue twice to go to Step 2 (Accounts)
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-
-    expect(screen.getByText("Review your accounts & balances")).toBeInTheDocument();
-    expect(screen.getByText("Everyday account")).toBeInTheDocument();
-
-    // Click delete on first account
-    const deleteButtons = screen.getAllByTitle("Delete account");
-    expect(deleteButtons.length).toBeGreaterThan(0);
-    fireEvent.click(deleteButtons[0]);
-
-    expect(handleUpdateState).toHaveBeenCalledWith(
-      expect.objectContaining({
-        accounts: expect.not.arrayContaining([expect.objectContaining({ id: "acc-hdfc" })]),
-      })
-    );
-  });
-
-  it("allows adding a new account using the account modal", () => {
-    const data = createInitialState();
-    const handleUpdateState = vi.fn();
-
-    render(
-      <OnboardingFlow
-        data={data}
-        onComplete={vi.fn()}
-        onUpdatePreferences={vi.fn()}
-        onUpdateState={handleUpdateState}
-      />
-    );
-
-    // Navigate to Step 2
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-
-    // Click "+ Add Account"
-    fireEvent.click(screen.getByRole("button", { name: /add account/i }));
-
-    // Account modal should appear with "Account Type"
-    expect(screen.getByRole("heading", { name: "Add Account" })).toBeInTheDocument();
-    expect(screen.getByText("Account Type")).toBeInTheDocument();
-  });
-
-  it("navigates to step 7 and renders comprehensive review cockpit", () => {
+  it("navigates to categories & fund allocation step", () => {
     const data = createInitialState();
     render(
       <OnboardingFlow
@@ -87,20 +30,47 @@ describe("OnboardingFlow", () => {
       />
     );
 
-    // Advance to Step 7 (Review Cockpit)
-    for (let i = 0; i < 7; i++) {
-      fireEvent.click(screen.getByRole("button", { name: /continue/i }));
-    }
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
 
-    expect(screen.getByText("Ready to launch WealthTrack")).toBeInTheDocument();
-    expect(screen.getByText("Estimated Net Worth")).toBeInTheDocument();
-    expect(screen.getByText("Liquid Cash & Bank")).toBeInTheDocument();
-    expect(screen.getByText("Portfolio Valuation")).toBeInTheDocument();
-    expect(screen.getByText("Total Debt & Loans")).toBeInTheDocument();
-    expect(screen.getByText("Projected Cash Flow")).toBeInTheDocument();
-    expect(screen.getByText("Emergency Runway")).toBeInTheDocument();
+    expect(screen.getByText("Total Monthly Budget Allocation")).toBeInTheDocument();
+    expect(screen.getByText("Step 2 of 4")).toBeInTheDocument();
+    expect(screen.getByText("Food & dining")).toBeInTheDocument();
+  });
 
-    // Prominent CTA
-    expect(screen.getByRole("button", { name: /launch wealthtrack dashboard/i })).toBeInTheDocument();
+  it("navigates to recurring expenses step and final launch step", async () => {
+    const data = createInitialState();
+    const handleComplete = vi.fn();
+
+    render(
+      <OnboardingFlow
+        data={data}
+        onComplete={handleComplete}
+        onUpdatePreferences={vi.fn()}
+        onUpdateState={vi.fn()}
+      />
+    );
+
+    // Step 0 -> Step 1
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+    // Step 1 -> Step 2 (Recurring)
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(screen.getByText("Monthly Recurring Outflows")).toBeInTheDocument();
+    expect(screen.getByText("Step 3 of 4")).toBeInTheDocument();
+
+    // Step 2 -> Step 3 (Review & Launch)
+    fireEvent.click(screen.getByRole("button", { name: /continue/i }));
+
+    expect(screen.getByText("Ready to launch your expense tracker!")).toBeInTheDocument();
+    expect(screen.getByText("Total Monthly Budget")).toBeInTheDocument();
+    expect(screen.getByText("Step 4 of 4")).toBeInTheDocument();
+
+    const launchButton = screen.getByRole("button", { name: /launch wealthtrack/i });
+    expect(launchButton).toBeInTheDocument();
+    fireEvent.click(launchButton);
+
+    await waitFor(() => {
+      expect(handleComplete).toHaveBeenCalled();
+    });
   });
 });
