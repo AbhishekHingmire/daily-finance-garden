@@ -1714,7 +1714,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         targetSection = "Wealth";
       } else if (targetSection === "Categories") {
         setPlanSubtab("budgets");
-        targetSection = "Plan";
+        targetSection = "Categories";
       } else if (targetSection === "Fund Planner" || (targetSection as string) === "Funds") {
         setPlanSubtab("goals");
         targetSection = "Plan";
@@ -3143,6 +3143,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                 const Icon = item.icon;
                 const isItemActive =
                   active === label ||
+                  (label === "Categories" && (active === "Categories" || active === "Plan")) ||
                   (label === "Wealth" && (active === "Wealth" || ["Accounts", "Investments", "Loans"].includes(active))) ||
                   (label === "Plan" && (active === "Plan" || ["Categories", "Fund Planner", "Funds"].includes(active))) ||
                   (label === "Recurring" && active === "Recurring") ||
@@ -3203,8 +3204,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     ? "Home"
                     : active === "Wealth"
                     ? `Wealth › ${wealthSubtab.charAt(0).toUpperCase() + wealthSubtab.slice(1)}`
-                    : active === "Plan"
-                    ? `Plan › ${planSubtab.charAt(0).toUpperCase() + planSubtab.slice(1)}`
+                    : active === "Plan" || active === "Categories"
+                    ? "Budgets & Categories"
                     : active === "Recurring"
                     ? "Recurring"
                     : active === "Reports"
@@ -3961,6 +3962,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   {NAV_ITEMS.map((item) => {
                     const isSelected =
                       active === item.section ||
+                      (item.section === "Categories" && (active === "Categories" || active === "Plan")) ||
                       (item.section === "Wealth" && ["Accounts", "Investments", "Loans"].includes(active)) ||
                       (item.section === "Plan" && ["Categories", "Fund Planner", "Funds"].includes(active)) ||
                       (item.section === "Recurring" && active === "Recurring") ||

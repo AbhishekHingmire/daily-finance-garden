@@ -1,8 +1,11 @@
 import React, { useMemo, useState } from "react";
 import {
+  AlertTriangle,
   CalendarDays,
+  CheckCircle2,
   Clock,
   Download,
+  Info,
   Lightbulb,
   MapPin,
   PiggyBank,
@@ -94,7 +97,6 @@ export function ReportsPage({
   setDateRange,
   money,
   onExport,
-  onCategory,
   onViewAllCategories,
 }: ReportsPageProps) {
   const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
@@ -237,10 +239,112 @@ export function ReportsPage({
     return items;
   }, [budgetMetrics, totalExpenses]);
 
-  // Highlight over-budget or top category for insight
-  const topCategory = useMemo(() => {
-    return budgetMetrics.categoryRows.find((r) => r.isOverBudget) || budgetMetrics.categoryRows[0];
-  }, [budgetMetrics]);
+  // Dynamic Permutation Quick Insights for Reports
+  const reportInsights = useMemo(() => {
+    const list: Array<{
+      id: string;
+      title: string;
+      description: string;
+      icon: typeof TrendingUp;
+      iconClass: string;
+      bgClass: string;
+    }> = [];
+
+    // 1. Budget Pace
+    if (totalExpenses === 0) {
+      list.push({
+        id: "rep-zero",
+        title: `Zero spending logged for ${periodLabel}.`,
+        description: `Full monthly budget of ${money(budgetMetrics.totalCap)} is available.`,
+        icon: CheckCircle2,
+        iconClass: "text-emerald-600 dark:text-emerald-400",
+        bgClass: "bg-emerald-500/10",
+      });
+    } else if (budgetMetrics.budgetUsedPct > 100) {
+      list.push({
+        id: "rep-over",
+        title: `Spending exceeded budget by ${budgetMetrics.budgetUsedPct - 100}%.`,
+        description: `${money(budgetMetrics.budgetedSpend - budgetMetrics.totalCap)} over ceiling limit. Consider pruning discretionary items.`,
+        icon: AlertTriangle,
+        iconClass: "text-rose-600 dark:text-rose-400",
+        bgClass: "bg-rose-500/10",
+      });
+    } else if (budgetMetrics.budgetUsedPct > 80) {
+      list.push({
+        id: "rep-warning",
+        title: `Budget utilization at ${budgetMetrics.budgetUsedPct}%.`,
+        description: `${money(remainingBudget)} buffer remaining for the rest of this month.`,
+        icon: AlertTriangle,
+        iconClass: "text-amber-600 dark:text-amber-400",
+        bgClass: "bg-amber-500/10",
+      });
+    } else {
+      list.push({
+        id: "rep-healthy",
+        title: "Overall spending is well disciplined.",
+        description: `${budgetMetrics.budgetUsedPct}% of budget utilized with ${money(remainingBudget)} available buffer.`,
+        icon: TrendingUp,
+        iconClass: "text-emerald-600 dark:text-emerald-400",
+        bgClass: "bg-emerald-500/10",
+      });
+    }
+
+    // 2. Category Concentration
+    const overCategory = budgetMetrics.categoryRows.find((r) => r.isOverBudget);
+    const topCat = budgetMetrics.categoryRows.find((r) => r.spent > 0);
+    if (overCategory) {
+      list.push({
+        id: "rep-cat-over",
+        title: `${overCategory.category.name} is over budget.`,
+        description: `Spent ${money(overCategory.spent)} exceeding cap of ${money(overCategory.cap)}.`,
+        icon: AlertTriangle,
+        iconClass: "text-rose-600 dark:text-rose-400",
+        bgClass: "bg-rose-500/10",
+      });
+    } else if (topCat && totalExpenses > 0) {
+      const pct = Math.round((topCat.spent / totalExpenses) * 100);
+      list.push({
+        id: "rep-cat-top",
+        title: `${topCat.category.name} is the top expense (${pct}%).`,
+        description: `${money(topCat.spent)} total spending recorded in this period.`,
+        icon: MapPin,
+        iconClass: "text-blue-600 dark:text-blue-400",
+        bgClass: "bg-blue-500/10",
+      });
+    } else {
+      list.push({
+        id: "rep-cat-info",
+        title: "Category allocation active.",
+        description: "Review category distributions to optimize recurring outgoings.",
+        icon: Lightbulb,
+        iconClass: "text-blue-600 dark:text-blue-400",
+        bgClass: "bg-blue-500/10",
+      });
+    }
+
+    // 3. Needs vs Wants Efficiency
+    if (wantsPct > 35) {
+      list.push({
+        id: "rep-wants-high",
+        title: `Discretionary spends at ${wantsPct}% of expenses.`,
+        description: "Target recommended is < 30%. Diverting a portion to savings boosts security.",
+        icon: AlertTriangle,
+        iconClass: "text-amber-600 dark:text-amber-400",
+        bgClass: "bg-amber-500/10",
+      });
+    } else {
+      list.push({
+        id: "rep-needs-good",
+        title: `Needs ratio balanced at ${needsPct}%.`,
+        description: "Essential outgoings are well managed within the recommended 50% guideline.",
+        icon: CheckCircle2,
+        iconClass: "text-emerald-600 dark:text-emerald-400",
+        bgClass: "bg-emerald-500/10",
+      });
+    }
+
+    return list;
+  }, [totalExpenses, periodLabel, money, budgetMetrics, remainingBudget, wantsPct, needsPct]);
 
   return (
     <div className="space-y-6">
@@ -265,7 +369,7 @@ export function ReportsPage({
       {/* 2. Top 3 Stat Cards: Total Expenses, Monthly Budget, Budget Remaining */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
         {/* Card 1: Total Expenses */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex items-center justify-between gap-3">
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs flex items-center justify-between gap-3">
           <div className="flex items-start gap-3.5 min-w-0">
             <div className="size-11 rounded-2xl bg-blue-500/10 text-primary flex items-center justify-center shrink-0 shadow-2xs">
               <Wallet size={20} />
@@ -289,7 +393,7 @@ export function ReportsPage({
         </div>
 
         {/* Card 2: Monthly Budget */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex items-center justify-between gap-3">
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs flex items-center justify-between gap-3">
           <div className="flex items-start gap-3.5 min-w-0">
             <div className="size-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 shadow-2xs">
               <CalendarDays size={20} />
@@ -308,7 +412,7 @@ export function ReportsPage({
         </div>
 
         {/* Card 3: Budget Remaining */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex items-center justify-between gap-3">
+        <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 shadow-xs flex items-center justify-between gap-3">
           <div className="flex items-start gap-3.5 min-w-0">
             <div className="size-11 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 shadow-2xs">
               <PiggyBank size={20} />
@@ -327,275 +431,283 @@ export function ReportsPage({
         </div>
       </div>
 
-      {/* 3. Middle 2 Charts Grid: Expense Spending Trend & Cumulative Expense Trend */}
+      {/* 3. Auto-rearranging Two-Column Layout (eliminates marginal gaps between stacked cards) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-start">
-        {/* Chart 1: Expense Spending Trend */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-border/60 pb-3 flex-wrap gap-2">
-            <div>
-              <h3 className="text-sm font-bold text-foreground">Expense Spending Trend</h3>
-              <p className="text-xs text-muted-foreground">
-                Day-by-day outgoings for {periodFullLabel}
-              </p>
+        {/* COLUMN 1: Expense Spending Trend & Where your money went */}
+        <div className="flex flex-col gap-5 lg:gap-6">
+          {/* Chart 1: Expense Spending Trend */}
+          <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3 flex-wrap gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Expense Spending Trend</h3>
+                <p className="text-xs text-muted-foreground">
+                  Day-by-day outgoings for {periodFullLabel}
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Segmented Pill */}
+                <div className="inline-flex items-center rounded-xl border border-border/70 bg-muted/40 p-0.5 text-xs font-semibold">
+                  {(["Day", "Week", "Month"] as const).map((tf) => (
+                    <button
+                      key={tf}
+                      type="button"
+                      onClick={() => setExpenseTimeframe(tf)}
+                      className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        expenseTimeframe === tf
+                          ? "bg-primary text-primary-foreground shadow-2xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      {tf}
+                    </button>
+                  ))}
+                </div>
+
+                <span className="flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
+                  <span className="size-2 rounded-full bg-rose-500" /> Outflow
+                </span>
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              {/* Segmented Pill */}
-              <div className="inline-flex items-center rounded-xl border border-border/70 bg-muted/40 p-0.5 text-xs font-semibold">
-                {(["Day", "Week", "Month"] as const).map((tf) => (
-                  <button
-                    key={tf}
-                    type="button"
-                    onClick={() => setExpenseTimeframe(tf)}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                      expenseTimeframe === tf
-                        ? "bg-primary text-primary-foreground shadow-2xs"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    {tf}
-                  </button>
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={dailyExpenseData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="expenseTrendGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.25} />
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.08} />
+                  <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(val: any) => formatChartTick(val)}
+                    tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
+                  />
+                  <Tooltip
+                    formatter={(val: any) => [money(Number(val) || 0), "Outflow"]}
+                    contentStyle={{
+                      borderRadius: "12px",
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--card)",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="expense"
+                    name="Outflow"
+                    stroke="#f43f5e"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#expenseTrendGrad)"
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+
+          {/* Card: Where your money went (Donut Circle - Unclipped, ample margin, perfect full circle) */}
+          <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Where your money went</h3>
+                <p className="text-xs text-muted-foreground">
+                  Category-wise breakdown for {periodLabel}
+                </p>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onViewAllCategories}
+                className="h-7 text-xs font-semibold text-primary hover:text-primary hover:bg-primary/10 shrink-0 cursor-pointer"
+              >
+                All Categories →
+              </Button>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-1">
+              {/* Unclipped Donut Container with ample padding to guarantee 100% full visible circle */}
+              <div className="relative w-48 h-48 sm:w-52 sm:h-52 shrink-0 flex items-center justify-center p-1">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart margin={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+                    <Pie
+                      data={categoryAllocation}
+                      dataKey="amount"
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={48}
+                      outerRadius={68}
+                      paddingAngle={3}
+                      isAnimationActive={false}
+                    >
+                      {categoryAllocation.map((entry, index) => (
+                        <Cell key={`cat-cell-${index}`} fill={entry.color} stroke="none" />
+                      ))}
+                    </Pie>
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                  <span className="text-base sm:text-lg font-black text-foreground tabular-nums">
+                    {money(totalExpenses)}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">Total</span>
+                </div>
+              </div>
+
+              {/* Category Breakdown legend */}
+              <div className="space-y-2.5 text-xs flex-1 w-full min-w-0">
+                {categoryAllocation.map((item) => (
+                  <div key={item.name} className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                      <span className="text-sm shrink-0">{item.icon}</span>
+                      <span className="font-semibold text-foreground truncate">{item.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 tabular-nums">
+                      <span className="font-bold text-foreground">{money(item.amount)}</span>
+                      <span className="text-[11px] text-muted-foreground font-semibold w-8 text-right">
+                        {item.value}%
+                      </span>
+                    </div>
+                  </div>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
 
-              <span className="flex items-center gap-1 text-xs font-semibold text-rose-600 dark:text-rose-400">
-                <span className="size-2 rounded-full bg-rose-500" /> Outflow
+        {/* COLUMN 2: Cumulative Expense Trend & Needs/Wants Breakdown */}
+        <div className="flex flex-col gap-5 lg:gap-6">
+          {/* Chart 2: Cumulative Expense Trend */}
+          <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-border/60 pb-3 flex-wrap gap-2">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Cumulative Expense Trend</h3>
+                <p className="text-xs text-muted-foreground">
+                  Running total of expenses across {periodLabel}
+                </p>
+              </div>
+
+              <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-primary/10 text-primary border border-primary/20">
+                Cumulative Total ⌄
               </span>
             </div>
-          </div>
 
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={dailyExpenseData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="expenseTrendGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.25} />
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.08} />
-                <XAxis
-                  dataKey="label"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(val: any) => formatChartTick(val)}
-                  tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
-                />
-                <Tooltip
-                  formatter={(val: any) => [money(Number(val) || 0), "Outflow"]}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "1px solid var(--border)",
-                    backgroundColor: "var(--card)",
-                    fontSize: "12px",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="expense"
-                  name="Outflow"
-                  stroke="#f43f5e"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#expenseTrendGrad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        {/* Chart 2: Cumulative Expense Trend */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-border/60 pb-3 flex-wrap gap-2">
-            <div>
-              <h3 className="text-sm font-bold text-foreground">Cumulative Expense Trend</h3>
-              <p className="text-xs text-muted-foreground">
-                Running total of expenses across {periodLabel}
-              </p>
-            </div>
-
-            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-primary/10 text-primary border border-primary/20">
-              Cumulative Total ⌄
-            </span>
-          </div>
-
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={cumulativeExpenseData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="cumulSpendGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.08} />
-                <XAxis
-                  dataKey="label"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
-                />
-                <YAxis
-                  axisLine={false}
-                  tickLine={false}
-                  tickFormatter={(val: any) => formatChartTick(val)}
-                  tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
-                />
-                <Tooltip
-                  formatter={(val: any) => [money(Number(val) || 0), "Cumulative Spent"]}
-                  contentStyle={{
-                    borderRadius: "12px",
-                    border: "1px solid var(--border)",
-                    backgroundColor: "var(--card)",
-                    fontSize: "12px",
-                  }}
-                />
-                <Area
-                  type="monotone"
-                  dataKey="cumulativeExpense"
-                  name="Cumulative Spent"
-                  stroke="#2563eb"
-                  strokeWidth={2.5}
-                  fillOpacity={1}
-                  fill="url(#cumulSpendGrad)"
-                />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </div>
-
-      {/* 4. Third Row: 2 Balanced Cards (Where your money went & Needs vs Wants Breakdown) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-start">
-        {/* Card 1: Where your money went (Real Category-Wise Allocation) */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
-          <div className="flex items-center justify-between border-b border-border/60 pb-3">
-            <div>
-              <h3 className="text-sm font-bold text-foreground">Where your money went</h3>
-              <p className="text-xs text-muted-foreground">
-                Category-wise breakdown for {periodLabel}
-              </p>
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onViewAllCategories}
-              className="h-7 text-xs font-semibold text-primary hover:text-primary hover:bg-primary/10 shrink-0"
-            >
-              All Categories →
-            </Button>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6 pt-1">
-            <div className="relative size-40 shrink-0 flex items-center justify-center">
+            <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={categoryAllocation}
-                    dataKey="amount"
-                    innerRadius={50}
-                    outerRadius={72}
-                    paddingAngle={3}
-                  >
-                    {categoryAllocation.map((entry, index) => (
-                      <Cell key={`cat-cell-${index}`} fill={entry.color} stroke="none" />
-                    ))}
-                  </Pie>
-                </PieChart>
+                <AreaChart data={cumulativeExpenseData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="cumulSpendGrad" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.08} />
+                  <XAxis
+                    dataKey="label"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(val: any) => formatChartTick(val)}
+                    tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
+                  />
+                  <Tooltip
+                    formatter={(val: any) => [money(Number(val) || 0), "Cumulative Spent"]}
+                    contentStyle={{
+                      borderRadius: "12px",
+                      border: "1px solid var(--border)",
+                      backgroundColor: "var(--card)",
+                      fontSize: "12px",
+                    }}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="cumulativeExpense"
+                    name="Cumulative Spent"
+                    stroke="#2563eb"
+                    strokeWidth={2.5}
+                    fillOpacity={1}
+                    fill="url(#cumulSpendGrad)"
+                  />
+                </AreaChart>
               </ResponsiveContainer>
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-sm font-black text-foreground tabular-nums">
-                  {money(totalExpenses)}
-                </span>
-                <span className="text-[10px] text-muted-foreground font-semibold">Total</span>
-              </div>
+            </div>
+          </div>
+
+          {/* Card: Needs & Wants Breakdown */}
+          <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs space-y-4">
+            <div className="border-b border-border/60 pb-3">
+              <h3 className="text-sm font-bold text-foreground">Needs & Wants Breakdown</h3>
+              <p className="text-xs text-muted-foreground">
+                Smart priority categorization of your outgoings
+              </p>
             </div>
 
-            <div className="space-y-2.5 text-xs flex-1 w-full min-w-0">
-              {categoryAllocation.map((item) => (
-                <div key={item.name} className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                    <span className="text-sm shrink-0">{item.icon}</span>
-                    <span className="font-semibold text-foreground truncate">{item.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0 tabular-nums">
-                    <span className="font-bold text-foreground">{money(item.amount)}</span>
-                    <span className="text-[11px] text-muted-foreground font-semibold w-8 text-right">
-                      {item.value}%
-                    </span>
-                  </div>
+            <div className="grid grid-cols-3 gap-2.5 text-center pt-1">
+              {/* Needs */}
+              <div className="space-y-1.5 rounded-xl bg-muted/20 p-3 border border-border/50">
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-[11px] font-bold text-muted-foreground">Needs</span>
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-extrabold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+                    Essential
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Needs vs Wants Allocation */}
-        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
-          <div className="border-b border-border/60 pb-3">
-            <h3 className="text-sm font-bold text-foreground">Needs & Wants Breakdown</h3>
-            <p className="text-xs text-muted-foreground">
-              Smart priority categorization of your outgoings
-            </p>
-          </div>
-
-          <div className="grid grid-cols-3 gap-2.5 text-center pt-1">
-            {/* Needs */}
-            <div className="space-y-1.5 rounded-xl bg-muted/20 p-3 border border-border/50">
-              <div className="flex items-center justify-center gap-1">
-                <span className="text-[11px] font-bold text-muted-foreground">Needs</span>
-                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-extrabold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
-                  Essential
-                </span>
+                <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
+                  {needsPct}%
+                </p>
+                <p className="text-xs font-bold text-foreground tabular-nums">{money(needsSpend)}</p>
+                <p className="text-[10px] text-muted-foreground font-medium">Target &lt; 50%</p>
               </div>
-              <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
-                {needsPct}%
-              </p>
-              <p className="text-xs font-bold text-foreground tabular-nums">{money(needsSpend)}</p>
-              <p className="text-[10px] text-muted-foreground font-medium">Target &lt; 50%</p>
-            </div>
 
-            {/* Wants */}
-            <div className="space-y-1.5 rounded-xl bg-muted/20 p-3 border border-border/50">
-              <div className="flex items-center justify-center gap-1">
-                <span className="text-[11px] font-bold text-muted-foreground">Wants</span>
-                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-extrabold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
-                  Discretionary
-                </span>
+              {/* Wants */}
+              <div className="space-y-1.5 rounded-xl bg-muted/20 p-3 border border-border/50">
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-[11px] font-bold text-muted-foreground">Wants</span>
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-extrabold bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-900">
+                    Discretionary
+                  </span>
+                </div>
+                <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
+                  {wantsPct}%
+                </p>
+                <p className="text-xs font-bold text-foreground tabular-nums">{money(wantsSpend)}</p>
+                <p className="text-[10px] text-muted-foreground font-medium">Target &lt; 30%</p>
               </div>
-              <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
-                {wantsPct}%
-              </p>
-              <p className="text-xs font-bold text-foreground tabular-nums">{money(wantsSpend)}</p>
-              <p className="text-[10px] text-muted-foreground font-medium">Target &lt; 30%</p>
-            </div>
 
-            {/* Headroom / Buffer */}
-            <div className="space-y-1.5 rounded-xl bg-muted/20 p-3 border border-border/50">
-              <div className="flex items-center justify-center gap-1">
-                <span className="text-[11px] font-bold text-muted-foreground">Capacity</span>
-                <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-extrabold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900">
-                  Headroom
-                </span>
+              {/* Headroom / Buffer */}
+              <div className="space-y-1.5 rounded-xl bg-muted/20 p-3 border border-border/50">
+                <div className="flex items-center justify-center gap-1">
+                  <span className="text-[11px] font-bold text-muted-foreground">Capacity</span>
+                  <span className="inline-flex items-center px-1.5 py-0.2 rounded text-[9.5px] font-extrabold bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-900">
+                    Headroom
+                  </span>
+                </div>
+                <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
+                  {bufferPct}%
+                </p>
+                <p className="text-xs font-bold text-foreground tabular-nums">{money(remainingBudget)}</p>
+                <p className="text-[10px] text-muted-foreground font-medium">Available</p>
               </div>
-              <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
-                {bufferPct}%
-              </p>
-              <p className="text-xs font-bold text-foreground tabular-nums">{money(remainingBudget)}</p>
-              <p className="text-[10px] text-muted-foreground font-medium">Available</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 5. Fourth Row: Quick Insights */}
-      <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
+      {/* 4. Fourth Row: Quick Insights across full width */}
+      <div className="rounded-2xl border border-border/80 bg-card p-4 sm:p-6 shadow-xs space-y-4">
         <div className="flex items-center justify-between border-b border-border/60 pb-3">
           <div>
             <h3 className="text-sm font-bold text-foreground">Quick Insights</h3>
@@ -606,60 +718,25 @@ export function ReportsPage({
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-          {/* Insight 1: Budget utilization */}
-          <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-xs">
-            <div className="size-9 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
-              <TrendingUp size={18} />
-            </div>
-            <div>
-              <p className="font-bold text-foreground">
-                {budgetMetrics.budgetUsedPct <= 100
-                  ? "Overall spending is within target budget."
-                  : `Budget exceeded by ${budgetMetrics.budgetUsedPct - 100}%.`}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {budgetMetrics.budgetUsedPct <= 100
-                  ? "You have capacity available for upcoming days."
-                  : "Review discretionary expenses to stay balanced."}
-              </p>
-            </div>
-          </div>
-
-          {/* Insight 2: Top category alert */}
-          <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-xs">
-            <div className="size-9 rounded-xl bg-blue-500/10 text-primary flex items-center justify-center shrink-0 mt-0.5">
-              <MapPin size={18} />
-            </div>
-            <div>
-              <p className="font-bold text-foreground">
-                {topCategory
-                  ? `${topCategory.category.name}: ${money(topCategory.spent)}`
-                  : "No category spends yet"}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                {topCategory?.isOverBudget
-                  ? "Exceeded target cap for this period."
-                  : "Leading outgoing category this month."}
-              </p>
-            </div>
-          </div>
-
-          {/* Insight 3: Daily pace */}
-          <div className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-xs">
-            <div className="size-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 mt-0.5">
-              <Clock size={18} />
-            </div>
-            <div>
-              <p className="font-bold text-foreground">
-                {totalExpenses > 0
-                  ? `Average spend: ~${money(Math.round(totalExpenses / Math.max(1, new Date().getDate())))}/day`
-                  : "No daily outgoings recorded yet."}
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-0.5">
-                Calculated based on days elapsed this month.
-              </p>
-            </div>
-          </div>
+          {reportInsights.map((insight) => {
+            const Icon = insight.icon;
+            return (
+              <div
+                key={insight.id}
+                className="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-3 text-xs"
+              >
+                <div className={`size-9 rounded-xl ${insight.bgClass} ${insight.iconClass} flex items-center justify-center shrink-0 mt-0.5`}>
+                  <Icon size={18} />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-foreground leading-snug">{insight.title}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">
+                    {insight.description}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
