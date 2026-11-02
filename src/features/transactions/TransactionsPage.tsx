@@ -1,5 +1,6 @@
 import React from "react";
 import {
+  ArrowLeftRight,
   ChevronDown,
   Download,
   FileUp,
@@ -184,6 +185,7 @@ export function TransactionsPage({
       <PageHeading
         title="Transactions"
         description="Every financial movement, categorized and accounted for."
+        icon={<ArrowLeftRight size={22} className="text-primary" />}
         periodSlot={
           <div className="flex items-center gap-2">
             <PeriodPill period={sharedPeriod} onChange={handlePeriodChange} />

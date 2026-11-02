@@ -60,6 +60,7 @@ export function RecurringPage({
       <PageHeading
         title="Recurring"
         description="Scheduled bills, loan EMIs, and automated SIP investments."
+        icon={<CalendarDays size={22} className="text-primary" />}
         isBalancePage
         primaryAction={
           <Button size="sm" onClick={onAdd} className="h-9 gap-1.5 px-3.5 text-xs font-semibold shadow-xs">

@@ -64,6 +64,7 @@ export function CategoriesPage({
       <PageHeading
         title="Budgets & Categories"
         description="Organize your spending into smart need or want classifications with monthly budget caps. Tap any category to edit, or use ⋯ to delete."
+        icon={<Tag size={22} className="text-primary" />}
         periodSlot={<PeriodPill period={sharedPeriod} onChange={setSharedPeriod} />}
         primaryAction={
           <Button size="sm" onClick={onAdd} className="h-8 sm:h-9 px-2.5 sm:px-3 gap-1.5 text-xs font-semibold shadow-xs shrink-0">

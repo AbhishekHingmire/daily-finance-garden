@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   type PeriodSelector,
@@ -91,6 +91,7 @@ export const PeriodPill: React.FC<PeriodPillProps> = ({
           aria-expanded={isOpen}
           aria-haspopup="dialog"
         >
+          <CalendarDays size={13} className="text-primary/70 shrink-0" />
           <span>{formatPeriodLabel(period)}</span>
           <ChevronDown size={13} className={`text-muted-foreground transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
         </button>

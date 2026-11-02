@@ -33,6 +33,7 @@ import { matchesDateRange, type DateRangeValue } from "@/components/shared/DateR
 import { AuthPage, type AuthView } from "@/features/auth/AuthPage";
 import { authApi, authStorage, marketApi, type AuthResponseData, getWealthRepository, getApiBaseUrl } from "@/services/api";
 import { currencyService } from "@/lib/currency-service";
+import { notificationService } from "@/lib/notification-service";
 import { calculateInvestmentValuation } from "@/lib/investment-calculator";
 import { OnboardingFlow } from "@/features/onboarding/OnboardingFlow";
 import { Dashboard } from "@/features/dashboard/Dashboard";
@@ -586,6 +587,37 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     if (loaded) {
       cachedWorkspaceState = data;
       cachedStateLoaded = true;
+    }
+  }, [data, loaded]);
+
+  // Live notification sync from backend recurring processor service with bell chime
+  useEffect(() => {
+    let mounted = true;
+    const pollNotifs = async () => {
+      const items = await notificationService.fetchNotifications();
+      if (!mounted) return;
+      if (items.length > 0) {
+        setData((current) => ({
+          ...current,
+          notifications: items.map((n) => ({
+            id: n.id,
+            title: n.title,
+            description: n.message,
+            date: n.createdAt.slice(0, 10),
+            read: n.isRead,
+          })),
+        }));
+      }
+    };
+    pollNotifs();
+    const interval = setInterval(pollNotifs, 20000);
+    return () => {
+      mounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+  useEffect(() => {
+    if (false) {
     }
   }, [data, loaded]);
 
@@ -3242,12 +3274,23 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                           variant="link"
                           className="h-auto p-0 text-[11px] font-semibold text-primary disabled:opacity-40 disabled:cursor-not-allowed"
                           disabled={!data.notifications.some((item) => !item.read)}
-                          onClick={() =>
+                          onClick={() => {
+                            notificationService.markAllAsRead(
+                              data.notifications.map((n) => ({
+                                id: n.id,
+                                title: n.title,
+                                message: n.description,
+                                type: "info",
+                                isRead: true,
+                                createdAt: n.date,
+                              }))
+                            );
                             setData((current) => ({
                               ...current,
                               notifications: current.notifications.map((item) => ({ ...item, read: true })),
-                            }))
-                          }
+                            }));
+                          }}
+
                         >
                           Mark all read
                         </Button>
@@ -3260,6 +3303,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                               type="button"
                               className="flex w-full gap-2.5 rounded-lg p-2.5 text-left hover:bg-muted/50 transition-colors cursor-pointer"
                               onClick={() => {
+                                notificationService.markAsRead(notice.id);
                                 setData((current) => ({
                                   ...current,
                                   notifications: current.notifications.map((item) =>

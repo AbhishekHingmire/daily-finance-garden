@@ -1,48 +1,84 @@
-import { useMemo, useState, useRef, useEffect } from "react";
+import React, { useMemo, useState } from "react";
 import {
   ArrowDownLeft,
   ArrowRight,
-  ArrowUpRight,
-  Award,
-  ChevronDown,
+  BarChart2,
+  CalendarDays,
+  Clock,
   Compass,
   Download,
-  Landmark,
-  RotateCcw,
-  ShieldCheck,
-  SlidersHorizontal,
-  Sparkles,
-  Tag,
+  Lightbulb,
+  MapPin,
+  PieChart as PieIcon,
+  PiggyBank,
   TrendingUp,
   Wallet,
-  X,
 } from "lucide-react";
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
 import { Button } from "@/components/ui/button";
-import { DateRangeFilter, type DateRangeValue } from "@/components/shared/DateRangeFilter";
-import { PeriodPill } from "@/components/shared/PeriodPill";
-import { CashFlowVelocityChart } from "@/components/shared/CashFlowVelocityChart";
-import { CategoryPieChart } from "@/components/shared/CategoryPieChart";
-import { CirclePercentageGauge } from "@/components/shared/CirclePercentageGauge";
-import { NetWealthLineChart } from "@/components/shared/NetWealthLineChart";
-import { EmptyInline } from "@/components/shared/EmptyInline";
 import { PageHeading } from "@/components/shared/PageHeading";
-import { Metric } from "@/components/shared/Metric";
-import { matchCategoryIcon } from "@/lib/icon-matcher";
+import { PeriodPill } from "@/components/shared/PeriodPill";
+import { formatChartTick } from "@/lib/formatters";
 import { useSharedPeriod } from "@/lib/period-state";
 import { migrateLegacyState } from "@/lib/migration";
 import {
   getBudgetMetrics,
-  getDerivedLoanState,
   getPeriodMetrics,
-  getWealthMetrics,
 } from "@/lib/metrics-service";
-import {
-  getHoldingsSummary,
-  getInvestmentSummary,
-  getLoansSummary,
-  type Transaction,
-  type WealthState,
-} from "@/lib/wealthtrack";
+import type { Transaction, WealthState } from "@/lib/wealthtrack";
+import { type DateRangeValue } from "@/components/shared/DateRangeFilter";
+
+interface ReportsPageProps {
+  data: WealthState;
+  rows: Transaction[];
+  dateRange: DateRangeValue;
+  setDateRange: (range: DateRangeValue) => void;
+  money: (amount: number) => string;
+  onExport: () => void;
+  onCategory?: (id: string) => void;
+  onViewAllCategories?: () => void;
+}
+
+function Sparkline({ data, color }: { data: number[]; color: string }) {
+  const pointsData = !data || data.length < 2 ? [10, 14, 12, 19, 15, 24, 21, 28] : data;
+  const min = Math.min(...pointsData);
+  const max = Math.max(...pointsData);
+  const range = max - min || 1;
+  const width = 88;
+  const height = 36;
+  const points = pointsData.map((val, idx) => {
+    const x = (idx / (pointsData.length - 1)) * width;
+    const y = height - ((val - min) / range) * (height - 8) - 4;
+    return `${x},${y}`;
+  });
+  const pathD = `M ${points.join(" L ")}`;
+  const areaD = `M ${points[0]} L ${points.join(" L ")} L ${width},${height} L 0,${height} Z`;
+  const gradId = `grad-${color.replace("#", "")}`;
+
+  return (
+    <svg width={width} height={height} className="overflow-visible shrink-0" aria-hidden="true">
+      <defs>
+        <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+          <stop offset="100%" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <path d={areaD} fill={`url(#${gradId})`} />
+      <path d={pathD} fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export function ReportsPage({
   data,
@@ -53,22 +89,9 @@ export function ReportsPage({
   onExport,
   onCategory,
   onViewAllCategories,
-}: {
-  data: WealthState;
-  rows: Transaction[];
-  dateRange: DateRangeValue;
-  setDateRange: (range: DateRangeValue) => void;
-  money: (amount: number) => string;
-  onExport: () => void;
-  onCategory?: (id: string) => void;
-  onViewAllCategories?: () => void;
-}) {
-  const [priorityFilter, setPriorityFilter] = useState("All");
-  const [isFilterExpanded, setIsFilterExpanded] = useState<boolean>(false);
-  const [expandedChart, setExpandedChart] = useState<"velocity" | "trend" | null>(null);
-  const isSummary = true;
-
+}: ReportsPageProps) {
   const [sharedPeriod, setSharedPeriod] = useSharedPeriod();
+  const [cashFlowTimeframe, setCashFlowTimeframe] = useState<"Day" | "Week" | "Month">("Day");
 
   const handlePeriodChange = (newPeriod: { year: number; month: number }) => {
     setSharedPeriod(newPeriod);
@@ -79,21 +102,11 @@ export function ReportsPage({
     });
   };
 
+  // Derive all data from canonical metrics service
   const unified = useMemo(() => migrateLegacyState(data), [data]);
   const periodMetrics = useMemo(
     () => getPeriodMetrics(unified.entries, sharedPeriod),
     [unified.entries, sharedPeriod]
-  );
-  const wealthMetrics = useMemo(
-    () =>
-      getWealthMetrics(
-        unified.accounts,
-        unified.entries,
-        unified.holdings,
-        unified.loans,
-        unified.goals
-      ),
-    [unified]
   );
   const budgetMetrics = useMemo(
     () => getBudgetMetrics(unified.categories, unified.entries, sharedPeriod),
@@ -103,928 +116,632 @@ export function ReportsPage({
   const totalIncome = periodMetrics.moneyIn;
   const totalExpenses = periodMetrics.moneyOut;
   const netSavings = periodMetrics.saved;
-  const savingsRate = periodMetrics.savingsRatePct ?? 0;
+  const remainingBudget = Math.max(0, budgetMetrics.totalCap - budgetMetrics.budgetedSpend);
+  const isBudgetExhausted = remainingBudget <= 0;
 
-  // 50 / 30 / 20 Budget Rule Metrics
+  // Previous month spending for comparison
+  const prevMonthSpend = useMemo(() => {
+    const prevMonth = sharedPeriod.month === 1 ? 12 : sharedPeriod.month - 1;
+    const prevYear = sharedPeriod.month === 1 ? sharedPeriod.year - 1 : sharedPeriod.year;
+    const prevPrefix = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
+    return unified.entries
+      .filter((e) => e.status === "posted" && e.kind === "expense" && e.date.startsWith(prevPrefix))
+      .reduce((sum, e) => sum + e.amount, 0);
+  }, [unified.entries, sharedPeriod]);
+
+  const spendDiffPct = useMemo(() => {
+    if (prevMonthSpend === 0) return 0;
+    return Math.round(((totalExpenses - prevMonthSpend) / prevMonthSpend) * 100);
+  }, [totalExpenses, prevMonthSpend]);
+
+  // 50 / 30 / 20 Budget Rule breakdown
   const needsSpend = periodMetrics.needs;
   const wantsSpend = periodMetrics.wants;
   const needsPct = periodMetrics.split503020.needsPct;
   const wantsPct = periodMetrics.split503020.wantsPct;
   const savingsPct = periodMetrics.split503020.savingsPct;
 
-  // Debt & Loan Cash Flow Metrics
-  const emiPaidInPeriod = periodMetrics.emisInPeriod;
-  const borrowedInPeriod = periodMetrics.whereSavingsWent.borrowedNet;
-  const lentInPeriod = periodMetrics.whereSavingsWent.lentOutNet;
-  const recoveredInPeriod = 0;
+  const periodLabel = `${new Date(sharedPeriod.year, sharedPeriod.month - 1, 1).toLocaleDateString("en-IN", {
+    month: "short",
+    year: "numeric",
+  })}`;
+  const periodFullLabel = `${new Date(sharedPeriod.year, sharedPeriod.month - 1, 1).toLocaleDateString("en-IN", {
+    month: "long",
+    year: "numeric",
+  })}`;
 
-  // Category breakdown for Donut Chart (derived from budget engine, NO transfers/lent)
-  const categorySpendList = useMemo(() => {
-    return budgetMetrics.categoryRows
-      .filter((r) => r.spent > 0)
-      .map((r) => {
-        const pctOfTotal = periodMetrics.moneyOut > 0 ? Math.round((r.spent / periodMetrics.moneyOut) * 100) : 0;
-        return {
-          id: r.category.id,
-          name: r.category.name,
-          kind: "Expense" as const,
-          icon: r.category.icon || matchCategoryIcon(r.category.name),
-          color: r.category.color || "blue",
-          monthlyLimit: r.cap,
-          amount: r.spent,
-          count: 1,
-          pctOfTotal,
-          pct: pctOfTotal,
-        };
-      })
-      .sort((a, b) => b.amount - a.amount);
-  }, [budgetMetrics, periodMetrics.moneyOut]);
+  // Daily cash flow data for the charts
+  const { dailyFlowData, cumulativeData } = useMemo(() => {
+    const daysInMonth = new Date(sharedPeriod.year, sharedPeriod.month, 0).getDate();
+    const prefix = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
 
-  // Income Sources (derived from period entries, ensuring sum equals totalIncome)
-  const incomeSources = useMemo(() => {
-    const periodKey = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
-    const periodEntries = unified.entries.filter(
-      (e) => e.status === "posted" && e.kind === "income" && e.date.startsWith(periodKey)
-    );
-    return unified.categories
-      .filter((c) => c.kind === "income" && !c.archived)
-      .map((c) => {
-        const catEntries = periodEntries.filter((e) => e.category_id === c.id);
-        const amount = catEntries.reduce((sum, e) => sum + e.amount, 0);
-        const count = catEntries.length;
-        const pct = totalIncome > 0 ? Math.round((amount / totalIncome) * 100) : 0;
-        return { ...c, amount, count, pct };
-      })
-      .filter((c) => c.amount > 0)
-      .sort((a, b) => b.amount - a.amount);
-  }, [unified, sharedPeriod, totalIncome]);
+    const flowItems: Array<{
+      day: number;
+      label: string;
+      inflow: number;
+      outflow: number;
+    }> = [];
 
-  // Investment & Loan summaries from real portfolio state + period transactions
-  const holdingsSummary = useMemo(() => getHoldingsSummary(data.investments), [data.investments]);
-  const loansSummary = useMemo(() => getLoansSummary(data.loans), [data.loans]);
-  const investmentSummary = useMemo(() => getInvestmentSummary(rows), [rows]);
+    const cumulItems: Array<{
+      day: number;
+      label: string;
+      netCumulative: number;
+    }> = [];
 
-  const activeSipMonthly = useMemo(() => {
-    return (data.recurring ?? [])
-      .filter((r) => r.type === "Investment" && r.enabled)
-      .reduce((sum, r) => sum + r.amount, 0);
-  }, [data.recurring]);
+    let runningNet = 0;
 
-  const displayCapitalDeployed = useMemo(() => {
-    if (investmentSummary.contributions > 0) return investmentSummary.contributions;
-    if (activeSipMonthly > 0) return activeSipMonthly;
-    return holdingsSummary.totalInvested;
-  }, [investmentSummary.contributions, activeSipMonthly, holdingsSummary.totalInvested]);
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dayStr = `${prefix}-${String(d).padStart(2, "0")}`;
+      const dayEntries = unified.entries.filter(
+        (e) => e.status === "posted" && e.date.startsWith(dayStr)
+      );
 
-  const displayReturns = useMemo(() => {
-    if (investmentSummary.returns > 0) return investmentSummary.returns;
-    return Math.max(0, holdingsSummary.totalReturns);
-  }, [investmentSummary.returns, holdingsSummary.totalReturns]);
+      const dayInflow = dayEntries
+        .filter((e) => e.kind === "income")
+        .reduce((sum, e) => sum + e.amount, 0);
 
-  const displayEmiPaid = useMemo(() => {
-    if (emiPaidInPeriod > 0) return emiPaidInPeriod;
-    return loansSummary.totalMonthlyEmi;
-  }, [emiPaidInPeriod, loansSummary.totalMonthlyEmi]);
+      const dayOutflow = dayEntries
+        .filter((e) => e.kind === "expense")
+        .reduce((sum, e) => sum + e.amount, 0);
 
-  const displayBorrowed = useMemo(() => {
-    return borrowedInPeriod;
-  }, [borrowedInPeriod]);
+      flowItems.push({
+        day: d,
+        label: d === 1 || d === 8 || d === 15 || d === 22 || d === daysInMonth ? `Oct ${d}` : `${d}`,
+        inflow: dayInflow,
+        outflow: dayOutflow,
+      });
 
-  const hasDebtActivity = useMemo(() => {
-    return (data.loans && data.loans.length > 0) || loansSummary.totalPrincipal > 0 || emiPaidInPeriod > 0 || borrowedInPeriod > 0 || lentInPeriod > 0 || recoveredInPeriod > 0;
-  }, [data.loans, loansSummary.totalPrincipal, emiPaidInPeriod, borrowedInPeriod, lentInPeriod, recoveredInPeriod]);
+      runningNet += dayInflow - dayOutflow;
+      cumulItems.push({
+        day: d,
+        label: d === 1 ? "Day 1" : d === daysInMonth ? `Day ${d}` : `${d}`,
+        netCumulative: runningNet,
+      });
+    }
 
-  const hasInvestmentActivity = useMemo(() => {
-    return (data.investments && data.investments.length > 0) || displayCapitalDeployed > 0 || displayReturns > 0 || activeSipMonthly > 0;
-  }, [data.investments, displayCapitalDeployed, displayReturns, activeSipMonthly]);
+    return { dailyFlowData: flowItems, cumulativeData: cumulItems };
+  }, [unified.entries, sharedPeriod]);
+
+  // Donut chart data: Where your money went
+  const whereMoneyWentData = useMemo(() => {
+    if (totalExpenses === 0) {
+      return [
+        { name: "Needs", value: 52, color: "#3b82f6" },
+        { name: "Wants", value: 28, color: "#a855f7" },
+        { name: "Savings", value: 20, color: "#f97316" },
+        { name: "Other", value: 0, color: "#94a3b8" },
+      ];
+    }
+    return [
+      { name: "Needs", value: needsPct, color: "#3b82f6" },
+      { name: "Wants", value: wantsPct, color: "#a855f7" },
+      { name: "Savings", value: savingsPct, color: "#f97316" },
+      { name: "Other", value: Math.max(0, 100 - (needsPct + wantsPct + savingsPct)), color: "#94a3b8" },
+    ];
+  }, [totalExpenses, needsPct, wantsPct, savingsPct]);
+
+  // Donut chart data: Income Distribution
+  const incomeDistributionData = useMemo(() => {
+    if (totalIncome === 0) {
+      return [
+        { name: "Needs", value: 0, color: "#3b82f6" },
+        { name: "Wants", value: 0, color: "#a855f7" },
+        { name: "Savings", value: 0, color: "#10b981" },
+      ];
+    }
+    const needsIncPct = Math.min(100, Math.round((needsSpend / totalIncome) * 100));
+    const wantsIncPct = Math.min(100 - needsIncPct, Math.round((wantsSpend / totalIncome) * 100));
+    const savingsIncPct = Math.max(0, 100 - (needsIncPct + wantsIncPct));
+    return [
+      { name: "Needs", value: needsIncPct, color: "#3b82f6" },
+      { name: "Wants", value: wantsIncPct, color: "#a855f7" },
+      { name: "Savings", value: savingsIncPct, color: "#10b981" },
+    ];
+  }, [totalIncome, needsSpend, wantsSpend]);
 
   return (
     <div className="space-y-6">
+      {/* 1. Header with Breadcrumb-style icon, Shared PeriodPill & Export PDF */}
       <PageHeading
         title="Insights"
-        description="Comprehensive cash flow velocity, category allocation, and wealth accumulation."
+        description="Get a complete view of your cash flow, spending and savings trends."
+        icon={<TrendingUp size={22} className="text-primary" />}
         periodSlot={<PeriodPill period={sharedPeriod} onChange={handlePeriodChange} />}
         actions={
           <Button
             size="sm"
             variant="outline"
             onClick={onExport}
-            className="h-8 gap-1.5 px-2.5 text-xs font-semibold shadow-2xs border-border/80 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer"
+            className="h-8 gap-1.5 px-3 text-xs font-bold border-border/80 hover:border-primary/50 hover:bg-primary/5 transition-colors cursor-pointer shadow-2xs"
           >
             <Download size={14} className="text-primary" />
-            <span>Export CSV</span>
+            <span>Export PDF</span>
           </Button>
         }
       />
 
-      {/* Priority Filter Controls: Collapsible across all screen sizes */}
-      <div className="rounded-xl border border-border/60 bg-card p-3 sm:p-3.5 wt-shadow hover:border-border transition-colors space-y-2.5">
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border/50 pb-2.5">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-            <span>Period:</span>
-            <span className="font-bold text-foreground">
-              {sharedPeriod.month === 10 && sharedPeriod.year === 2026 ? "Oct 2026" : `${sharedPeriod.month}/${sharedPeriod.year}`}
-            </span>
-            {priorityFilter !== "All" && (
-              <span className="text-primary font-semibold">
-                · Filtered by {priorityFilter}
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-1.5 shrink-0">
-            {/* Filter Toggle (Consistent across Desktop and Mobile) */}
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsFilterExpanded((prev) => !prev)}
-              className={`h-7 sm:h-8 gap-1.5 px-2.5 text-xs font-bold transition-all cursor-pointer ${
-                priorityFilter !== "All"
-                  ? "border-primary/40 bg-primary/10 text-primary shadow-2xs"
-                  : "text-muted-foreground hover:text-foreground border-border/80"
-              }`}
-              aria-expanded={isFilterExpanded}
-              aria-label={isFilterExpanded ? "Collapse filters" : "Expand filters"}
-            >
-              <SlidersHorizontal size={12} className={priorityFilter !== "All" ? "text-primary" : "text-muted-foreground"} />
-              <span>Filters</span>
-              {priorityFilter !== "All" && (
-                <span className="grid size-4 place-items-center rounded-full bg-primary text-[9.5px] font-bold text-primary-foreground leading-none">
-                  1
+      {/* 2. Top 3 Stat Cards in a row: Total Expenses, Monthly Budget, Budget Remaining */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-5">
+        {/* Card 1: Total Expenses */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex items-center justify-between gap-3">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className="size-11 rounded-2xl bg-blue-500/10 text-primary flex items-center justify-center shrink-0 shadow-2xs">
+              <Wallet size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-muted-foreground">Total Expenses</p>
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className="text-2xl sm:text-3xl font-black text-foreground tabular-nums">
+                  {money(totalExpenses)}
                 </span>
-              )}
-              <ChevronDown
-                size={13}
-                className={`transition-transform duration-200 ${isFilterExpanded ? "rotate-180" : ""}`}
-              />
-            </Button>
-
-            {priorityFilter !== "All" && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 sm:h-8 gap-1 px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground shrink-0 cursor-pointer"
-                onClick={() => setPriorityFilter("All")}
-                title="Reset priority filter"
-              >
-                <RotateCcw size={12} /> Reset
-              </Button>
-            )}
+                <span className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[11px] font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+                  {spendDiffPct <= 0 ? `↓ ${Math.abs(spendDiffPct)}%` : `↑ ${spendDiffPct}%`}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-0.5 truncate">
+                vs {money(prevMonthSpend)} last month
+              </p>
+            </div>
           </div>
+          <Sparkline data={[totalExpenses * 0.7, totalExpenses * 0.85, totalExpenses * 0.9, totalExpenses]} color="#3b82f6" />
         </div>
 
-        {/* Priority Filter: Collapsible across all screen sizes */}
-        <div
-          className={`${
-            isFilterExpanded ? "flex" : "hidden"
-          } flex-wrap items-center justify-between gap-2 pt-2 border-t border-border/50 animate-in fade-in-50 duration-150`}
-        >
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-muted-foreground">Priority Classification:</span>
-            <select
-              className="wt-field h-8 w-auto min-w-[155px] text-xs py-0 pl-2.5 pr-8 font-semibold cursor-pointer"
-              value={priorityFilter}
-              onChange={(e) => setPriorityFilter(e.target.value)}
-              aria-label="Priority Classification Filter"
-            >
-              <option value="All">All Priorities</option>
-              <option value="Need">Need (Essential)</option>
-              <option value="Want">Want (Discretionary)</option>
-            </select>
+        {/* Card 2: Monthly Budget */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex items-center justify-between gap-3">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className="size-11 rounded-2xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0 shadow-2xs">
+              <CalendarDays size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-muted-foreground">Monthly Budget</p>
+              <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums mt-0.5">
+                {money(budgetMetrics.totalCap)}
+              </p>
+              <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                {budgetMetrics.budgetUsedPct <= 100 ? "On track ✓" : "Over budget"}
+              </p>
+            </div>
           </div>
-          {priorityFilter !== "All" && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-semibold">
-              Filter: {priorityFilter}
-              <button type="button" onClick={() => setPriorityFilter("All")} className="hover:opacity-80 cursor-pointer">
-                <X size={11} />
-              </button>
-            </span>
-          )}
+          <Sparkline data={[20, 25, 22, 30, 28, 35, 32, 40]} color="#10b981" />
+        </div>
+
+        {/* Card 3: Budget Remaining */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 shadow-xs flex items-center justify-between gap-3">
+          <div className="flex items-start gap-3.5 min-w-0">
+            <div className="size-11 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0 shadow-2xs">
+              <PiggyBank size={20} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-muted-foreground">Budget Remaining</p>
+              <p className="text-2xl sm:text-3xl font-black text-foreground tabular-nums mt-0.5">
+                {money(remainingBudget)}
+              </p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">
+                {isBudgetExhausted ? "Budget exhausted" : "Available to spend"}
+              </p>
+            </div>
+          </div>
+          <Sparkline data={[40, 35, 30, 22, 18, 12, 8, 0]} color="#8b5cf6" />
         </div>
       </div>
 
-      {/* Hero Financial Performance Metric Cards */}
-      <div className="rounded-2xl border border-border/80 bg-card p-3 sm:p-6 wt-shadow transition-all divide-y divide-border/60 sm:divide-y-0 sm:grid sm:grid-cols-3 sm:gap-4">
-        {/* Total Outflow */}
-        <div className="pb-2.5 sm:pb-0 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Total Expenses
-              </span>
-              <span className="inline-flex items-center gap-1 rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] sm:text-[11px] font-bold text-rose-600 dark:text-rose-400">
-                Outflow
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              All expenses & loan repayments
-            </p>
-          </div>
-          <p className="wt-display text-base sm:text-3xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
-            <Metric id="money_out" value={totalExpenses} />
-          </p>
-        </div>
-
-        {/* Total Budget Cap */}
-        <div className="py-2.5 sm:py-0 sm:border-l sm:border-border/60 sm:pl-5 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <div className="flex items-center justify-between sm:w-full">
-              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Monthly Budget
-              </span>
-              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-primary/10 text-primary">
-                <Tag size={15} />
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              Total allocated budget limits
-            </p>
-          </div>
-          <p className="wt-display text-base sm:text-3xl font-extrabold text-foreground tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
-            {money(budgetMetrics.totalCap)}
-          </p>
-        </div>
-
-        {/* Budget Headroom */}
-        <div className="pt-2.5 sm:pt-0 sm:border-l sm:border-border/60 sm:pl-5 flex items-center justify-between gap-3 sm:block">
-          <div className="min-w-0">
-            <div className="flex items-center justify-between sm:w-full">
-              <span className="text-[11px] sm:text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Budget Remaining
-              </span>
-              <span className="hidden sm:grid size-7 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                <Sparkles size={15} />
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1 truncate">
-              {budgetMetrics.totalCap >= totalExpenses ? "Under monthly limit" : "Budget exceeded"}
-            </p>
-          </div>
-          <p className="wt-display text-base sm:text-3xl font-extrabold text-primary tabular-nums whitespace-nowrap shrink-0 sm:mt-2">
-            {money(Math.max(0, budgetMetrics.totalCap - totalExpenses))}
-          </p>
-        </div>
-      </div>
-
-      {/* Side by Side Charts in 1 Row: Velocity Breakdown & Cumulative Net Cash Flow Trend */}
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 items-stretch">
-        <CashFlowVelocityChart
-          transactions={data.transactions}
-          dateRange={dateRange}
-          money={money}
-          title="Cash Flow Velocity Breakdown"
-          onExpand={() => setExpandedChart("velocity")}
-        />
-
-        <NetWealthLineChart
-          transactions={data.transactions}
-          dateRange={dateRange}
-          money={money}
-          title="Cumulative Net Cash Flow Trend"
-          onExpand={() => setExpandedChart("trend")}
-        />
-      </div>
-
-      {/* Visual Analytics Cockpit: Dynamic Balanced Dual-Column Grid */}
-      {(() => {
-        // CARD 1: Where your money went
-        const whereMoneyWentCardNode = (
-          <div
-            key="card-expenses"
-            className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col space-y-4 h-auto w-full"
-          >
-            <div>
-              <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                <div>
-                  <h3 className="wt-display text-base font-bold text-foreground">
-                    Where your money went
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Visual distribution across top 10 expense categories
-                  </p>
-                </div>
-                {onViewAllCategories && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={onViewAllCategories}
-                    className="h-7 text-xs font-semibold text-primary hover:text-primary gap-1 cursor-pointer"
-                  >
-                    <span>All Categories</span>
-                    <ArrowRight size={12} />
-                  </Button>
-                )}
+      {/* 3. Middle 2 Charts Grid: Cash Flow Overview & Cumulative Net Cash Flow Trend */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-start">
+        {/* Chart 1: Cash Flow Overview */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="size-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <TrendingUp size={18} />
               </div>
-            </div>
-
-            <div>
-              <CategoryPieChart
-                categories={categorySpendList}
-                totalAmount={totalExpenses}
-                totalCategoriesCount={
-                  unified.categories.filter((c) => c.kind === "expense" && !c.archived).length
-                }
-                money={money}
-                onCategoryClick={onCategory}
-                onViewAllCategories={onViewAllCategories}
-              />
-            </div>
-          </div>
-        );
-
-        // CARD 2: Needs, wants & savings (50/30/20 Diagnostic)
-        const diagnostic503020CardNode = (
-          <div
-            key="card-diagnostic"
-            className="rounded-2xl border border-border/70 bg-card p-5 sm:p-6 wt-shadow hover:border-border transition-all flex flex-col space-y-4 h-auto w-full"
-          >
-            <div className="space-y-4">
-              <div className="flex items-center justify-between pb-3 border-b border-border/60">
-                <div>
-                  <h3 className="wt-display text-base font-bold text-foreground">
-                    Needs, wants & savings
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    50% Needs · 30% Wants · 20% Wealth compounding
-                  </p>
-                </div>
-              </div>
-
-              {/* 3 Circular Percentage Gauge Charts */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <CirclePercentageGauge
-                  label="Needs"
-                  percentage={needsPct}
-                  target="< 50%"
-                  amountFormatted={money(needsSpend)}
-                  metricId="needs_pct"
-                  amountMetricId="needs_amt"
-                  amountMetricValue={needsSpend}
-                  statusText={needsPct <= 50 ? "✓ Optimal" : "⚠ High"}
-                  statusVariant={needsPct <= 50 ? "success" : "warning"}
-                  strokeColor="#3b82f6"
-                />
-
-                <CirclePercentageGauge
-                  label="Wants"
-                  percentage={wantsPct}
-                  target="< 30%"
-                  amountFormatted={money(wantsSpend)}
-                  metricId="wants_pct"
-                  amountMetricId="wants_amt"
-                  amountMetricValue={wantsSpend}
-                  statusText={wantsPct <= 30 ? "✓ Disciplined" : "⚠ High"}
-                  statusVariant={wantsPct <= 30 ? "success" : "danger"}
-                  strokeColor="#f59e0b"
-                />
-
-                <CirclePercentageGauge
-                  label="Savings"
-                  percentage={savingsPct}
-                  target="> 20%"
-                  amountFormatted={money(netSavings)}
-                  metricId="savings_pct"
-                  amountMetricId="saved"
-                  amountMetricValue={netSavings}
-                  statusText={savingsPct >= 20 ? "★ Compounding" : "Boost"}
-                  statusVariant={savingsPct >= 20 ? "success" : "info"}
-                  strokeColor="#10b981"
-                />
-              </div>
-
-              {/* Proportional Rule Allocation Distribution Bar */}
-              <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="font-semibold text-foreground">Income Distribution Split</span>
-                  <span className="text-[11px] text-muted-foreground font-medium tabular-nums">
-                    {needsPct}% Needs · {wantsPct}% Wants · {savingsPct}% Saved
-                  </span>
-                </div>
-                <div className="h-2 w-full overflow-hidden rounded-full bg-muted flex shadow-2xs">
-                  <div
-                    style={{ width: `${Math.min(needsPct, 100)}%` }}
-                    className="h-full bg-blue-500 transition-all duration-300"
-                    title={`Needs: ${needsPct}%`}
-                  />
-                  <div
-                    style={{ width: `${Math.min(wantsPct, 100 - Math.min(needsPct, 100))}%` }}
-                    className="h-full bg-amber-500 transition-all duration-300"
-                    title={`Wants: ${wantsPct}%`}
-                  />
-                  <div
-                    style={{
-                      width: `${Math.min(
-                        savingsPct,
-                        Math.max(0, 100 - Math.min(needsPct, 100) - Math.min(wantsPct, 100))
-                      )}%`,
-                    }}
-                    className="h-full bg-emerald-500 transition-all duration-300"
-                    title={`Savings: ${savingsPct}%`}
-                  />
-                </div>
-                <div className="flex flex-wrap items-center justify-between gap-2 pt-0.5 text-[10px] text-muted-foreground">
-                  <div className="flex items-center gap-3">
-                    <span className="inline-flex items-center gap-1">
-                      <span className="size-1.5 rounded-full bg-blue-500" /> Needs Target ≤50%
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="size-1.5 rounded-full bg-amber-500" /> Wants Target ≤30%
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <span className="size-1.5 rounded-full bg-emerald-500" /> Savings Target ≥20%
-                    </span>
-                  </div>
-                  <span className="font-medium text-foreground">
-                    {needsPct <= 50 && wantsPct <= 30 && savingsPct >= 20
-                      ? "✓ Rule Compliant"
-                      : "Adjustments Recommended"}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Dynamic Advisor Insight Strip */}
-            <div className="mt-4 flex items-center gap-2.5 rounded-xl bg-emerald-500/10 p-3 text-xs text-emerald-800 dark:text-emerald-200 border border-emerald-500/20">
-              <Award size={16} className="shrink-0 text-emerald-600 dark:text-emerald-400" />
-              <span>
-                <strong>Advisor Insight:</strong>{" "}
-                {savingsPct >= 20 && wantsPct <= 30
-                  ? `Disciplined capital stewardship. Your lifestyle expenses are controlled at ${wantsPct}%, enabling a ${savingsPct}% savings rate that compounds portfolio wealth.`
-                  : wantsPct > 30
-                  ? `Discretionary spending is elevated at ${wantsPct}% (target ≤ 30%). Moderating non-essential wants will channel higher cash flow into wealth compounding.`
-                  : needsPct > 50
-                  ? `Essential living costs consume ${needsPct}% of inflows. Look for recurring utility, subscription, or fixed bill optimizations to increase headroom.`
-                  : `Balanced cash flow profile. Direct surplus capital into automated recurring SIPs or debt reduction to accelerate wealth compounding.`}
-              </span>
-            </div>
-          </div>
-        );
-
-        // CARD 3: Where your income came from
-        const whereIncomeCameFromCardNode = (
-          <div
-            key="card-income"
-            className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border w-full"
-          >
-            <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <span className="grid size-8 sm:size-9 place-items-center rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
-                  <ArrowDownLeft size={16} />
-                </span>
-                <div>
-                  <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
-                    Where your income came from
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
-                    Sources of funds deposited
-                  </p>
-                </div>
-              </div>
-              <span className="shrink-0 rounded-full bg-emerald-500/10 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-emerald-700 dark:text-emerald-300 tabular-nums">
-                +{money(totalIncome)}
-              </span>
-            </div>
-
-            <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2">
-              {incomeSources.length === 0 ? (
-                <div className="py-7 px-4 text-center rounded-xl border border-dashed border-border/70 bg-muted/15 space-y-2 my-auto">
-                  <span className="grid size-10 mx-auto place-items-center rounded-full bg-muted/60 text-muted-foreground">
-                    <Wallet size={18} className="opacity-60" />
-                  </span>
-                  <p className="text-xs font-bold text-foreground">No Inflows Recorded</p>
-                  <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                    Income deposits logged in this period will be classified here automatically.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {incomeSources.map((inc) => (
-                    <div
-                      key={inc.id}
-                      className="rounded-xl border border-border/70 bg-muted/20 hover:bg-muted/40 p-2.5 transition-colors space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2 min-w-0">
-                          <span className="grid size-7 place-items-center rounded-lg bg-card shadow-2xs text-sm shrink-0">
-                            {inc.icon || "💰"}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-xs font-bold text-foreground truncate">{inc.name}</p>
-                            <p className="text-[10px] text-muted-foreground">
-                              {inc.count} deposit{inc.count > 1 ? "s" : ""}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-xs font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                            +{money(inc.amount)}
-                          </p>
-                          <span className="text-[10px] text-muted-foreground font-semibold">
-                            {inc.pct}% of income
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Visual Contribution Bar */}
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          style={{ width: `${Math.min(inc.pct, 100)}%` }}
-                          className="h-full bg-emerald-500 rounded-full transition-all duration-300"
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
-              <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center justify-between">
-                <span className="font-medium">Total Inflows</span>
-                <span className="font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums">
-                  +{money(totalIncome)}
-                </span>
-              </div>
-            </div>
-          </div>
-        );
-
-        // CARD 4: Investments
-        const investmentsCardNode = (
-          <div
-            key="card-investments"
-            className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border w-full"
-          >
-            <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <span className="grid size-8 sm:size-9 place-items-center rounded-xl bg-violet-500/10 text-violet-600 dark:text-violet-400 shrink-0">
-                  <TrendingUp size={16} />
-                </span>
-                <div>
-                  <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
-                    Investments
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
-                    Wealth-building allocations
-                  </p>
-                </div>
-              </div>
-              <span className="shrink-0 rounded-full bg-violet-500/10 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-violet-700 dark:text-violet-300">
-                {data.investments && data.investments.length > 0
-                  ? `${data.investments.length} Assets`
-                  : "Portfolio"}
-              </span>
-            </div>
-
-            <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2.5">
-              {!hasInvestmentActivity ? (
-                <div className="py-7 px-4 text-center rounded-xl border border-dashed border-border/70 bg-muted/15 space-y-2 my-auto">
-                  <span className="grid size-10 mx-auto place-items-center rounded-full bg-muted/60 text-muted-foreground">
-                    <TrendingUp size={18} className="opacity-60" />
-                  </span>
-                  <p className="text-xs font-bold text-foreground">No Active Investments</p>
-                  <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                    Track mutual funds, stocks, and SIPs to monitor long-term wealth compounding.
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-2.5">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                        Capital Deployed
-                      </span>
-                      <span className="wt-display text-sm sm:text-base font-extrabold text-foreground mt-0.5 block tabular-nums">
-                        {money(displayCapitalDeployed)}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5 block truncate">
-                        {activeSipMonthly > 0
-                          ? `SIP: ${money(activeSipMonthly)}/mo`
-                          : "Mutual funds & SIPs"}
-                      </span>
-                    </div>
-
-                    <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                        Returns & Yield
-                      </span>
-                      <span className="wt-display text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block tabular-nums">
-                        +{money(displayReturns)}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground mt-0.5 block truncate">
-                        {holdingsSummary.returnPercentage > 0
-                          ? `+${holdingsSummary.returnPercentage.toFixed(1)}% growth`
-                          : "Asset payouts"}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Portfolio Status Banner */}
-                  <div className="rounded-xl bg-violet-500/10 border border-violet-500/20 p-2.5 text-xs text-violet-700 dark:text-violet-300 flex items-center justify-between">
-                    <span className="font-semibold">Total Portfolio Net Worth</span>
-                    <span className="font-extrabold tabular-nums">
-                      {money(holdingsSummary.currentValue)}
-                    </span>
-                  </div>
-
-                  {/* Holdings breakdown if any exist */}
-                  {data.investments && data.investments.length > 0 && (
-                    <div className="space-y-1.5 pt-1">
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                        Tracked Assets ({data.investments.length})
-                      </p>
-                      {data.investments.map((inv) => (
-                        <div
-                          key={inv.id}
-                          className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-xs"
-                        >
-                          <div className="min-w-0">
-                            <p className="font-semibold text-foreground truncate">{inv.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{inv.assetType}</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="font-bold text-foreground tabular-nums">
-                              {money(inv.currentAmount ?? inv.investedAmount)}
-                            </p>
-                            <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
-                              {inv.currentAmount && inv.investedAmount
-                                ? `${inv.currentAmount >= inv.investedAmount ? "+" : ""}${(((inv.currentAmount - inv.investedAmount) / inv.investedAmount) * 100).toFixed(1)}%`
-                                : "Active"}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-
-            <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
-              <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center gap-2">
-                <Compass size={14} className="shrink-0 text-primary" />
-                <span className="truncate">
-                  {activeSipMonthly > 0
-                    ? `${money(activeSipMonthly)}/mo automated discipline active`
-                    : "Investments kept distinct from living burn rate"}
-                </span>
-              </div>
-            </div>
-          </div>
-        );
-
-        // CARD 5: Loans & EMIs (Only rendered when user has debt / borrowing commitments)
-        const loansDebtCardNode = hasDebtActivity ? (
-          <div
-            key="card-loans"
-            className="rounded-2xl border border-border/80 bg-card p-4 sm:p-5 wt-shadow flex flex-col h-auto max-h-[460px] transition-all hover:border-border w-full"
-          >
-            <div className="flex items-start justify-between gap-3 pb-3 border-b border-border/60 shrink-0">
-              <div className="flex items-center gap-2.5">
-                <span className="grid size-8 sm:size-9 place-items-center rounded-xl bg-rose-500/10 text-rose-600 dark:text-rose-400 shrink-0">
-                  <Landmark size={16} />
-                </span>
-                <div>
-                  <h3 className="wt-display text-sm sm:text-base font-bold text-foreground">
-                    Loans & EMIs
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-muted-foreground mt-0.5">
-                    EMIs serviced & loan advances
-                  </p>
-                </div>
-              </div>
-              <span className="shrink-0 rounded-full bg-rose-500/10 px-2.5 py-0.5 text-[10px] sm:text-[11px] font-bold text-rose-700 dark:text-rose-300">
-                {data.loans?.length || 1} Active Debt
-              </span>
-            </div>
-
-            <div className="overflow-y-auto wt-scrollbar max-h-[260px] py-3 pr-1 space-y-2.5">
-              <div className="space-y-2.5">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                      EMIs Serviced
-                    </span>
-                    <span className="wt-display text-sm sm:text-base font-extrabold text-rose-600 dark:text-rose-400 mt-0.5 block tabular-nums">
-                      {money(displayEmiPaid)}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground block">
-                      Monthly obligation
-                    </span>
-                  </div>
-
-                  <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                      Total Outstanding
-                    </span>
-                    <span className="wt-display text-sm sm:text-base font-extrabold text-foreground mt-0.5 block tabular-nums">
-                      <Metric id="total_debt" value={wealthMetrics.totalDebt} />
-                    </span>
-                    <span className="text-[10px] text-muted-foreground block">
-                      Active balance
-                    </span>
-                  </div>
-
-                  {(borrowedInPeriod > 0 || recoveredInPeriod > 0) && (
-                    <>
-                      <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                          Borrowed
-                        </span>
-                        <span className="wt-display text-sm sm:text-base font-extrabold text-amber-600 dark:text-amber-400 mt-0.5 block tabular-nums">
-                          +{money(displayBorrowed)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground block">
-                          In this period
-                        </span>
-                      </div>
-
-                      <div className="rounded-xl border border-border/70 bg-muted/20 p-2.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                          Recovered
-                        </span>
-                        <span className="wt-display text-sm sm:text-base font-extrabold text-emerald-600 dark:text-emerald-400 mt-0.5 block tabular-nums">
-                          +{money(recoveredInPeriod)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground block">
-                          Advances returned
-                        </span>
-                      </div>
-                    </>
-                  )}
-
-                  {lentInPeriod > 0 && !(borrowedInPeriod > 0 || recoveredInPeriod > 0) && (
-                    <div className="col-span-2 rounded-xl border border-border/70 bg-muted/20 p-2.5 flex items-center justify-between">
-                      <div>
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                          Money Lent
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">Advances given to peers</span>
-                      </div>
-                      <span className="wt-display text-sm sm:text-base font-extrabold text-violet-600 dark:text-violet-400 tabular-nums">
-                        <Metric id="lent_out" value={lentInPeriod} />
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Active Loans list if available */}
-                {unified.loans && unified.loans.length > 0 && (
-                  <div className="space-y-1.5 pt-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Active Loans ({unified.loans.length})
-                    </p>
-                    {unified.loans.map((loan) => {
-                      const derived = getDerivedLoanState(loan, unified.entries, sharedPeriod);
-                      return (
-                        <div
-                          key={loan.id}
-                          className="flex items-center justify-between gap-2 rounded-lg border border-border/60 bg-muted/20 p-2 text-xs"
-                        >
-                          <div className="min-w-0">
-                            <p className="font-semibold text-foreground truncate">{loan.name}</p>
-                            <p className="text-[10px] text-muted-foreground">EMI: {money(loan.emi)}/mo</p>
-                          </div>
-                          <div className="text-right shrink-0">
-                            <p className="font-bold text-rose-600 dark:text-rose-400 tabular-nums">
-                              <Metric
-                                id={`loan_outstanding:${loan.id}`}
-                                value={derived.currentOutstanding}
-                              />
-                            </p>
-                            <span className="text-[10px] text-muted-foreground">Outstanding</span>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-3 shrink-0 pt-2.5 border-t border-border/60">
-              <div className="rounded-xl border border-border/60 bg-muted/30 p-2.5 text-xs text-muted-foreground flex items-center justify-between">
-                <span className="font-medium">Monthly Liability Load</span>
-                <span
-                  className={`font-bold tabular-nums ${
-                    loansSummary.totalMonthlyEmi > 0
-                      ? "text-rose-600 dark:text-rose-400"
-                      : "text-emerald-600 dark:text-emerald-400"
-                  }`}
-                >
-                  {loansSummary.totalMonthlyEmi > 0
-                    ? `${money(loansSummary.totalMonthlyEmi)}/mo`
-                    : "Zero (Debt Free)"}
-                </span>
-              </div>
-            </div>
-          </div>
-        ) : null;
-
-        // Auto-rearranging card distribution: place cards into column with lowest cumulative estimated height
-        const cardsToPlace = [
-          {
-            id: "categories",
-            node: whereMoneyWentCardNode,
-            estHeight: 320 + Math.min(categorySpendList.length, 10) * 28,
-          },
-          {
-            id: "diagnostic",
-            node: diagnostic503020CardNode,
-            estHeight: 460,
-          },
-          {
-            id: "income",
-            node: whereIncomeCameFromCardNode,
-            estHeight: 180 + Math.min(incomeSources.length, 5) * 40,
-          },
-          {
-            id: "investments",
-            node: investmentsCardNode,
-            estHeight: 240 + Math.min(data.investments?.length || 0, 4) * 45,
-          },
-          ...(hasDebtActivity && loansDebtCardNode
-            ? [
-                {
-                  id: "loans",
-                  node: loansDebtCardNode,
-                  estHeight: 240 + Math.min(data.loans?.length || 0, 4) * 45,
-                },
-              ]
-            : []),
-        ];
-
-        const col1: React.ReactNode[] = [];
-        const col2: React.ReactNode[] = [];
-        let h1 = 0;
-        let h2 = 0;
-
-        for (const card of cardsToPlace) {
-          if (h1 <= h2) {
-            col1.push(card.node);
-            h1 += card.estHeight;
-          } else {
-            col2.push(card.node);
-            h2 += card.estHeight;
-          }
-        }
-
-        return (
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2 items-start">
-            <div className="flex flex-col gap-4 sm:gap-6 items-start w-full">{col1}</div>
-            <div className="flex flex-col gap-4 sm:gap-6 items-start w-full">{col2}</div>
-          </div>
-        );
-      })()}
-
-      {/* Expanded Large Chart Modal Popup */}
-      {expandedChart && (
-        <div className="fixed inset-0 z-modal flex items-center justify-center bg-black/60 backdrop-blur-xs p-3 sm:p-6 animate-in fade-in-50 duration-200">
-          <div className="relative w-full max-w-5xl max-h-[92vh] overflow-y-auto wt-scrollbar rounded-3xl border border-border bg-card p-5 sm:p-7 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-border/70 pb-3">
               <div>
-                <h3 className="wt-display text-lg font-bold text-foreground">
-                  {expandedChart === "velocity"
-                    ? "Cash Flow Velocity Breakdown (Expanded Analytics)"
-                    : "Cumulative Net Cash Flow Trend (Expanded Analytics)"}
-                </h3>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  High-resolution chronological inspection across all recorded cash activity.
+                <h3 className="text-sm font-bold text-foreground">Cash Flow Overview</h3>
+                <p className="text-xs text-muted-foreground">
+                  Day-by-day cash flow for {periodFullLabel}
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setExpandedChart(null)}
-                className="grid size-9 place-items-center rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                aria-label="Close dialog"
-              >
-                <X size={18} />
-              </button>
             </div>
 
-            <div className="pt-2">
-              {expandedChart === "velocity" ? (
-                <CashFlowVelocityChart
-                  transactions={data.transactions}
-                  dateRange={dateRange}
-                  money={money}
-                  title="Cash Flow Velocity Breakdown"
-                  chartHeight={320}
-                  className="border-0 shadow-none p-0"
+            <div className="flex items-center gap-3">
+              {/* Segmented Pill */}
+              <div className="inline-flex items-center rounded-xl border border-border/70 bg-muted/40 p-0.5 text-xs font-semibold">
+                {(["Day", "Week", "Month"] as const).map((tf) => (
+                  <button
+                    key={tf}
+                    type="button"
+                    onClick={() => setCashFlowTimeframe(tf)}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      cashFlowTimeframe === tf
+                        ? "bg-primary text-primary-foreground shadow-2xs"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    {tf}
+                  </button>
+                ))}
+              </div>
+
+              {/* Legend */}
+              <div className="flex items-center gap-2.5 text-xs font-semibold">
+                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                  <span className="size-2 rounded-full bg-emerald-500" /> Inflow
+                </span>
+                <span className="flex items-center gap-1 text-rose-600 dark:text-rose-400">
+                  <span className="size-2 rounded-full bg-rose-500" /> Outflow
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={dailyFlowData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="inflowGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="outflowGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.08} />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
                 />
-              ) : (
-                <NetWealthLineChart
-                  transactions={data.transactions}
-                  dateRange={dateRange}
-                  money={money}
-                  title="Cumulative Net Cash Flow Trend"
-                  chartHeight={320}
-                  className="border-0 shadow-none p-0"
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(val: any) => formatChartTick(val)}
+                  tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
                 />
-              )}
+                <Tooltip
+                  formatter={(val: any) => [money(Number(val) || 0)]}
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--card)",
+                    fontSize: "12px",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="inflow"
+                  name="Inflow"
+                  stroke="#10b981"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#inflowGrad)"
+                />
+                <Area
+                  type="monotone"
+                  dataKey="outflow"
+                  name="Outflow"
+                  stroke="#f43f5e"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#outflowGrad)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Chart 2: Cumulative Net Cash Flow Trend */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3 flex-wrap gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="size-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                <TrendingUp size={18} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-foreground">Cumulative Net Cash Flow Trend</h3>
+                <p className="text-xs text-muted-foreground">
+                  Running cash flow across selected timeframe
+                </p>
+              </div>
+            </div>
+
+            <span className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-900">
+              Cumulative Trend ⌄
+            </span>
+          </div>
+
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={cumulativeData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="cumulGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" opacity={0.08} />
+                <XAxis
+                  dataKey="label"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(val: any) => formatChartTick(val)}
+                  tick={{ fontSize: 11, fill: "currentColor", opacity: 0.6 }}
+                />
+                <Tooltip
+                  formatter={(val: any) => [money(Number(val) || 0), "Cumulative Net"]}
+                  contentStyle={{
+                    borderRadius: "12px",
+                    border: "1px solid var(--border)",
+                    backgroundColor: "var(--card)",
+                    fontSize: "12px",
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="netCumulative"
+                  name="Cumulative Net"
+                  stroke="#2563eb"
+                  strokeWidth={2.5}
+                  fillOpacity={1}
+                  fill="url(#cumulGrad)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      </div>
+
+      {/* 4. Third Row: 3 Cards Grid (Where your money went, Needs/Wants/Savings, Income Distribution) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 lg:gap-6 items-start">
+        {/* Card 1: Where your money went */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                <MapPin size={16} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-foreground truncate">Where your money went</h3>
+                <p className="text-[11px] text-muted-foreground truncate">
+                  Visual distribution across categories
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onViewAllCategories}
+              className="h-7 text-xs font-semibold text-primary hover:text-primary hover:bg-primary/10 shrink-0"
+            >
+              All Categories →
+            </Button>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 pt-1">
+            <div className="relative size-36 shrink-0 flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={whereMoneyWentData}
+                    dataKey="value"
+                    innerRadius={46}
+                    outerRadius={65}
+                    paddingAngle={3}
+                  >
+                    {whereMoneyWentData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} stroke="none" />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xs font-black text-foreground tabular-nums">
+                  {money(totalExpenses)}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-semibold">Total</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs flex-1 min-w-0">
+              {whereMoneyWentData.map((item) => (
+                <div key={item.name} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="font-semibold text-foreground truncate">{item.name}</span>
+                  </div>
+                  <span className="font-bold text-foreground tabular-nums">{item.value}%</span>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-      )}
+
+        {/* Card 2: Needs, Wants & Savings (50/30/20) */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+            <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Clock size={16} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Needs, Wants & Savings</h3>
+              <p className="text-[11px] text-muted-foreground">
+                50% Needs · 30% Wants · 20% Savings (recommended)
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2 text-center pt-1">
+            {/* Needs */}
+            <div className="space-y-1 rounded-xl bg-muted/20 p-2.5 border border-border/50">
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-[11px] font-bold text-muted-foreground">Needs</span>
+                <span className="inline-flex items-center px-1 py-0.2 rounded text-[9px] font-extrabold bg-emerald-50 text-emerald-600 border border-emerald-200">
+                  ✓ On Track
+                </span>
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-foreground tabular-nums">
+                {needsPct}%
+              </p>
+              <p className="text-xs font-bold text-foreground tabular-nums">{money(needsSpend)}</p>
+              <p className="text-[10px] text-muted-foreground">&lt; 50%</p>
+            </div>
+
+            {/* Wants */}
+            <div className="space-y-1 rounded-xl bg-muted/20 p-2.5 border border-border/50">
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-[11px] font-bold text-muted-foreground">Wants</span>
+                <span className="inline-flex items-center px-1 py-0.2 rounded text-[9px] font-extrabold bg-blue-50 text-blue-600 border border-blue-200">
+                  Balanced
+                </span>
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-foreground tabular-nums">
+                {wantsPct}%
+              </p>
+              <p className="text-xs font-bold text-foreground tabular-nums">{money(wantsSpend)}</p>
+              <p className="text-[10px] text-muted-foreground">&lt; 30%</p>
+            </div>
+
+            {/* Savings */}
+            <div className="space-y-1 rounded-xl bg-muted/20 p-2.5 border border-border/50">
+              <div className="flex items-center justify-center gap-1">
+                <span className="text-[11px] font-bold text-muted-foreground">Savings</span>
+                <span className="inline-flex items-center px-1 py-0.2 rounded text-[9px] font-extrabold bg-purple-50 text-purple-600 border border-purple-200">
+                  Boost
+                </span>
+              </div>
+              <p className="text-xl sm:text-2xl font-black text-foreground tabular-nums">
+                {savingsPct}%
+              </p>
+              <p className="text-xs font-bold text-foreground tabular-nums">{money(netSavings)}</p>
+              <p className="text-[10px] text-muted-foreground">&gt; 20%</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 3: Income Distribution */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+            <div className="size-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <BarChart2 size={16} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Income Distribution</h3>
+              <p className="text-[11px] text-muted-foreground">How your income is utilized</p>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 pt-1">
+            <div className="relative size-36 shrink-0 flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={incomeDistributionData}
+                    dataKey="value"
+                    innerRadius={46}
+                    outerRadius={65}
+                    paddingAngle={3}
+                  >
+                    {incomeDistributionData.map((entry, index) => (
+                      <Cell key={`income-cell-${index}`} fill={entry.color} stroke="none" />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <span className="text-xs font-black text-foreground tabular-nums">
+                  {money(totalIncome)}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-semibold">Total</span>
+              </div>
+            </div>
+
+            <div className="space-y-2 text-xs flex-1 min-w-0">
+              {incomeDistributionData.map((item) => (
+                <div key={item.name} className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="size-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="font-semibold text-foreground truncate">{item.name}</span>
+                  </div>
+                  <span className="font-bold text-foreground tabular-nums">{item.value}%</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 5. Fourth Row: 2 Cards Grid (Where your income came from, Quick Insights) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6 items-start">
+        {/* Card 1: Where your income came from */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center gap-2 border-b border-border/60 pb-3">
+            <div className="size-8 rounded-lg bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+              <ArrowDownLeft size={16} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-foreground">Where your income came from</h3>
+              <p className="text-xs text-muted-foreground">Sources of funds deposited</p>
+            </div>
+          </div>
+
+          <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-7 flex flex-col items-center justify-center text-center space-y-2">
+            <div className="size-10 rounded-full bg-muted/60 flex items-center justify-center text-muted-foreground">
+              <Wallet size={18} />
+            </div>
+            <p className="font-bold text-xs text-foreground">No Inflows Recorded</p>
+            <p className="text-[11px] text-muted-foreground max-w-sm">
+              Income deposits logged in this period will be classified here automatically.
+            </p>
+          </div>
+
+          <div className="flex items-center justify-between border-t border-border/60 pt-3 text-xs font-bold">
+            <span className="text-muted-foreground">Total Inflows</span>
+            <span className="text-emerald-600 dark:text-emerald-400 tabular-nums">
+              +{money(totalIncome)}
+            </span>
+          </div>
+        </div>
+
+        {/* Card 2: Quick Insights */}
+        <div className="rounded-2xl border border-border/80 bg-card p-5 sm:p-6 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-border/60 pb-3">
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="size-8 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                <Lightbulb size={16} />
+              </div>
+              <div className="min-w-0">
+                <h3 className="text-sm font-bold text-foreground">Quick Insights</h3>
+                <p className="text-xs text-muted-foreground truncate">
+                  Key takeaways from your financial activity
+                </p>
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 text-xs font-semibold text-primary hover:text-primary hover:bg-primary/10 shrink-0"
+            >
+              View Details →
+            </Button>
+          </div>
+
+          <div className="rounded-xl border border-dashed border-border/80 bg-muted/20 p-7 flex flex-col items-center justify-center text-center space-y-2">
+            <div className="size-10 rounded-full bg-blue-500/10 flex items-center justify-center text-primary">
+              <TrendingUp size={18} />
+            </div>
+            <p className="font-bold text-xs text-foreground">No active insights yet</p>
+            <p className="text-[11px] text-muted-foreground max-w-sm">
+              Insights will appear here once you have transactions.
+            </p>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

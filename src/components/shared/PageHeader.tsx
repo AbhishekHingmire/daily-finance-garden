@@ -13,6 +13,7 @@ export interface PageHeaderProps {
   title: string;
   description?: string;
   eyebrow?: string;
+  icon?: React.ReactNode;
   tabs?: React.ReactNode;
   /** Right slot: PeriodPicker (period pages) OR non-interactive caption (balance pages) */
   periodSlot?: React.ReactNode;
@@ -55,6 +56,7 @@ export function PageHeader({
   actions,
   isBalancePage = false,
   className = "",
+  icon,
 }: PageHeaderProps) {
   const renderedMoreMenu =
     moreMenu ??
@@ -80,20 +82,27 @@ export function PageHeader({
       )}
 
       <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-        <div>
-          {eyebrow && (
-            <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
-              {eyebrow}
-            </p>
+        <div className="flex items-center gap-3">
+          {icon && (
+            <div className="size-10 sm:size-11 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0 shadow-2xs">
+              {icon}
+            </div>
           )}
-          <h1 className="wt-display text-xl sm:text-2xl font-bold tracking-tight text-foreground">
-            {title}
-          </h1>
-          {description && (
-            <p className="mt-0.5 text-xs sm:text-[13px] text-muted-foreground leading-relaxed">
-              {description}
-            </p>
-          )}
+          <div>
+            {eyebrow && (
+              <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wider text-primary">
+                {eyebrow}
+              </p>
+            )}
+            <h1 className="wt-display text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+              {title}
+            </h1>
+            {description && (
+              <p className="mt-0.5 text-xs sm:text-[13px] text-muted-foreground leading-relaxed">
+                {description}
+              </p>
+            )}
+          </div>
         </div>
         {rightSide}
       </div>
