@@ -203,6 +203,8 @@ export function PreferencesPage({
             />
           </div>
 
+          {/* Fast Entry Defaults - commented out per pure expense tracking requirements */}
+          {/*
           <div className="space-y-4 rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all">
             <div className="flex items-center gap-2 border-b border-border/50 pb-3">
               <SlidersHorizontal className="size-4 text-primary" />
@@ -234,6 +236,7 @@ export function PreferencesPage({
               }))}
             />
           </div>
+          */}
         </form>
       )}
 

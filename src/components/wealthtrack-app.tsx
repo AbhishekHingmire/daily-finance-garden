@@ -488,6 +488,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const [profileOpen, setProfileOpen] = useState(false);
   const notificationContainerRef = useRef<HTMLDivElement>(null);
   const profileContainerRef = useRef<HTMLDivElement>(null);
+  const mobileProfileContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleGlobalClick(event: MouseEvent) {
@@ -501,7 +502,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       if (
         profileOpen &&
         profileContainerRef.current &&
-        !profileContainerRef.current.contains(event.target as Node)
+        !profileContainerRef.current.contains(event.target as Node) &&
+        (!mobileProfileContainerRef.current || !mobileProfileContainerRef.current.contains(event.target as Node))
       ) {
         setProfileOpen(false);
       }
@@ -3050,6 +3052,115 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     );
   }
 
+  const renderUserMenuContent = () => (
+    <>
+      <div className="border-b border-border px-3 py-2">
+        <p className="text-xs font-bold text-foreground">
+          {data.profile?.fullName || "Local Profile"}
+        </p>
+        <p className="truncate text-[11px] text-muted-foreground">{email}</p>
+      </div>
+      <Button
+        variant={active === "Profile" ? "secondary" : "ghost"}
+        className={`mt-1 w-full justify-start text-xs font-semibold ${
+          active === "Profile"
+            ? "font-bold text-primary bg-secondary shadow-2xs"
+            : ""
+        }`}
+        onClick={() => {
+          goSection("Profile");
+          setProfileOpen(false);
+        }}
+      >
+        <User size={15} className="mr-2" /> My Profile
+      </Button>
+      <Button
+        variant={
+          active === "Preferences" || active === "Settings"
+            ? "secondary"
+            : "ghost"
+        }
+        className={`w-full justify-start text-xs font-semibold ${
+          active === "Preferences" || active === "Settings"
+            ? "font-bold text-primary bg-secondary shadow-2xs"
+            : ""
+        }`}
+        onClick={() => {
+          goSection("Preferences");
+          setPreferencesTab("General & Regional");
+          setProfileOpen(false);
+        }}
+      >
+        <SlidersHorizontal size={15} className="mr-2" /> Preferences
+      </Button>
+      <Button
+        variant="ghost"
+        className="w-full justify-between text-xs font-semibold"
+        onClick={() => {
+          setDataHealthOpen(true);
+          setProfileOpen(false);
+        }}
+      >
+        <span className="flex items-center">
+          <ShieldCheck
+            size={15}
+            className={`mr-2 ${
+              allDataChecksPass ? "text-emerald-500" : "text-amber-500"
+            }`}
+          />
+          Data check
+        </span>
+        {allDataChecksPass ? (
+          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+            Healthy
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400">
+            <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
+            Check
+          </span>
+        )}
+      </Button>
+      <Button
+        variant={active === "Reports" ? "secondary" : "ghost"}
+        className="w-full justify-start text-xs font-semibold"
+        onClick={() => {
+          goSection("Reports");
+          setProfileOpen(false);
+        }}
+      >
+        <Activity size={15} className="mr-2 text-primary" /> Reports
+      </Button>
+      <Button
+        variant="ghost"
+        className="w-full justify-start text-xs font-semibold"
+        onClick={() => {
+          toast("WealthTrack Expense Tracker", {
+            description:
+              "Track your daily outgoings, categories, budgets, and recurring bills effortlessly.",
+          });
+          setProfileOpen(false);
+        }}
+      >
+        <CircleHelp size={15} className="mr-2" /> Help & Support
+      </Button>
+      <Button
+        variant="ghost"
+        className="w-full justify-start text-xs font-semibold text-destructive"
+        onClick={() => {
+          setPendingDelete({
+            kind: "signout",
+            label: "Sign out of this session?",
+          });
+          setModal("confirm");
+          setProfileOpen(false);
+        }}
+      >
+        <LogOut size={15} className="mr-2" /> Sign Out
+      </Button>
+    </>
+  );
+
   return (
     <div className="min-h-screen bg-background w-full flex flex-col">
       <Toaster position="top-right" richColors />
@@ -3142,11 +3253,40 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         {/* Main Content Area */}
         <div className="min-w-0 flex-1 w-full md:pl-[72px] lg:pl-[248px]">
           <header className="fixed top-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-topbar flex h-[56px] md:h-[64px] pt-[env(safe-area-inset-top)] md:pt-0 items-center justify-between gap-3 border-b border-border bg-background px-3 sm:px-6">
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+              {/* Mobile User Icon in Left Top */}
+              <div ref={mobileProfileContainerRef} className="relative md:hidden shrink-0">
+                <button
+                  type="button"
+                  className="grid size-9 place-items-center rounded-full bg-accent/80 hover:bg-accent text-accent-foreground border border-border/80 transition-transform active:scale-95 cursor-pointer shadow-2xs"
+                  aria-label="User Profile and Menu"
+                  onClick={() => {
+                    setProfileOpen((value) => !value);
+                    setNotificationOpen(false);
+                  }}
+                >
+                  <span className="font-bold text-xs text-primary uppercase tracking-tight">
+                    {data.profile?.fullName ? data.profile.fullName.slice(0, 2) : <User size={16} />}
+                  </span>
+                </button>
+                {profileOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-topbar"
+                      onClick={() => setProfileOpen(false)}
+                      aria-label="Close user menu"
+                    />
+                    <div className="fixed left-3 top-[calc(56px+env(safe-area-inset-top)+6px)] z-topbar w-60 rounded-xl border border-border bg-card p-1.5 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
+                      {renderUserMenuContent()}
+                    </div>
+                  </>
+                )}
+              </div>
+
               {["Reports", "Insights", "Recurring"].includes(active) ? (
-                <div className="flex items-center gap-2 md:hidden">
+                <div className="flex items-center gap-1.5 md:hidden">
                   <span className="font-bold text-sm text-foreground truncate">
-                    {active === "Reports" ? "Insights" : active}
+                    {active === "Reports" ? "Reports" : active}
                   </span>
                 </div>
               ) : ["Profile", "Preferences", "Settings", "Help"].includes(active) ? (
@@ -3154,17 +3294,23 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="size-10"
+                    className="size-9"
                     aria-label="Back to Home"
                     onClick={() => goSection("Overview")}
                   >
-                    <ArrowLeft size={22} />
+                    <ArrowLeft size={18} />
                   </Button>
                   <span className="font-bold text-sm text-foreground truncate">
                     {active}
                   </span>
                 </div>
-              ) : null}
+              ) : (
+                <div className="flex items-center gap-1 md:hidden">
+                  <span className="font-bold text-sm text-foreground truncate">
+                    {active === "Overview" ? "Home" : active === "Plan" || active === "Categories" ? "Budgets & Categories" : active}
+                  </span>
+                </div>
+              )}
               <div className="hidden min-w-0 sm:flex items-center gap-1.5 text-xs text-muted-foreground select-none">
                 <span className="font-semibold text-muted-foreground/80">WealthTrack</span>
                 <span className="text-muted-foreground/40 font-bold">/</span>
@@ -3334,7 +3480,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
               </div>
 
               {/* Profile Dropdown */}
-              <div ref={profileContainerRef} className="relative">
+              <div ref={profileContainerRef} className="relative hidden md:block">
                 <Button
                   variant="ghost"
                   className="h-10 gap-1.5 px-1.5 rounded-xl"
@@ -3356,99 +3502,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                       onClick={() => setProfileOpen(false)}
                       aria-label="Close user menu"
                     />
-                    <div className="absolute right-0 top-12 z-topbar w-56 rounded-xl border border-border bg-card p-1.5 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
-                      <div className="border-b border-border px-3 py-2">
-                        <p className="text-xs font-bold text-foreground">
-                          {data.profile?.fullName || "Local Profile"}
-                        </p>
-                        <p className="truncate text-[11px] text-muted-foreground">{email}</p>
-                      </div>
-                      <Button
-                        variant={active === "Profile" ? "secondary" : "ghost"}
-                        className={`mt-1 w-full justify-start text-xs font-semibold ${
-                          active === "Profile"
-                            ? "font-bold text-primary bg-secondary shadow-2xs"
-                            : ""
-                        }`}
-                        onClick={() => {
-                          goSection("Profile");
-                          setProfileOpen(false);
-                        }}
-                      >
-                        <User size={15} className="mr-2" /> My Profile
-                      </Button>
-                      <Button
-                        variant={
-                          active === "Preferences" || active === "Settings"
-                            ? "secondary"
-                            : "ghost"
-                        }
-                        className={`w-full justify-start text-xs font-semibold ${
-                          active === "Preferences" || active === "Settings"
-                            ? "font-bold text-primary bg-secondary shadow-2xs"
-                            : ""
-                        }`}
-                        onClick={() => {
-                          goSection("Preferences");
-                          setPreferencesTab("General & Regional");
-                          setProfileOpen(false);
-                        }}
-                      >
-                        <SlidersHorizontal size={15} className="mr-2" /> Preferences
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-between text-xs font-semibold"
-                        onClick={() => {
-                          setDataHealthOpen(true);
-                          setProfileOpen(false);
-                        }}
-                      >
-                        <span className="flex items-center">
-                          <ShieldCheck size={15} className={`mr-2 ${allDataChecksPass ? "text-emerald-500" : "text-amber-500"}`} />
-                          Data check
-                        </span>
-                        {!allDataChecksPass && (
-                          <span className="size-2 rounded-full bg-amber-500 animate-pulse" title="Discrepancies detected" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start text-xs font-semibold"
-                        onClick={() => {
-                          goSection("Reports");
-                          setProfileOpen(false);
-                        }}
-                      >
-                        <Activity size={15} className="mr-2 text-primary" /> Financial Insights
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start text-xs font-semibold"
-                        onClick={() => {
-                          toast("WealthTrack Local Workspace", {
-                            description:
-                              "Your financial data remains strictly in your browser.",
-                          });
-                          setProfileOpen(false);
-                        }}
-                      >
-                        <CircleHelp size={15} className="mr-2" /> Help & Support
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        className="w-full justify-start text-xs font-semibold text-destructive"
-                        onClick={() => {
-                          setPendingDelete({
-                            kind: "signout",
-                            label: "Sign out of this session?",
-                          });
-                          setModal("confirm");
-                          setProfileOpen(false);
-                        }}
-                      >
-                        <LogOut size={15} className="mr-2" /> Sign Out
-                      </Button>
+                    <div className="absolute right-0 top-12 z-topbar w-60 rounded-xl border border-border bg-card p-1.5 wt-shadow animate-in fade-in-50 zoom-in-95 duration-100">
+                      {renderUserMenuContent()}
                     </div>
                   </>
                 )}

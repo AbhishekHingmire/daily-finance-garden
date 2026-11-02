@@ -70,7 +70,7 @@ export function ProfilePage({
     <div className="space-y-6">
       <PageHeading
         title="Profile"
-        description="Manage your identity, personal details, and investment risk profile."
+        description="Manage your identity, personal details, and profile preferences."
         isBalancePage={!isDirty}
         primaryAction={
           isDirty ? (
@@ -121,16 +121,19 @@ export function ProfilePage({
             </div>
           </div>
 
+          {/* Risk Profile badge - commented out per pure expense tracking requirements */}
+          {/*
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-md border border-border/60 bg-muted/40 px-3 py-1.5 text-xs font-medium text-foreground">
               Risk: <strong className="font-semibold text-primary">{form.riskProfile}</strong>
             </span>
           </div>
+          */}
         </div>
       </div>
 
       <form id="profile-form" onSubmit={handleSave} className="space-y-6">
-        <div className="grid gap-6 md:grid-cols-2">
+        <div className="max-w-2xl">
           {/* Personal Information */}
           <div className="rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all space-y-4">
             <div className="flex items-center gap-2 border-b border-border/50 pb-3">
@@ -181,7 +184,8 @@ export function ProfilePage({
             </label>
           </div>
 
-          {/* Investor Risk Profile */}
+          {/* Investor Risk Profile - commented out per pure expense tracking requirements */}
+          {/*
           <div className="rounded-xl border border-border/70 bg-card p-5 sm:p-6 hover:border-border hover:shadow-xs transition-all space-y-4">
             <div className="flex items-center gap-2 border-b border-border/50 pb-3">
               <Target className="size-4 text-primary" />
@@ -204,10 +208,11 @@ export function ProfilePage({
               Your risk profile helps guide your investment decisions and asset allocation preferences.
             </p>
           </div>
+          */}
         </div>
 
         {/* Expense Tracker Stats */}
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid gap-3 sm:grid-cols-3 max-w-2xl">
           <div className="rounded-xl border border-border/70 bg-card p-4 text-center hover:border-border transition-all">
             <span className="block text-2xl font-bold text-foreground">{data.transactions.length}</span>
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
@@ -216,10 +221,10 @@ export function ProfilePage({
           </div>
           <div className="rounded-xl border border-border/70 bg-card p-4 text-center hover:border-border transition-all">
             <span className="block text-2xl font-bold text-foreground">
-              {(data.investments ?? []).length}
+              {data.recurring.length}
             </span>
             <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider">
-              Tracked Holdings
+              Recurring Schedules
             </span>
           </div>
           <div className="rounded-xl border border-border/70 bg-card p-4 text-center hover:border-border transition-all">
