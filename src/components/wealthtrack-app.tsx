@@ -2,7 +2,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
   AlertTriangle,
-  ArrowLeft,
   ArrowLeftRight,
   Bell,
   CalendarDays,
@@ -479,6 +478,22 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
   const [showPassword, setShowPassword] = useState(false);
   const [authLoading, setAuthLoading] = useState(false);
   const [authErrors, setAuthErrors] = useState<Record<string, string>>({});
+
+  const userFullName = (data.profile?.fullName || fullName || "User").trim();
+  const userFirstName = userFullName.split(/\s+/)[0] || "User";
+  const userInitials = useMemo(() => {
+    if (userFullName && userFullName !== "User") {
+      const parts = userFullName.split(/\s+/);
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+      }
+      return parts[0].slice(0, 2).toUpperCase();
+    }
+    if (email && email.trim()) {
+      return email.split("@")[0]?.slice(0, 2).toUpperCase();
+    }
+    return "WT";
+  }, [userFullName, email]);
 
   // Navigation & Dialog States
   const [mobileNav, setMobileNav] = useState(false);
@@ -3254,11 +3269,11 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         <div className="min-w-0 flex-1 w-full md:pl-[72px] lg:pl-[248px]">
           <header className="fixed top-0 left-0 md:left-[72px] lg:left-[248px] right-0 z-topbar flex h-[56px] md:h-[64px] pt-[env(safe-area-inset-top)] md:pt-0 items-center justify-between gap-3 border-b border-border bg-background px-3 sm:px-6">
             <div className="flex min-w-0 items-center gap-2 sm:gap-3">
-              {/* Mobile User Icon in Left Top */}
-              <div ref={mobileProfileContainerRef} className="relative md:hidden shrink-0">
+              {/* Mobile User Icon & First Name in Left Top */}
+              <div ref={mobileProfileContainerRef} className="relative flex items-center gap-2 md:hidden shrink-0">
                 <button
                   type="button"
-                  className="grid size-9 place-items-center rounded-full bg-accent/80 hover:bg-accent text-accent-foreground border border-border/80 transition-transform active:scale-95 cursor-pointer shadow-2xs"
+                  className="grid size-9 place-items-center rounded-full bg-accent/80 hover:bg-accent text-accent-foreground border border-border/80 transition-transform active:scale-95 cursor-pointer shadow-2xs shrink-0"
                   aria-label="User Profile and Menu"
                   onClick={() => {
                     setProfileOpen((value) => !value);
@@ -3266,8 +3281,19 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   }}
                 >
                   <span className="font-bold text-xs text-primary uppercase tracking-tight">
-                    {data.profile?.fullName ? data.profile.fullName.slice(0, 2) : <User size={16} />}
+                    {userInitials}
                   </span>
+                </button>
+                <button
+                  type="button"
+                  className="font-bold text-sm text-foreground tracking-tight hover:text-primary transition-colors cursor-pointer text-left truncate max-w-[130px] active:opacity-70"
+                  aria-label="User Profile and Menu"
+                  onClick={() => {
+                    setProfileOpen((value) => !value);
+                    setNotificationOpen(false);
+                  }}
+                >
+                  {userFirstName}
                 </button>
                 {profileOpen && (
                   <>
@@ -3282,35 +3308,6 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   </>
                 )}
               </div>
-
-              {["Reports", "Insights", "Recurring"].includes(active) ? (
-                <div className="flex items-center gap-1.5 md:hidden">
-                  <span className="font-bold text-sm text-foreground truncate">
-                    {active === "Reports" ? "Reports" : active}
-                  </span>
-                </div>
-              ) : ["Profile", "Preferences", "Settings", "Help"].includes(active) ? (
-                <div className="flex items-center gap-1 md:hidden">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-9"
-                    aria-label="Back to Home"
-                    onClick={() => goSection("Overview")}
-                  >
-                    <ArrowLeft size={18} />
-                  </Button>
-                  <span className="font-bold text-sm text-foreground truncate">
-                    {active}
-                  </span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-1 md:hidden">
-                  <span className="font-bold text-sm text-foreground truncate">
-                    {active === "Overview" ? "Home" : active === "Plan" || active === "Categories" ? "Budgets & Categories" : active}
-                  </span>
-                </div>
-              )}
               <div className="hidden min-w-0 sm:flex items-center gap-1.5 text-xs text-muted-foreground select-none">
                 <span className="font-semibold text-muted-foreground/80">WealthTrack</span>
                 <span className="text-muted-foreground/40 font-bold">/</span>
@@ -3490,8 +3487,8 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                     setNotificationOpen(false);
                   }}
                 >
-                  <span className="grid size-9 place-items-center rounded-full bg-accent text-accent-foreground">
-                    <User size={24} />
+                  <span className="grid size-9 place-items-center rounded-full bg-accent text-accent-foreground font-bold text-xs text-primary uppercase">
+                    {userInitials}
                   </span>
                   <ChevronDown size={15} className="hidden sm:block text-muted-foreground" />
                 </Button>
