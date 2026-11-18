@@ -794,7 +794,10 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       return;
     }
     const token = authStorage.getAccessToken();
-    if (!token) {
+    if (!token || !authStorage.isSessionActive()) {
+      if (token && !authStorage.isSessionActive()) {
+        authStorage.clear();
+      }
       setData(createEmptyWorkspaceState());
       setLoaded(true);
       return;
@@ -918,7 +921,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           setData(createEmptyWorkspaceState());
         });
       } else {
-        // Network or transient server startup error: DO NOT log out user; keep 72h session intact
+        // Network or transient server startup error: DO NOT log out user; keep 30-day session intact
         const host = (() => {
           try { return new URL(getApiBaseUrl()).host; } catch { return "onefinancetracker.runasp.net"; }
         })();
