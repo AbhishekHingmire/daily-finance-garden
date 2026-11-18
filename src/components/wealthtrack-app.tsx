@@ -614,16 +614,25 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       const items = await notificationService.fetchNotifications();
       if (!mounted) return;
       if (items.length > 0) {
-        setData((current) => ({
-          ...current,
-          notifications: items.map((n) => ({
-            id: n.id,
-            title: n.title,
-            description: n.message,
-            date: n.createdAt.slice(0, 10),
-            read: n.isRead,
-          })),
-        }));
+        setData((current) => {
+          const prev = current.notifications || [];
+          if (
+            prev.length === items.length &&
+            prev.every((n, i) => n.id === items[i].id && n.read === items[i].isRead)
+          ) {
+            return current;
+          }
+          return {
+            ...current,
+            notifications: items.map((n) => ({
+              id: n.id,
+              title: n.title,
+              description: n.message,
+              date: n.createdAt.slice(0, 10),
+              read: n.isRead,
+            })),
+          };
+        });
       }
     };
     pollNotifs();

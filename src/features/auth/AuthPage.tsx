@@ -250,18 +250,6 @@ export function AuthPage({
   const isLoading = authLoading || isRequestingOtp || isVerifyingOtp;
 
   // Countdown colour helpers
-  const otpTimerColorClass =
-    otpSecondsLeft <= 30
-      ? "text-destructive border-destructive/30 bg-destructive/10"
-      : otpSecondsLeft <= 120
-      ? "text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10"
-      : "text-emerald-600 dark:text-emerald-400 border-emerald-500/30 bg-emerald-500/10";
-  const otpTimerDotClass =
-    otpSecondsLeft <= 30
-      ? "bg-destructive animate-pulse"
-      : otpSecondsLeft <= 120
-      ? "bg-amber-500 animate-pulse"
-      : "bg-emerald-500";
   const otpTimerTextClass =
     otpSecondsLeft <= 30
       ? "text-destructive"
@@ -520,22 +508,6 @@ export function AuthPage({
                 </div>
               )} */}
 
-              {/* Live OTP Expiry Countdown */}
-              {otpSecondsLeft > 0 ? (
-                <div className={`flex items-center justify-between rounded-xl border px-3 py-2.5 text-xs font-semibold ${otpTimerColorClass}`}>
-                  <div className="flex items-center gap-2">
-                    <span className={`size-2 rounded-full ${otpTimerDotClass}`} />
-                    <span>OTP expires in</span>
-                  </div>
-                  <span className="font-mono text-sm font-bold tabular-nums">{otpTimerFormatted}</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2.5 text-xs font-semibold text-destructive">
-                  <span className="size-2 rounded-full bg-destructive animate-pulse" />
-                  OTP has expired. Request a new code below.
-                </div>
-              )}
-
               {/* Dynamic Test OTP Screen Display (When gateway in test mode) */}
               {generatedTestOtp && (
                 <div className="rounded-xl border border-primary/30 bg-primary/10 p-3 text-xs text-foreground space-y-2">
@@ -620,8 +592,8 @@ export function AuthPage({
                   </button>
                 )}
 
-                <span className="text-[11px] text-muted-foreground">
-                  Valid for 5 mins
+                <span className={`text-[11px] font-medium tabular-nums ${otpSecondsLeft <= 60 ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-muted-foreground"}`}>
+                  {otpSecondsLeft > 0 ? `Valid for ${otpTimerFormatted}` : "OTP expired"}
                 </span>
               </div>
             </form>

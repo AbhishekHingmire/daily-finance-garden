@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   AlertCircle,
   AlertTriangle,
@@ -95,10 +95,18 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
   const [repeatFrequency, setRepeatFrequency] = useState<"Weekly" | "Monthly" | "Yearly">("Monthly");
   const [showMoreActions, setShowMoreActions] = useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const prevIsOpenRef = useRef(false);
+  const prevPresetRef = useRef<Partial<Entry> | undefined>(undefined);
 
-  // Initialize or reset form when modal opens or preset changes
+  // Initialize or reset form ONLY when sheet transitions to open or a new preset is provided
   useEffect(() => {
+    const isOpening = !prevIsOpenRef.current && isOpen;
+    const presetChanged = Boolean(initialPreset && initialPreset !== prevPresetRef.current);
+    prevIsOpenRef.current = isOpen;
+    prevPresetRef.current = initialPreset;
+
     if (!isOpen) return;
+    if (!isOpening && !presetChanged) return;
 
     if (initialPreset) {
       if (initialPreset.kind) setActiveTab(initialPreset.kind);
@@ -110,7 +118,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
       if (initialPreset.account_id) setAccountId(initialPreset.account_id);
       if (initialPreset.need_want) setNeedWant(initialPreset.need_want);
       if (initialPreset.date) setDate(initialPreset.date);
-    } else {
+    } else if (isOpening) {
       setActiveTab("expense");
       setSubtype("none");
       setAmount("");
@@ -125,6 +133,13 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
       setShowMoreActions(false);
     }
   }, [isOpen, initialPreset, accounts, categories, defaultAccount]);
+
+  // Ensure a valid category is selected if current categoryId is empty (without wiping user input)
+  useEffect(() => {
+    if (!isOpen || categoryId) return;
+    const firstExp = categories.find((c) => c.kind === "expense");
+    if (firstExp) setCategoryId(firstExp.id);
+  }, [isOpen, categoryId, categories]);
 
   // When category changes, inherit default Need/Want
   const handleCategoryChange = (catId: string) => {
