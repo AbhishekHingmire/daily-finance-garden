@@ -231,6 +231,7 @@ export interface RecurringItem {
   accountId: string;
   frequency: "Weekly" | "Monthly" | "Yearly" | "Custom interval";
   intervalDays: number;
+  recurringDay?: number;
   startDate: string;
   endDate: string;
   nextDate: string;

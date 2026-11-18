@@ -558,6 +558,14 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     savedTransaction: Transaction;
     keepOpen: boolean;
   } | null>(null);
+  const [recurringScheduleCategoryPrompt, setRecurringScheduleCategoryPrompt] = useState<{
+    isOpen: boolean;
+    recurring: RecurringItem;
+    oldCategoryName: string;
+    newCategoryName: string;
+    newCategoryId: string;
+    pendingItem: RecurringItem;
+  } | null>(null);
 
   // Unified Date Range Filter State
   const [dateRange, setDateRange] = useState<DateRangeValue>({
@@ -1976,6 +1984,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       const linkedRecurring = data.recurring.find((r) =>
         r.id === editTransaction.loanId ||
         r.id === (editTransaction as any).recurringId ||
+        (r.loanId && editTransaction.loanId && r.loanId === editTransaction.loanId) ||
         (r.name && editTransaction.merchant && r.name.toLowerCase().trim() === editTransaction.merchant.toLowerCase().trim()) ||
         (r.name && editTransaction.description && r.name.toLowerCase().trim() === editTransaction.description.toLowerCase().trim()) ||
         (editTransaction.recurring && (
@@ -2105,7 +2114,7 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
         if (isNaN(txDate.getTime()) || txDate < sixMonthsAgo) return false;
 
         const isMatchingRecurring =
-          (t.loanId && t.loanId === recurring.id) ||
+          (t.loanId && (t.loanId === recurring.id || (recurring.loanId && t.loanId === recurring.loanId))) ||
           (t.recurring && (
             (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim()) ||
             (t.description && recurring.name && t.description.toLowerCase().includes(recurring.name.toLowerCase().trim()))
@@ -2505,6 +2514,26 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     };
 
     if (editingRecurring) {
+      const oldCategoryId = editingRecurring.categoryId;
+      const newCategoryId = item.categoryId;
+      const isCategoryChanged = Boolean(
+        oldCategoryId &&
+        newCategoryId &&
+        oldCategoryId !== newCategoryId
+      );
+
+      if (isCategoryChanged) {
+        setRecurringScheduleCategoryPrompt({
+          isOpen: true,
+          recurring: editingRecurring,
+          oldCategoryName: categoryById(oldCategoryId)?.name || "Previous Category",
+          newCategoryName: categoryById(newCategoryId)?.name || "New Category",
+          newCategoryId,
+          pendingItem: item,
+        });
+        return;
+      }
+
       const res = await repository.updateRecurring(item);
       if (!res.success) {
         toast.error(res.error || "Failed to update recurring schedule");
@@ -2633,6 +2662,160 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
     setModal(null);
     toast.success(editingRecurring ? "Schedule updated" : "Recurring schedule added");
+  };
+
+  const handleConfirmRecurringScheduleCategoryCascade = async (updatePastTransactions: boolean) => {
+    if (!recurringScheduleCategoryPrompt) return;
+    const { recurring, newCategoryId, newCategoryName, pendingItem } = recurringScheduleCategoryPrompt;
+    setRecurringScheduleCategoryPrompt(null);
+
+    let item = pendingItem;
+    const res = await repository.updateRecurring(item);
+    if (!res.success) {
+      toast.error(res.error || "Failed to update recurring schedule");
+      return;
+    }
+    if (res.data) item = { ...item, ...res.data };
+
+    if (updatePastTransactions) {
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      sixMonthsAgo.setHours(0, 0, 0, 0);
+
+      const historicalToUpdate = data.transactions.filter((t) => {
+        const txDate = new Date(t.date);
+        if (isNaN(txDate.getTime()) || txDate < sixMonthsAgo) return false;
+
+        const isMatchingRecurring =
+          (t.loanId && (t.loanId === recurring.id || (recurring.loanId && t.loanId === recurring.loanId))) ||
+          (t.recurring && (
+            (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim()) ||
+            (t.description && recurring.name && t.description.toLowerCase().includes(recurring.name.toLowerCase().trim()))
+          )) ||
+          (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim());
+
+        return isMatchingRecurring && t.categoryId !== newCategoryId;
+      });
+
+      if (historicalToUpdate.length > 0) {
+        const ids = historicalToUpdate.map((t) => t.id);
+        await repository.bulkReassignCategory(ids, newCategoryId);
+      }
+
+      const historicalIdsSet = new Set(historicalToUpdate.map((t) => t.id));
+
+      setData((current) => {
+        let nextInvestments = [...(current.investments ?? [])];
+        let nextLoans = current.loans ?? [];
+
+        if (item.loanId) {
+          nextLoans = nextLoans.map((l) =>
+            l.id === item.loanId
+              ? {
+                  ...l,
+                  emiAmount: item.amount,
+                  repaymentAccountId: item.accountId,
+                  autoRecurringEmi: item.enabled,
+                  tenureMonths: item.totalInstallments || l.tenureMonths,
+                  paidEmisCount: item.paidInstallments !== undefined ? item.paidInstallments : l.paidEmisCount,
+                }
+              : l
+          );
+        }
+        if (item.type === "Investment") {
+          const invIdx = nextInvestments.findIndex(
+            (inv) =>
+              (item.investmentId && inv.id === item.investmentId) ||
+              inv.recurringId === item.id ||
+              inv.name.toLowerCase() === item.name.toLowerCase()
+          );
+          if (invIdx >= 0) {
+            nextInvestments[invIdx] = {
+              ...nextInvestments[invIdx],
+              isRecurring: true,
+              recurringId: item.id,
+              sipAmount: item.amount,
+              sipFrequency: item.frequency,
+              sipAccountId: item.accountId,
+              status: item.enabled ? "Active" : "Paused",
+            };
+            item.investmentId = nextInvestments[invIdx].id;
+          }
+        }
+
+        return {
+          ...current,
+          recurring: current.recurring.map((r) => (r.id === item.id ? item : r)),
+          investments: nextInvestments,
+          loans: nextLoans,
+          transactions: current.transactions.map((t) => {
+            if (historicalIdsSet.has(t.id)) {
+              return { ...t, categoryId: newCategoryId };
+            }
+            return t;
+          }),
+        };
+      });
+
+      toast.success("Recurring schedule & past transactions updated", {
+        description: `Updated "${item.name}" and ${historicalToUpdate.length} past transaction(s) from the past 6 months to ${newCategoryName}.`,
+      });
+      notify("Recurring schedule & past transactions updated", `Updated "${item.name}" and ${historicalToUpdate.length} past transaction(s) to ${newCategoryName}.`);
+    } else {
+      setData((current) => {
+        let nextInvestments = [...(current.investments ?? [])];
+        let nextLoans = current.loans ?? [];
+
+        if (item.loanId) {
+          nextLoans = nextLoans.map((l) =>
+            l.id === item.loanId
+              ? {
+                  ...l,
+                  emiAmount: item.amount,
+                  repaymentAccountId: item.accountId,
+                  autoRecurringEmi: item.enabled,
+                  tenureMonths: item.totalInstallments || l.tenureMonths,
+                  paidEmisCount: item.paidInstallments !== undefined ? item.paidInstallments : l.paidEmisCount,
+                }
+              : l
+          );
+        }
+        if (item.type === "Investment") {
+          const invIdx = nextInvestments.findIndex(
+            (inv) =>
+              (item.investmentId && inv.id === item.investmentId) ||
+              inv.recurringId === item.id ||
+              inv.name.toLowerCase() === item.name.toLowerCase()
+          );
+          if (invIdx >= 0) {
+            nextInvestments[invIdx] = {
+              ...nextInvestments[invIdx],
+              isRecurring: true,
+              recurringId: item.id,
+              sipAmount: item.amount,
+              sipFrequency: item.frequency,
+              sipAccountId: item.accountId,
+              status: item.enabled ? "Active" : "Paused",
+            };
+            item.investmentId = nextInvestments[invIdx].id;
+          }
+        }
+
+        return {
+          ...current,
+          recurring: current.recurring.map((r) => (r.id === item.id ? item : r)),
+          investments: nextInvestments,
+          loans: nextLoans,
+        };
+      });
+
+      toast.success("Recurring schedule updated", {
+        description: `Updated "${item.name}" to ${newCategoryName} for future deductions. Past transactions remain unchanged.`,
+      });
+    }
+
+    setEditingRecurring(null);
+    setModal(null);
   };
 
   const handleToggleRecurring = async (item: RecurringItem) => {
@@ -4337,6 +4520,91 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
                   variant="ghost"
                   className="text-xs font-medium h-8.5 text-muted-foreground hover:text-foreground cursor-pointer"
                   onClick={() => setRecurringCategoryPrompt(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Recurring Schedule Category Change Confirmation Modal (from Recurring Page) */}
+      {recurringScheduleCategoryPrompt?.isOpen && (
+        <div
+          className="fixed inset-0 z-popover flex items-center justify-center bg-foreground/45 p-4 backdrop-blur-xs animate-in fade-in-50 duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="recurring-schedule-category-modal-title"
+        >
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-2xl space-y-4">
+            {/* Header */}
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Repeat size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 id="recurring-schedule-category-modal-title" className="text-base font-bold text-foreground">
+                  Update Past Transactions Category?
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  You changed the category for recurring rule <span className="font-semibold text-foreground">"{recurringScheduleCategoryPrompt.recurring.name}"</span>.
+                </p>
+              </div>
+            </div>
+
+            {/* Category Change Pill / Summary */}
+            <div className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/40 p-3 text-xs">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block mb-0.5">Previous Category</span>
+                <span className="font-semibold text-foreground">{recurringScheduleCategoryPrompt.oldCategoryName}</span>
+              </div>
+              <span className="text-muted-foreground font-bold text-sm">→</span>
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-primary block mb-0.5">New Category</span>
+                <span className="font-semibold text-primary">{recurringScheduleCategoryPrompt.newCategoryName}</span>
+              </div>
+            </div>
+
+            {/* Explanation Note */}
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-900 dark:text-amber-200 space-y-2">
+              <div className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>Do you want to update past transactions too?</span>
+              </div>
+              <ul className="space-y-1.5 text-[11px] leading-relaxed text-muted-foreground/90 list-disc pl-4">
+                <li>
+                  <strong className="text-foreground">Click "Yes, Update Schedule & Past 6 Months":</strong> All historical auto-posted transactions of the past 6 months from this recurring rule and future recurring instances will be moved to <strong className="text-foreground">{recurringScheduleCategoryPrompt.newCategoryName}</strong>.
+                </li>
+                <li>
+                  <strong className="text-foreground">Click "No, Only Future Recurring":</strong> Only the recurring schedule will be moved to <strong className="text-foreground">{recurringScheduleCategoryPrompt.newCategoryName}</strong> for future deductions. Past transactions will remain in <strong className="text-foreground">{recurringScheduleCategoryPrompt.oldCategoryName}</strong>.
+                </li>
+              </ul>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2 pt-1">
+              <Button
+                type="button"
+                className="w-full text-xs font-bold h-9 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center gap-1.5 cursor-pointer"
+                onClick={() => handleConfirmRecurringScheduleCategoryCascade(true)}
+              >
+                <Check size={14} /> Yes, Update Schedule & Past 6 Months
+              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 text-xs font-semibold h-8.5 cursor-pointer"
+                  onClick={() => handleConfirmRecurringScheduleCategoryCascade(false)}
+                >
+                  No, Only Future Recurring
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-xs font-medium h-8.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                  onClick={() => setRecurringScheduleCategoryPrompt(null)}
                 >
                   Cancel
                 </Button>

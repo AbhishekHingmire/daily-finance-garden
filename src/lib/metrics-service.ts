@@ -681,7 +681,7 @@ export function getBudgetMetrics(
   const categoryRows: BudgetCategoryRow[] = [];
 
   for (const cat of categories) {
-    if (cat.kind !== "expense" || cat.archived) continue;
+    if (cat.archived) continue;
     const spent = periodEntries
       .filter((e) => e.category_id === cat.id)
       .reduce((sum, e) => sum + Math.abs(e.amount || 0), 0);

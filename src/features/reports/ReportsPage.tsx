@@ -236,6 +236,67 @@ export function ReportsPage({
     return { dailyExpenseData: flowItems, cumulativeExpenseData: cumulItems };
   }, [unified.entries, sharedPeriod, periodLabel]);
 
+  // Dynamic spending trend data according to selected timeframe (Day / Week / Month)
+  const trendExpenseData = useMemo(() => {
+    if (expenseTimeframe === "Week") {
+      const daysInMonth = new Date(sharedPeriod.year, sharedPeriod.month, 0).getDate();
+      const prefix = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
+      const shortMonth = periodLabel.slice(0, 3);
+
+      const weekBuckets = [
+        { label: `W1 (1-7 ${shortMonth})`, start: 1, end: 7 },
+        { label: `W2 (8-14 ${shortMonth})`, start: 8, end: 14 },
+        { label: `W3 (15-21 ${shortMonth})`, start: 15, end: 21 },
+        { label: `W4 (22-28 ${shortMonth})`, start: 22, end: 28 },
+      ];
+      if (daysInMonth > 28) {
+        weekBuckets.push({
+          label: `W5 (29-${daysInMonth} ${shortMonth})`,
+          start: 29,
+          end: daysInMonth,
+        });
+      }
+
+      return weekBuckets.map((bucket, idx) => {
+        let expense = 0;
+        for (let d = bucket.start; d <= bucket.end; d++) {
+          const dayStr = `${prefix}-${String(d).padStart(2, "0")}`;
+          const dayEntries = unified.entries.filter(
+            (e) => e.status === "posted" && e.kind === "expense" && e.date.startsWith(dayStr)
+          );
+          expense += dayEntries.reduce((sum, e) => sum + e.amount, 0);
+        }
+        return {
+          day: idx + 1,
+          label: bucket.label,
+          expense,
+        };
+      });
+    }
+
+    if (expenseTimeframe === "Month") {
+      const currentYear = sharedPeriod.year;
+      const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+      return monthNames.map((name, idx) => {
+        const m = idx + 1;
+        const mPrefix = `${currentYear}-${String(m).padStart(2, "0")}`;
+        const monthEntries = unified.entries.filter(
+          (e) => e.status === "posted" && e.kind === "expense" && e.date.startsWith(mPrefix)
+        );
+        const expense = monthEntries.reduce((sum, e) => sum + e.amount, 0);
+        return {
+          day: m,
+          label: name,
+          expense,
+        };
+      });
+    }
+
+    // Default: Day
+    return dailyExpenseData;
+  }, [expenseTimeframe, dailyExpenseData, unified.entries, sharedPeriod, periodLabel]);
+
   // Actual Category-Wise Allocation (Food, Grocery, Utilities, etc.)
   const categoryAllocation = useMemo(() => {
     const activeRows = budgetMetrics.categoryRows
@@ -476,7 +537,11 @@ export function ReportsPage({
               <div>
                 <h3 className="text-sm font-bold text-foreground">Expense Spending Trend</h3>
                 <p className="text-xs text-muted-foreground">
-                  Day-by-day outgoings for {periodFullLabel}
+                  {expenseTimeframe === "Day"
+                    ? `Day-by-day outgoings for ${periodFullLabel}`
+                    : expenseTimeframe === "Week"
+                    ? `Weekly outgoings for ${periodFullLabel}`
+                    : `Monthly outgoings across ${sharedPeriod.year}`}
                 </p>
               </div>
 
@@ -507,7 +572,7 @@ export function ReportsPage({
 
             <div className="h-64 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={dailyExpenseData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
+                <AreaChart data={trendExpenseData} margin={{ top: 10, right: 10, left: -15, bottom: 0 }}>
                   <defs>
                     <linearGradient id="expenseTrendGrad" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.25} />

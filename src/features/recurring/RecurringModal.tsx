@@ -423,7 +423,7 @@ export function RecurringModal({
               onChange={handleCategoryChange}
               options={[
                 ...data.categories
-                  .filter((c) => !c.archived && (form.type === "Investment" ? true : c.kind === (form.type ?? "Expense")))
+                  .filter((c) => !c.archived)
                   .map((c) => ({ value: c.id, label: `${c.icon} ${c.name}` })),
                 { value: "__new_category__", label: "＋ Create new category…" },
               ]}
@@ -500,17 +500,57 @@ export function RecurringModal({
               required
             />
           )}
-          <InputField
-            label="Start Date"
-            type="date"
-            value={form.startDate ?? ""}
-            onChange={(startDate) => setForm((f) => ({ ...f, startDate }))}
-          />
+          <div>
+            <label className="block">
+              <span className="wt-label">
+                Recurring Day of Month <span className="text-destructive">*</span>
+              </span>
+              <select
+                className="wt-field font-semibold bg-background"
+                value={form.recurringDay ?? (form.nextDate ? new Date(form.nextDate).getDate() : 1)}
+                onChange={(e) => {
+                  const day = Number(e.target.value);
+                  const today = new Date();
+                  let year = today.getFullYear();
+                  let month = today.getMonth();
+                  const candidate = new Date(year, month, day);
+                  let target = candidate;
+                  if (candidate < new Date(today.getFullYear(), today.getMonth(), today.getDate())) {
+                    target = new Date(year, month + 1, day);
+                  }
+                  const yyyy = target.getFullYear();
+                  const mm = String(target.getMonth() + 1).padStart(2, "0");
+                  const dd = String(target.getDate()).padStart(2, "0");
+                  const computedNextDate = `${yyyy}-${mm}-${dd}`;
+                  setForm((f) => ({
+                    ...f,
+                    recurringDay: day,
+                    startDate: computedNextDate,
+                    nextDate: computedNextDate,
+                  }));
+                }}
+              >
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((d) => (
+                  <option key={d} value={d}>
+                    Day {d} {d === 1 ? "(1st)" : d === 2 ? "(2nd)" : d === 3 ? "(3rd)" : `(${d}th)`} of month
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
           <InputField
             label="Next Due Date"
             type="date"
             value={form.nextDate ?? ""}
-            onChange={(nextDate) => setForm((f) => ({ ...f, nextDate }))}
+            onChange={(nextDate) => {
+              const d = nextDate ? new Date(nextDate).getDate() : undefined;
+              setForm((f) => ({
+                ...f,
+                nextDate,
+                recurringDay: d ?? f.recurringDay,
+                startDate: nextDate,
+              }));
+            }}
           />
         </div>
 

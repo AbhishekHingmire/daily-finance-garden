@@ -39,7 +39,7 @@ export function CategoriesPage({
   );
 
   const categories = useMemo(
-    () => data.categories.filter((c) => !c.archived && c.kind === "Expense"),
+    () => data.categories.filter((c) => !c.archived),
     [data.categories]
   );
 
@@ -153,7 +153,7 @@ export function CategoriesPage({
                       <h3 className="truncate font-semibold text-foreground text-xs sm:text-sm">
                         {category.name}
                       </h3>
-                      {category.kind === "Expense" && (
+                      {category.defaultNeed && (
                         <span
                           className={`inline-block rounded px-1.5 py-0.2 text-[8px] font-semibold tracking-wider ${
                             category.defaultNeed === "Want"
@@ -162,6 +162,11 @@ export function CategoriesPage({
                           }`}
                         >
                           {category.defaultNeed || "Need"}
+                        </span>
+                      )}
+                      {category.kind !== "Expense" && (
+                        <span className="inline-block rounded px-1.5 py-0.2 text-[8px] font-semibold tracking-wider border border-border/80 bg-muted/40 text-muted-foreground uppercase">
+                          {category.kind}
                         </span>
                       )}
                     </div>

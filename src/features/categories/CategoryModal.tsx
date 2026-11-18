@@ -130,30 +130,26 @@ export function CategoryModal({
             ))}
           </div>
         </div>
-        {form.kind === "Expense" && (
-          <SelectField
-            label="Need or want?"
-            value={form.defaultNeed ?? "Need"}
-            onChange={(val) => setForm((f) => ({ ...f, defaultNeed: val as "Need" | "Want" }))}
-            options={[
-              { value: "Need", label: "Need (Essential — Bills, groceries, rent)" },
-              { value: "Want", label: "Want (Discretionary — Dining, shopping, leisure)" },
-            ]}
-          />
-        )}
-        {form.kind === "Expense" && (
-          <InputField
-            label="Monthly Budget Limit"
-            type="number"
-            value={form.monthlyLimit ?? ""}
-            onChange={(val) => {
-              if (limitError) setLimitError("");
-              setForm((f) => ({ ...f, monthlyLimit: val === "" ? undefined : Number(val) || 0 }));
-            }}
-            error={limitError}
-            placeholder="0 = No limit"
-          />
-        )}
+        <SelectField
+          label="Need or want?"
+          value={form.defaultNeed ?? "Need"}
+          onChange={(val) => setForm((f) => ({ ...f, defaultNeed: val as "Need" | "Want" }))}
+          options={[
+            { value: "Need", label: "Need (Essential — Bills, groceries, rent)" },
+            { value: "Want", label: "Want (Discretionary — Dining, shopping, leisure)" },
+          ]}
+        />
+        <InputField
+          label="Monthly Budget Limit"
+          type="number"
+          value={form.monthlyLimit ?? ""}
+          onChange={(val) => {
+            if (limitError) setLimitError("");
+            setForm((f) => ({ ...f, monthlyLimit: val === "" ? undefined : Number(val) || 0 }));
+          }}
+          error={limitError}
+          placeholder="0 = No limit"
+        />
         <div className="flex justify-end gap-2 pt-2 border-t border-border">
           <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel

@@ -608,7 +608,7 @@ export const GlobalAddSheet: React.FC<GlobalAddSheetProps> = ({
               onChange={(e) => handleCategoryChange(e.target.value)}
               className="wt-field cursor-pointer"
             >
-              {categories.filter((c) => !c.archived && (activeTab === "transfer" ? true : c.kind === activeTab)).map((c) => (
+              {categories.filter((c) => !c.archived).map((c) => (
                 <option key={c.id} value={c.id}>
                   {c.icon} {c.name}
                 </option>
