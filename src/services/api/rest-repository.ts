@@ -29,9 +29,34 @@ function cleanGuid(val?: string | null): string | null {
  */
 export class RestWealthRepository implements WealthRepository {
   private config: ApiConfig;
+  private cachedCategories: Array<{ id: string; name: string; kind?: string }> = [];
 
   constructor(config = DEFAULT_API_CONFIG) {
     this.config = config;
+  }
+
+  private resolveCategoryId(val?: string | null): string | null {
+    const direct = cleanGuid(val);
+    if (direct) return direct;
+    if (!val || typeof val !== "string") return null;
+
+    const lower = val.toLowerCase().trim();
+    const byId = this.cachedCategories.find((c) => c.id.toLowerCase() === lower);
+    if (byId && cleanGuid(byId.id)) return byId.id;
+
+    const byName = this.cachedCategories.find((c) => {
+      const cName = c.name.toLowerCase();
+      if (lower.includes("invest") && (cName.includes("invest") || cName.includes("sip"))) return true;
+      if (lower.includes("borrow") && (cName.includes("borrow") || cName.includes("loan"))) return true;
+      if (lower.includes("lend") && cName.includes("lend")) return true;
+      if (lower.includes("recovery") && cName.includes("recovery")) return true;
+      if (lower.includes("bill") && (cName.includes("bill") || cName.includes("util"))) return true;
+      if (lower.includes("food") && (cName.includes("food") || cName.includes("dining"))) return true;
+      return false;
+    });
+    if (byName && cleanGuid(byName.id)) return byName.id;
+
+    return null;
   }
 
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
@@ -93,6 +118,11 @@ export class RestWealthRepository implements WealthRepository {
     }
 
     const d = res.data;
+    this.cachedCategories = (d.categories || []).map((c: any) => ({
+      id: c.id,
+      name: c.name,
+      kind: c.kind,
+    }));
     const state: WealthState = {
       session: true,
       // Treat the user as onboarded once they have saved a profile or have accounts.
@@ -257,7 +287,7 @@ export class RestWealthRepository implements WealthRepository {
       type: transaction.type,
       amount: Number(transaction.amount),
       accountId: cleanGuid(transaction.accountId) || transaction.accountId,
-      categoryId: cleanGuid(transaction.categoryId),
+      categoryId: this.resolveCategoryId(transaction.categoryId),
       destinationAccountId: cleanGuid(transaction.destinationAccountId),
       paymentMethod: transaction.paymentMethod || "UPI",
       need: transaction.need || "Need",
@@ -285,7 +315,7 @@ export class RestWealthRepository implements WealthRepository {
       type: transaction.type,
       amount: Number(transaction.amount),
       accountId: cleanGuid(transaction.accountId) || transaction.accountId,
-      categoryId: cleanGuid(transaction.categoryId),
+      categoryId: this.resolveCategoryId(transaction.categoryId),
       destinationAccountId: cleanGuid(transaction.destinationAccountId),
       paymentMethod: transaction.paymentMethod || "UPI",
       need: transaction.need || "Need",
@@ -315,9 +345,10 @@ export class RestWealthRepository implements WealthRepository {
   }
 
   async bulkReassignCategory(ids: string[], categoryId: string): Promise<ApiResponse<void>> {
+    const resolvedCat = this.resolveCategoryId(categoryId) || cleanGuid(categoryId) || categoryId;
     return this.request<void>(`${this.config.endpoints.transactions}/bulk-reassign-category`, {
       method: "POST",
-      body: JSON.stringify({ ids: ids.map((id) => cleanGuid(id) || id), categoryId: cleanGuid(categoryId) || categoryId }),
+      body: JSON.stringify({ ids: ids.map((id) => cleanGuid(id) || id), categoryId: resolvedCat }),
     });
   }
 
@@ -382,10 +413,14 @@ export class RestWealthRepository implements WealthRepository {
       monthlyLimit: Number(category.monthlyLimit) || 0,
       defaultNeed: category.defaultNeed || "Need",
     };
-    return this.request<Category>(this.config.endpoints.categories, {
+    const res = await this.request<Category>(this.config.endpoints.categories, {
       method: "POST",
       body: JSON.stringify(payload),
     });
+    if (res.success && res.data) {
+      this.cachedCategories.push({ id: res.data.id, name: res.data.name, kind: res.data.kind });
+    }
+    return res;
   }
 
   async updateCategory(category: Category): Promise<ApiResponse<Category>> {
@@ -583,7 +618,7 @@ export class RestWealthRepository implements WealthRepository {
       name: item.name,
       type: item.type || "Expense",
       amount: Number(item.amount),
-      categoryId: cleanGuid(item.categoryId) || null,
+      categoryId: this.resolveCategoryId(item.categoryId) || null,
       accountId: cleanGuid(item.accountId) || item.accountId,
       frequency: item.frequency || "Monthly",
       intervalDays: Number(item.intervalDays) || 30,
@@ -607,7 +642,7 @@ export class RestWealthRepository implements WealthRepository {
       name: item.name,
       type: item.type || "Expense",
       amount: Number(item.amount),
-      categoryId: cleanGuid(item.categoryId) || null,
+      categoryId: this.resolveCategoryId(item.categoryId) || null,
       accountId: cleanGuid(item.accountId) || item.accountId,
       frequency: item.frequency || "Monthly",
       intervalDays: Number(item.intervalDays) || 30,

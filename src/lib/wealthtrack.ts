@@ -225,7 +225,7 @@ export interface Transaction {
 export interface RecurringItem {
   id: string;
   name: string;
-  type: "Expense" | "Income" | "Investment";
+  type: "Expense" | "Income" | "Investment" | "Transfer";
   amount: number;
   categoryId: string;
   accountId: string;

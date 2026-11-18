@@ -1950,18 +1950,23 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     savingLockRef.current = true;
 
     const cat = categoryById(transactionForm.categoryId ?? "");
+    let finalType = type;
+    if (cat && cat.kind === "Transfer" && type === "Expense") {
+      finalType = "Transfer";
+    }
+
     const description =
       transactionForm.description?.trim() ||
       cat?.name ||
-      (type === "Transfer" ? "Transfer" : type === "Investment" ? "Investment" : "Transaction");
+      (finalType === "Transfer" ? "Transfer" : finalType === "Investment" ? "Investment" : "Transaction");
 
     let saved: Transaction = {
       id: editTransaction?.id ?? createTransactionId(),
       date: transactionForm.date!,
       description,
-      type,
+      type: finalType,
       amount: Number(transactionForm.amount),
-      categoryId: type === "Transfer" ? "" : transactionForm.categoryId ?? "",
+      categoryId: transactionForm.categoryId ?? "",
       accountId: transactionForm.accountId || data.preferences.defaultAccount || liveAccounts[0]?.id || data.accounts[0]?.id || "acc-default",
       destinationAccountId: transactionForm.destinationAccountId ?? "",
       paymentMethod: transactionForm.paymentMethod ?? "UPI",
@@ -2115,11 +2120,17 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
         const isMatchingRecurring =
           (t.loanId && (t.loanId === recurring.id || (recurring.loanId && t.loanId === recurring.loanId))) ||
+          (recurring.investmentId && ((t as any).investmentId === recurring.investmentId || (t as any).holdingId === recurring.investmentId)) ||
           (t.recurring && (
             (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim()) ||
             (t.description && recurring.name && t.description.toLowerCase().includes(recurring.name.toLowerCase().trim()))
           )) ||
-          (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim());
+          (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim()) ||
+          (t.description && recurring.name && (
+            t.description.toLowerCase().trim() === recurring.name.toLowerCase().trim() ||
+            t.description.toLowerCase().includes(recurring.name.toLowerCase().trim()) ||
+            recurring.name.toLowerCase().includes(t.description.toLowerCase().trim())
+          ));
 
         return isMatchingRecurring && t.categoryId !== newCategoryId;
       });
@@ -2492,15 +2503,22 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       toast.error("Add a name and amount");
       return;
     }
+    const selectedCat = categoryById(form.categoryId ?? editingRecurring?.categoryId ?? "");
+    let resolvedType = form.type ?? editingRecurring?.type ?? "Expense";
+    if (selectedCat?.kind === "Transfer" && resolvedType === "Expense") {
+      resolvedType = selectedCat.name.toLowerCase().includes("invest") ? "Investment" : "Transfer";
+    }
+
     let item: RecurringItem = {
       id: editingRecurring?.id ?? createTransactionId(),
       name: form.name.trim(),
-      type: form.type ?? "Expense",
+      type: resolvedType,
       amount: Number(form.amount),
       categoryId: form.categoryId ?? (data.categories[0]?.id || ""),
       accountId: resolvedAccountId,
       frequency: form.frequency ?? "Monthly",
       intervalDays: Number(form.intervalDays) || 30,
+      recurringDay: form.recurringDay || (form.nextDate ? Number(form.nextDate.slice(8, 10)) : undefined),
       startDate: form.startDate ?? new Date().toISOString().slice(0, 10),
       endDate: form.endDate ?? "",
       nextDate: form.nextDate ?? new Date().toISOString().slice(0, 10),
@@ -2688,11 +2706,17 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
 
         const isMatchingRecurring =
           (t.loanId && (t.loanId === recurring.id || (recurring.loanId && t.loanId === recurring.loanId))) ||
+          (recurring.investmentId && ((t as any).investmentId === recurring.investmentId || (t as any).holdingId === recurring.investmentId)) ||
           (t.recurring && (
             (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim()) ||
             (t.description && recurring.name && t.description.toLowerCase().includes(recurring.name.toLowerCase().trim()))
           )) ||
-          (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim());
+          (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim()) ||
+          (t.description && recurring.name && (
+            t.description.toLowerCase().trim() === recurring.name.toLowerCase().trim() ||
+            t.description.toLowerCase().includes(recurring.name.toLowerCase().trim()) ||
+            recurring.name.toLowerCase().includes(t.description.toLowerCase().trim())
+          ));
 
         return isMatchingRecurring && t.categoryId !== newCategoryId;
       });

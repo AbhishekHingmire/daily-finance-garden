@@ -117,22 +117,13 @@ export function CategoriesPage({
       <div className="grid gap-2.5 grid-cols-1 lg:grid-cols-2 items-start">
         {categories.map((category) => {
           const row = budgetMetrics.categoryRows.find((r) => r.category.id === category.id);
-          const isExpense = category.kind === "Expense";
-          const isIncome = category.kind === "Income";
-          const isTransfer = category.kind === "Transfer";
+          const periodKey = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
+          const spent = unified.entries
+            .filter((e) => e.status === "posted" && e.category_id === category.id && e.date.startsWith(periodKey))
+            .reduce((sum, e) => sum + Math.abs(e.amount || 0), 0);
 
-          let spent = 0;
-          if (isExpense) {
-            spent = row ? row.spent : 0;
-          } else if (isIncome || isTransfer) {
-            const periodKey = `${sharedPeriod.year}-${String(sharedPeriod.month).padStart(2, "0")}`;
-            spent = unified.entries
-              .filter((e) => e.status === "posted" && e.category_id === category.id && e.date.startsWith(periodKey))
-              .reduce((sum, e) => sum + e.amount, 0);
-          }
-
-          const cap = row ? row.cap : category.monthlyLimit;
-          const hasBudget = isExpense && cap > 0;
+          const cap = (row && row.cap > 0) ? row.cap : (category.monthlyLimit || 0);
+          const hasBudget = cap > 0;
           const percent = hasBudget && cap > 0 ? Math.round((spent / cap) * 100) : 0;
           const overBudget = hasBudget && spent > cap;
           const overByAmount = spent - cap;

@@ -6,7 +6,13 @@ import { InputField, SelectField } from "@/components/shared/FormFields";
 import { Modal } from "@/components/shared/Modal";
 import { CategoryModal } from "@/features/categories/CategoryModal";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
-import { getAccountBalance, type Category, type RecurringItem, type WealthState } from "@/lib/wealthtrack";
+import {
+  createTransactionId,
+  getAccountBalance,
+  type Category,
+  type RecurringItem,
+  type WealthState,
+} from "@/lib/wealthtrack";
 
 export function RecurringModal({
   item,
@@ -80,7 +86,7 @@ export function RecurringModal({
   const handleQuickCreateCategory = (catForm: Partial<Category>) => {
     if (!catForm.name?.trim()) return;
     const newCat: Category = {
-      id: `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      id: createTransactionId(),
       name: catForm.name.trim(),
       kind: (catForm.kind ?? "Expense") as Category["kind"],
       icon: catForm.icon ?? matchCategoryIcon(catForm.name.trim(), "📁"),
@@ -97,7 +103,18 @@ export function RecurringModal({
     if (val === "__new_category__") {
       setIsCreatingCategory(true);
     } else {
-      setForm((f) => ({ ...f, categoryId: val }));
+      const selectedCat = data.categories.find((c) => c.id === val);
+      setForm((f) => {
+        let updatedType = f.type ?? "Expense";
+        if (selectedCat?.kind === "Transfer" && updatedType === "Expense") {
+          updatedType = selectedCat.name.toLowerCase().includes("invest") ? "Investment" : "Transfer";
+        }
+        return {
+          ...f,
+          categoryId: val,
+          type: updatedType,
+        };
+      });
     }
   };
 
@@ -196,8 +213,8 @@ export function RecurringModal({
             }}
             options={[
               { value: "Expense", label: "Expense (Outflow / Bill / EMI)" },
-
               { value: "Investment", label: "Investment (SIP / Recurring)" },
+              { value: "Transfer", label: "Transfer (Savings / Funds / Investment)" },
             ]}
           />
           {form.type === "Investment" ? (

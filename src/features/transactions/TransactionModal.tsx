@@ -6,6 +6,7 @@ import { Modal } from "@/components/shared/Modal";
 import { CategoryModal } from "@/features/categories/CategoryModal";
 import { matchCategoryIcon } from "@/lib/icon-matcher";
 import {
+  createTransactionId,
   DEBT_TRANSACTION_TYPES,
   getAccountBalance,
   getTodayDateTimeString,
@@ -72,9 +73,14 @@ export function TransactionModal({
         : ["Shopping", "Entertainment", "Dining out", "Travel", "Personal Care"].includes(
             cat?.name ?? ""
           );
+      let updatedType = current.type ?? "Expense";
+      if (cat?.kind === "Transfer" && updatedType === "Expense") {
+        updatedType = "Transfer";
+      }
       return {
         ...current,
         categoryId: catId,
+        type: updatedType,
         description:
           !current.description || categories.some((c) => c.name === current.description)
             ? cat?.name ?? ""
@@ -87,7 +93,7 @@ export function TransactionModal({
   const handleQuickCreateCategory = (catForm: Partial<Category>) => {
     if (!catForm.name?.trim()) return;
     const newCat: Category = {
-      id: `cat-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      id: createTransactionId(),
       name: catForm.name.trim(),
       kind: catForm.kind ?? "Expense",
       icon: catForm.icon ?? matchCategoryIcon(catForm.name.trim(), "📁"),
@@ -228,12 +234,13 @@ export function TransactionModal({
                   setForm((cur) => ({
                     ...cur,
                     type: t,
-                    categoryId: defaultCat || (t === "Transfer" ? "" : cur.categoryId),
+                    categoryId: defaultCat || cur.categoryId || "",
                     description: cur.description || defaultDesc,
                   }));
                 }}
               >
                 <option value="Expense">Expense (Money spent / Outflow)</option>
+                <option value="Transfer">Transfer (Internal transfer / Investment)</option>
                 <option value="EMI / Loan Payment">EMI / Loan Repayment (Outflow to debt)</option>
                 <option value="Lend / Loan Given">Lend / Loan Given (Outflow advance to someone)</option>
               </select>
@@ -241,38 +248,36 @@ export function TransactionModal({
           </div>
 
           {/* Category Dropdown */}
-          {type !== "Transfer" && (
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <span className="wt-label mb-0">
-                  Category <span className="text-destructive">*</span>
-                </span>
-                <button
-                  type="button"
-                  onClick={() => setIsCreatingCategory(true)}
-                  className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
-                >
-                  <Plus size={12} /> Create Category
-                </button>
-              </div>
-              <select
-                className="wt-field h-10 text-xs font-semibold"
-                value={form.categoryId ?? ""}
-                onChange={(e) => handleDropdownSelectCategory(e.target.value)}
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="wt-label mb-0">
+                Category <span className="text-destructive">*</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsCreatingCategory(true)}
+                className="text-xs font-bold text-primary hover:underline inline-flex items-center gap-1"
               >
-                <option value="">-- Select Category --</option>
-                {categories.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.icon} {c.name}
-                  </option>
-                ))}
-                <option value="__new_category__">＋ Create new category…</option>
-              </select>
-              {errors.categoryId && (
-                <span className="mt-1 block text-xs text-destructive">{errors.categoryId}</span>
-              )}
+                <Plus size={12} /> Create Category
+              </button>
             </div>
-          )}
+            <select
+              className="wt-field h-10 text-xs font-semibold"
+              value={form.categoryId ?? ""}
+              onChange={(e) => handleDropdownSelectCategory(e.target.value)}
+            >
+              <option value="">-- Select Category --</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.icon} {c.name}
+                </option>
+              ))}
+              <option value="__new_category__">＋ Create new category…</option>
+            </select>
+            {errors.categoryId && (
+              <span className="mt-1 block text-xs text-destructive">{errors.categoryId}</span>
+            )}
+          </div>
         </div>
 
         {/* Optional Loan Linkage Dropdown for EMI Repayment */}

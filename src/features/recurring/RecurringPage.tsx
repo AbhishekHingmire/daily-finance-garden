@@ -47,7 +47,7 @@ export function RecurringPage({
 
   const activeSchedules = data.recurring.filter((r) => r.enabled);
   const totalMonthlyOutflow = activeSchedules
-    .filter((r) => r.type === "Expense")
+    .filter((r) => r.type === "Expense" || r.type === "Transfer")
     .reduce((sum, r) => sum + r.amount, 0);
   const totalMonthlySip = activeSchedules
     .filter((r) => r.type === "Investment")
