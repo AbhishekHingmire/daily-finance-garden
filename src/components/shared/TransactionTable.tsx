@@ -414,15 +414,15 @@ export function TransactionTable({
             <div className="flex items-center gap-1.5 shrink-0 ml-auto">
               {headerActions}
               <select
-                className="wt-field h-8 py-0 pl-2 pr-7 text-xs font-semibold bg-background rounded-lg border border-border/70 w-auto min-w-[125px] sm:min-w-[145px] cursor-pointer"
+                className="h-7 sm:h-7.5 min-h-0 py-0 pl-2 pr-6 text-[11px] sm:text-xs font-medium text-foreground bg-background rounded-md border border-border/70 focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer w-auto min-w-[95px] sm:min-w-[110px]"
                 value={sortOrder}
                 onChange={(e) => setSortOrder(e.target.value as any)}
                 aria-label="Sort transactions"
               >
-                <option value="newest">Sort: Newest</option>
-                <option value="oldest">Sort: Oldest</option>
-                <option value="highest">Sort: Highest</option>
-                <option value="lowest">Sort: Lowest</option>
+                <option value="newest">Latest</option>
+                <option value="oldest">Oldest</option>
+                <option value="highest">Highest</option>
+                <option value="lowest">Lowest</option>
               </select>
             </div>
           </div>

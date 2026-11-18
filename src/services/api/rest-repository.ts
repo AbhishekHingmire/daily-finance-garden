@@ -17,8 +17,10 @@ import { authStorage } from "./auth-api";
 
 function cleanGuid(val?: string | null): string | null {
   if (!val || typeof val !== "string" || val.trim() === "") return null;
+  const trimmed = val.trim();
+  if (trimmed === "00000000-0000-0000-0000-000000000000") return null;
   const guidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  return guidRegex.test(val.trim()) ? val.trim() : null;
+  return guidRegex.test(trimmed) ? trimmed : null;
 }
 
 /**

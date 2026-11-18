@@ -205,16 +205,24 @@ export function TransactionModal({
                   if (t === "Transfer") {
                     defaultDesc = "Account Transfer";
                   } else if (t === "EMI / Loan Payment") {
-                    defaultCat = data.categories.find((c) => c.id === "cat-loan-emi")?.id || "";
+                    defaultCat = data.categories.find(
+                      (c) => c.id === "cat-loan-emi" || c.name.toLowerCase().includes("loan") || c.name.toLowerCase().includes("emi")
+                    )?.id || "";
                     defaultDesc = "Loan EMI";
                   } else if (t === "Borrow / Loan Taken") {
-                    defaultCat = data.categories.find((c) => c.id === "cat-borrow")?.id || "";
+                    defaultCat = data.categories.find(
+                      (c) => c.id === "cat-borrow" || c.name.toLowerCase().includes("borrow")
+                    )?.id || "";
                     defaultDesc = "Loan Borrowed";
                   } else if (t === "Lend / Loan Given") {
-                    defaultCat = data.categories.find((c) => c.id === "cat-lend")?.id || "";
+                    defaultCat = data.categories.find(
+                      (c) => c.id === "cat-lend" || c.name.toLowerCase().includes("lend")
+                    )?.id || "";
                     defaultDesc = "Money Lent";
                   } else if (t === "Debt Recovery") {
-                    defaultCat = data.categories.find((c) => c.id === "cat-debt-recovery")?.id || "";
+                    defaultCat = data.categories.find(
+                      (c) => c.id === "cat-debt-recovery" || c.name.toLowerCase().includes("recovery")
+                    )?.id || "";
                     defaultDesc = "Debt Repaid";
                   }
                   setForm((cur) => ({

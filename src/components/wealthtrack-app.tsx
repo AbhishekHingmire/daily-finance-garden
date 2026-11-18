@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Activity,
+  AlertCircle,
   AlertTriangle,
   ArrowLeftRight,
   Bell,
   CalendarDays,
+  Check,
   ChevronDown,
   CircleHelp,
   Landmark,
@@ -13,6 +15,7 @@ import {
   MoreHorizontal,
   Plus,
   RefreshCw,
+  Repeat,
   Search,
   Settings2,
   ShieldCheck,
@@ -546,6 +549,15 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     amount?: number;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [recurringCategoryPrompt, setRecurringCategoryPrompt] = useState<{
+    isOpen: boolean;
+    recurring: RecurringItem;
+    oldCategoryName: string;
+    newCategoryName: string;
+    newCategoryId: string;
+    savedTransaction: Transaction;
+    keepOpen: boolean;
+  } | null>(null);
 
   // Unified Date Range Filter State
   const [dateRange, setDateRange] = useState<DateRangeValue>({
@@ -1960,6 +1972,40 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
     };
 
     if (editTransaction) {
+      // Detect if this transaction is linked to a recurring schedule
+      const linkedRecurring = data.recurring.find((r) =>
+        r.id === editTransaction.loanId ||
+        r.id === (editTransaction as any).recurringId ||
+        (r.name && editTransaction.merchant && r.name.toLowerCase().trim() === editTransaction.merchant.toLowerCase().trim()) ||
+        (r.name && editTransaction.description && r.name.toLowerCase().trim() === editTransaction.description.toLowerCase().trim()) ||
+        (editTransaction.recurring && (
+          (r.name && editTransaction.merchant && r.name.toLowerCase().trim() === editTransaction.merchant.toLowerCase().trim()) ||
+          (r.name && editTransaction.description && editTransaction.description.toLowerCase().includes(r.name.toLowerCase().trim()))
+        ))
+      );
+
+      const oldCategoryId = editTransaction.categoryId;
+      const newCategoryId = saved.categoryId;
+      const isCategoryChanged = Boolean(
+        oldCategoryId &&
+        newCategoryId &&
+        oldCategoryId !== newCategoryId
+      );
+
+      if (linkedRecurring && isCategoryChanged) {
+        savingLockRef.current = false;
+        setRecurringCategoryPrompt({
+          isOpen: true,
+          recurring: linkedRecurring,
+          oldCategoryName: categoryById(oldCategoryId)?.name || "Previous Category",
+          newCategoryName: categoryById(newCategoryId)?.name || "New Category",
+          newCategoryId,
+          savedTransaction: saved,
+          keepOpen,
+        });
+        return;
+      }
+
       const res = await repository.updateTransaction(saved);
       if (!res.success) {
         toast.error(res.error || "Failed to update transaction");
@@ -2007,6 +2053,104 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
       description: `${saved.description} · ${money(saved.amount)}`,
     });
     notify(editTransaction ? "Transaction updated" : "Transaction added", `${saved.description} · ${money(saved.amount)}`);
+
+    savingLockRef.current = false;
+
+    if (keepOpen) {
+      setTransactionForm((current) => ({
+        ...current,
+        amount: undefined,
+        description: "",
+        date: new Date().toISOString().slice(0, 16),
+        notes: "",
+        merchant: "",
+      }));
+      setEditTransaction(null);
+    } else {
+      setModal(null);
+    }
+  };
+
+  const handleConfirmRecurringCategoryCascade = async (updateRecurringAndHistory: boolean) => {
+    if (!recurringCategoryPrompt || savingLockRef.current) return;
+    const { recurring, newCategoryId, newCategoryName, savedTransaction: pendingSaved, keepOpen } = recurringCategoryPrompt;
+    savingLockRef.current = true;
+    setRecurringCategoryPrompt(null);
+
+    let saved = pendingSaved;
+    const res = await repository.updateTransaction(saved);
+    if (!res.success) {
+      toast.error(res.error || "Failed to update transaction");
+      savingLockRef.current = false;
+      return;
+    }
+    if (res.data) saved = { ...saved, ...res.data };
+
+    if (updateRecurringAndHistory) {
+      // 1. Update recurring schedule category for all future auto-deductions
+      const updatedRecurring: RecurringItem = {
+        ...recurring,
+        categoryId: newCategoryId,
+      };
+      await repository.updateRecurring(updatedRecurring);
+
+      // 2. Cascade category change to all historical transactions from the past 6 months
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      sixMonthsAgo.setHours(0, 0, 0, 0);
+
+      const historicalToUpdate = data.transactions.filter((t) => {
+        if (t.id === saved.id) return false;
+        const txDate = new Date(t.date);
+        if (isNaN(txDate.getTime()) || txDate < sixMonthsAgo) return false;
+
+        const isMatchingRecurring =
+          (t.loanId && t.loanId === recurring.id) ||
+          (t.recurring && (
+            (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim()) ||
+            (t.description && recurring.name && t.description.toLowerCase().includes(recurring.name.toLowerCase().trim()))
+          )) ||
+          (t.merchant && recurring.name && t.merchant.toLowerCase().trim() === recurring.name.toLowerCase().trim());
+
+        return isMatchingRecurring && t.categoryId !== newCategoryId;
+      });
+
+      if (historicalToUpdate.length > 0) {
+        const ids = historicalToUpdate.map((t) => t.id);
+        await repository.bulkReassignCategory(ids, newCategoryId);
+      }
+
+      const historicalIdsSet = new Set(historicalToUpdate.map((t) => t.id));
+      setData((current) => ({
+        ...current,
+        recurring: current.recurring.map((r) =>
+          r.id === recurring.id ? { ...r, categoryId: newCategoryId } : r
+        ),
+        transactions: current.transactions.map((t) => {
+          if (t.id === saved.id) return saved;
+          if (historicalIdsSet.has(t.id)) {
+            return { ...t, categoryId: newCategoryId };
+          }
+          return t;
+        }),
+      }));
+
+      toast.success("Category & recurring schedule updated", {
+        description: `Updated recurring schedule "${recurring.name}" and ${historicalToUpdate.length} past transaction${historicalToUpdate.length === 1 ? "" : "s"} from past 6 months to ${newCategoryName}.`,
+      });
+      notify("Category & recurring schedule updated", `Updated recurring schedule and ${historicalToUpdate.length} past transaction(s) to ${newCategoryName}.`);
+    } else {
+      // Single transaction only
+      setData((current) => ({
+        ...current,
+        transactions: current.transactions.map((t) => (t.id === saved.id ? saved : t)),
+      }));
+
+      toast.success("Transaction updated", {
+        description: `Only this single transaction was moved to ${newCategoryName}. Recurring schedule remained unchanged.`,
+      });
+      notify("Transaction updated", `Only this single transaction was moved to ${newCategoryName}.`);
+    }
 
     savingLockRef.current = false;
 
@@ -4115,6 +4259,91 @@ export function WealthTrackApp({ initialSection }: { initialSection?: Section } 
           onAddCategory={saveCategory}
           onOpenBulkImport={() => setModal("import")}
         />
+      )}
+
+      {/* Recurring Category Reclassification Confirmation Modal */}
+      {recurringCategoryPrompt?.isOpen && (
+        <div
+          className="fixed inset-0 z-popover flex items-center justify-center bg-foreground/45 p-4 backdrop-blur-xs animate-in fade-in-50 duration-200"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="recurring-category-modal-title"
+        >
+          <div className="w-full max-w-md overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6 shadow-2xl space-y-4">
+            {/* Header */}
+            <div className="flex items-start gap-3">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Repeat size={20} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 id="recurring-category-modal-title" className="text-base font-bold text-foreground">
+                  Update Recurring Schedule Category?
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  This transaction was generated from recurring rule <span className="font-semibold text-foreground">"{recurringCategoryPrompt.recurring.name}"</span>.
+                </p>
+              </div>
+            </div>
+
+            {/* Category Change Pill / Summary */}
+            <div className="flex items-center justify-between rounded-xl border border-border/80 bg-muted/40 p-3 text-xs">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground block mb-0.5">Current Category</span>
+                <span className="font-semibold text-foreground">{recurringCategoryPrompt.oldCategoryName}</span>
+              </div>
+              <span className="text-muted-foreground font-bold text-sm">→</span>
+              <div className="text-right">
+                <span className="text-[10px] uppercase font-bold tracking-wider text-primary block mb-0.5">New Category</span>
+                <span className="font-semibold text-primary">{recurringCategoryPrompt.newCategoryName}</span>
+              </div>
+            </div>
+
+            {/* Explanation Note */}
+            <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs text-amber-900 dark:text-amber-200 space-y-2">
+              <div className="font-bold flex items-center gap-1.5 text-amber-800 dark:text-amber-300">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>How would you like to apply this change?</span>
+              </div>
+              <ul className="space-y-1.5 text-[11px] leading-relaxed text-muted-foreground/90 list-disc pl-4">
+                <li>
+                  <strong className="text-foreground">Click "Yes, Update Schedule & Past 6 Months":</strong> All historical transactions of the past 6 months from this recurring rule and all future recurring schedules will be moved to <strong className="text-foreground">{recurringCategoryPrompt.newCategoryName}</strong>.
+                </li>
+                <li>
+                  <strong className="text-foreground">Click "No, Only This Transaction":</strong> Only this single transaction will be moved to <strong className="text-foreground">{recurringCategoryPrompt.newCategoryName}</strong>. The recurring schedule and historical transactions will remain unchanged.
+                </li>
+              </ul>
+            </div>
+
+            {/* Actions */}
+            <div className="space-y-2 pt-1">
+              <Button
+                type="button"
+                className="w-full text-xs font-bold h-9 bg-primary text-primary-foreground hover:bg-primary/90 flex items-center justify-center gap-1.5 cursor-pointer"
+                onClick={() => handleConfirmRecurringCategoryCascade(true)}
+              >
+                <Check size={14} /> Yes, Update Schedule & Past 6 Months
+              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-1 text-xs font-semibold h-8.5 cursor-pointer"
+                  onClick={() => handleConfirmRecurringCategoryCascade(false)}
+                >
+                  No, Only This Transaction
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-xs font-medium h-8.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                  onClick={() => setRecurringCategoryPrompt(null)}
+                >
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       {modal === "account" && (
